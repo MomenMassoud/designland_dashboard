@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dashboard_desginland/feature/SubCategory/view/subcategory_view.dart';
 import 'package:dashboard_desginland/model/category_model.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../Core/Utils/app.colors.dart';
@@ -104,7 +106,8 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                 },
                 decoration: InputDecoration(
                   hintText: "Search categories by Arabic or English name...",
-                  prefixIcon: const Icon(Icons.search, color: AppColors.primaryPurple),
+                  prefixIcon: const Icon(Icons.search,
+                      color: AppColors.primaryPurple),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? IconButton(
                     icon: const Icon(Icons.clear, color: Colors.grey),
@@ -160,8 +163,10 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                     // فلترة القائمة حسب نص البحث (عربي أو إنجليزي)
                     final filteredDocs = docs.where((doc) {
                       final data = doc.data() as Map<String, dynamic>;
-                      final nameAr = (data['nameAr'] ?? '').toString().toLowerCase();
-                      final nameEn = (data['nameEn'] ?? '').toString().toLowerCase();
+                      final nameAr =
+                      (data['nameAr'] ?? '').toString().toLowerCase();
+                      final nameEn =
+                      (data['nameEn'] ?? '').toString().toLowerCase();
                       return nameAr.contains(_searchQuery) ||
                           nameEn.contains(_searchQuery);
                     }).toList();
@@ -217,19 +222,26 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                               final nameAr = data['nameAr'] ?? '';
                               final nameEn = data['nameEn'] ?? '';
                               final imageUrl = data['imageUrl'] ?? '';
-                              CategoryModel cat=CategoryModel(doc: docId,
-                                  ImageUrl: imageUrl, NameAr: nameAr, NameEn: nameEn);
+                              CategoryModel cat = CategoryModel(
+                                  doc: docId,
+                                  ImageUrl: imageUrl,
+                                  NameAr: nameAr,
+                                  NameEn: nameEn);
                               return DataRow(
                                 cells: [
                                   DataCell(
-                                    onTap:(){
+                                    onTap: () {
                                       Navigator.push(
                                         context,
-                                        MaterialPageRoute(builder: (context) =>  SubcategoryView(categoryModel: cat)),
+                                        MaterialPageRoute(
+                                            builder: (context) =>
+                                                SubcategoryView(
+                                                    categoryModel: cat)),
                                       );
                                     },
                                     Padding(
-                                      padding: const EdgeInsets.symmetric(vertical: 6.0),
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 6.0),
                                       child: ClipRRect(
                                         borderRadius: BorderRadius.circular(8),
                                         child: imageUrl.isNotEmpty
@@ -341,15 +353,30 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        // اختيار صورة القسم بأسلوب يعمل على الويب والأجهزة المحمولة
                         GestureDetector(
                           onTap: () async {
-                            final picker = ImagePicker();
-                            final image = await picker.pickImage(
-                                source: ImageSource.gallery);
-                            if (image != null) {
-                              setDialogState(() {
-                                pickedImage = image;
-                              });
+                            try {
+                              FilePickerResult? result =
+                              await FilePicker.platform.pickFiles(
+                                type: FileType.image,
+                                allowMultiple: false,
+                                withData: true, // مهم جداً لقراءة بيانات الصورة في الويب مباشرة
+                              );
+
+                              if (result != null && result.files.isNotEmpty) {
+                                final file = result.files.first;
+                                if (file.bytes != null) {
+                                  setDialogState(() {
+                                    pickedImage = XFile.fromData(
+                                      file.bytes!,
+                                      name: file.name,
+                                    );
+                                  });
+                                }
+                              }
+                            } catch (e) {
+                              debugPrint("Error picking category image: $e");
                             }
                           },
                           child: Container(
@@ -361,7 +388,7 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                               border: Border.all(color: Colors.grey.shade300),
                             ),
                             child: pickedImage != null
-                                ? FutureBuilder(
+                                ? FutureBuilder<List<int>>(
                               future: pickedImage!.readAsBytes(),
                               builder: (context, snapshot) {
                                 if (snapshot.hasData) {
@@ -369,7 +396,7 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                                     borderRadius:
                                     BorderRadius.circular(12),
                                     child: Image.memory(
-                                      snapshot.data!,
+                                      Uint8List.fromList(snapshot.data!),
                                       fit: BoxFit.cover,
                                     ),
                                   );

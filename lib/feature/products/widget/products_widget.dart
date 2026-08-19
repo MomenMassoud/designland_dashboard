@@ -1,10 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:dashboard_desginland/feature/products/view/product_details_view.dart';
-import 'package:dashboard_desginland/model/product_model.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+
 import '../../../Core/Utils/app.colors.dart';
 import '../../../Core/server/cloudinara_server.dart';
+import 'package:dashboard_desginland/feature/products/view/product_details_view.dart';
+import 'package:dashboard_desginland/model/product_model.dart';
 
 class ProductsWidget extends StatefulWidget {
   const ProductsWidget({super.key});
@@ -60,8 +62,10 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                         child: ElevatedButton.icon(
                           onPressed: () => _showProductDialog(context),
                           icon: const Icon(Icons.add, color: Colors.white),
-                          label: const Text("Add New Product",
-                              style: TextStyle(color: Colors.white)),
+                          label: const Text(
+                            "Add New Product",
+                            style: TextStyle(color: Colors.white),
+                          ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primaryPurple,
                             padding: const EdgeInsets.symmetric(vertical: 12),
@@ -103,8 +107,7 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                       icon: const Icon(Icons.add, color: Colors.white),
                       label: const Text(
                         "Add New Product",
-                        style: TextStyle(
-                            color: Colors.white,),
+                        style: TextStyle(color: Colors.white),
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primaryPurple,
@@ -170,7 +173,8 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                 stream: _productsRef.snapshots(),
                 builder: (context, snapshot) {
                   if (snapshot.hasError) {
-                    return const Center(child: Text("Error loading products!"));
+                    return const Center(
+                        child: Text("Error loading products!"));
                   }
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(
@@ -210,8 +214,7 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                               avgRate: (data['avgRating'] ?? 0.0).toDouble(),
                               categoryDoc: data['categoryId'] ?? '',
                               description: data['description'] ?? '',
-                              images:
-                              List<String>.from(data['images'] ?? []),
+                              images: List<String>.from(data['images'] ?? []),
                               SubCategoryDoc: data['subcategoryId'] ?? '',
                             );
 
@@ -498,12 +501,36 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                               : null,
                         ),
                         const SizedBox(height: 16),
+
+                        // زر اختيار الصور المتوافق 100% مع الويب والهوستنج
                         ElevatedButton.icon(
                           onPressed: () async {
-                            final picker = ImagePicker();
-                            final images = await picker.pickMultiImage();
-                            if (images.isNotEmpty) {
-                              setDialogState(() => pickedImages = images);
+                            try {
+                              FilePickerResult? result =
+                              await FilePicker.platform.pickFiles(
+                                type: FileType.image,
+                                allowMultiple: true,
+                                withData: true, // ضروري للويب لقراءة الملفات مباشرة
+                              );
+
+                              if (result != null && result.files.isNotEmpty) {
+                                List<XFile> tempImages = [];
+                                for (var file in result.files) {
+                                  if (file.bytes != null) {
+                                    tempImages.add(
+                                      XFile.fromData(
+                                        file.bytes!,
+                                        name: file.name,
+                                      ),
+                                    );
+                                  }
+                                }
+                                setDialogState(() {
+                                  pickedImages = tempImages;
+                                });
+                              }
+                            } catch (e) {
+                              debugPrint("Error picking files on Web: $e");
                             }
                           },
                           icon: const Icon(Icons.add_a_photo),
@@ -540,6 +567,20 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                         final url =
                         await CloudinaryService.uploadImage(img);
                         if (url != null) uploadedUrls.add(url);
+                      }
+
+                      if (uploadedUrls.isEmpty) {
+                        setDialogState(() => isSaving = false);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                  "Failed to upload images to Cloudinary!"),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                        return;
                       }
 
                       await _productsRef.add({

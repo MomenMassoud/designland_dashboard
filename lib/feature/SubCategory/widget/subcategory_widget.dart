@@ -1,4 +1,6 @@
+import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../Core/Utils/app.colors.dart';
@@ -119,7 +121,8 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
                 },
                 decoration: InputDecoration(
                   hintText: "Search subcategories by Arabic or English name...",
-                  prefixIcon: const Icon(Icons.search, color: AppColors.primaryPurple),
+                  prefixIcon:
+                  const Icon(Icons.search, color: AppColors.primaryPurple),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? IconButton(
                     icon: const Icon(Icons.clear, color: Colors.grey),
@@ -177,8 +180,10 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
                     // فلترة القائمة حسب نص البحث (عربي أو إنجليزي)
                     final filteredDocs = docs.where((doc) {
                       final data = doc.data() as Map<String, dynamic>;
-                      final nameAr = (data['nameAr'] ?? '').toString().toLowerCase();
-                      final nameEn = (data['nameEn'] ?? '').toString().toLowerCase();
+                      final nameAr =
+                      (data['nameAr'] ?? '').toString().toLowerCase();
+                      final nameEn =
+                      (data['nameEn'] ?? '').toString().toLowerCase();
                       return nameAr.contains(_searchQuery) ||
                           nameEn.contains(_searchQuery);
                     }).toList();
@@ -239,7 +244,8 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
                                 cells: [
                                   DataCell(
                                     Padding(
-                                      padding: const EdgeInsets.symmetric(vertical: 6.0),
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 6.0),
                                       child: ClipRRect(
                                         borderRadius: BorderRadius.circular(8),
                                         child: imageUrl.isNotEmpty
@@ -350,15 +356,30 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        // اختيار صورة القسم الفرعي المتوافق تماماً مع الويب
                         GestureDetector(
                           onTap: () async {
-                            final picker = ImagePicker();
-                            final image = await picker.pickImage(
-                                source: ImageSource.gallery);
-                            if (image != null) {
-                              setDialogState(() {
-                                pickedImage = image;
-                              });
+                            try {
+                              FilePickerResult? result =
+                              await FilePicker.platform.pickFiles(
+                                type: FileType.image,
+                                allowMultiple: false,
+                                withData: true, // ضروري للويب لقراءة الملف مباشرة
+                              );
+
+                              if (result != null && result.files.isNotEmpty) {
+                                final file = result.files.first;
+                                if (file.bytes != null) {
+                                  setDialogState(() {
+                                    pickedImage = XFile.fromData(
+                                      file.bytes!,
+                                      name: file.name,
+                                    );
+                                  });
+                                }
+                              }
+                            } catch (e) {
+                              debugPrint("Error picking subcategory image: $e");
                             }
                           },
                           child: Container(
@@ -370,7 +391,7 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
                               border: Border.all(color: Colors.grey.shade300),
                             ),
                             child: pickedImage != null
-                                ? FutureBuilder(
+                                ? FutureBuilder<List<int>>(
                               future: pickedImage!.readAsBytes(),
                               builder: (context, snapshot) {
                                 if (snapshot.hasData) {
@@ -378,7 +399,7 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
                                     borderRadius:
                                     BorderRadius.circular(12),
                                     child: Image.memory(
-                                      snapshot.data!,
+                                      Uint8List.fromList(snapshot.data!),
                                       fit: BoxFit.cover,
                                     ),
                                   );
