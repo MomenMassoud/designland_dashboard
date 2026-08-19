@@ -5,8 +5,6 @@ import 'package:image_picker/image_picker.dart';
 import '../../../Core/Utils/app.colors.dart';
 import '../../../Core/server/cloudinara_server.dart';
 
-
-
 class ProductDetailsWidget extends StatefulWidget {
   final ProductModel product;
 
@@ -40,7 +38,7 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
     super.dispose();
   }
 
-  // Open Full-Screen Image Viewer with InteractiveZoom
+  // Open Full-Screen Image Viewer
   void _openFullScreenImage(int initialIndex) {
     Navigator.push(
       context,
@@ -55,35 +53,42 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
 
   // Remove discount from Firestore
   Future<void> _removeDiscount() async {
-    await _productsRef.doc(_currentProduct.doc).update({
-      'discountPercentage': 0.0,
-      'discountUntil': FieldValue.delete(),
-    });
+    try {
+      await _productsRef.doc(_currentProduct.doc).update({
+        'discountPercentage': 0.0,
+        'discountUntil': FieldValue.delete(),
+      });
 
-    setState(() {
-      _currentProduct = ProductModel(
-        doc: _currentProduct.doc,
-        title: _currentProduct.title,
-        price: _currentProduct.price,
-        avgRate: _currentProduct.avgRate,
-        categoryDoc: _currentProduct.categoryDoc,
-        description: _currentProduct.description,
-        images: _currentProduct.images,
-        SubCategoryDoc: _currentProduct.SubCategoryDoc,
-        discountPercentage: 0.0,
-        discountUntil: null,
-      );
-    });
+      if (!mounted) return;
 
-    if (mounted) {
+      setState(() {
+        _currentProduct = ProductModel(
+          doc: _currentProduct.doc,
+          title: _currentProduct.title,
+          price: _currentProduct.price,
+          avgRate: _currentProduct.avgRate,
+          categoryDoc: _currentProduct.categoryDoc,
+          description: _currentProduct.description,
+          images: _currentProduct.images,
+          SubCategoryDoc: _currentProduct.SubCategoryDoc,
+          discountPercentage: 0.0,
+          discountUntil: null,
+        );
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Discount removed successfully")),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to remove discount: $e")),
       );
     }
   }
 
   // Show dialog to add/edit discount
-  void _showDiscountDialog(BuildContext context) {
+  void _showDiscountDialog(BuildContext parentContext) {
     final discountController = TextEditingController(
       text: _currentProduct.discountPercentage > 0
           ? _currentProduct.discountPercentage.toString()
@@ -94,10 +99,10 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
     bool isSaving = false;
 
     showDialog(
-      context: context,
+      context: parentContext,
       builder: (ctx) {
         return StatefulBuilder(
-          builder: (context, setDialogState) {
+          builder: (dialogContext, setDialogState) {
             return AlertDialog(
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16)),
@@ -106,7 +111,8 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                   Icon(Icons.local_offer, color: AppColors.primaryPurple),
                   SizedBox(width: 8),
                   Text("Set Temporary Discount",
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 18)),
                 ],
               ),
               content: Column(
@@ -114,13 +120,13 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                 children: [
                   TextField(
                     controller: discountController,
-                    keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true),
                     decoration: InputDecoration(
                       labelText: "Discount Percentage (%)",
                       hintText: "e.g. 15 for 15%",
-                      prefixIcon:
-                      const Icon(Icons.percent, color: AppColors.primaryPurple),
+                      prefixIcon: const Icon(Icons.percent,
+                          color: AppColors.primaryPurple),
                       border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10)),
                     ),
@@ -141,15 +147,16 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                       icon: const Icon(Icons.edit_calendar),
                       onPressed: () async {
                         final pickedDate = await showDatePicker(
-                          context: context,
+                          context: dialogContext,
                           initialDate: selectedDate,
                           firstDate: DateTime.now(),
                           lastDate:
                           DateTime.now().add(const Duration(days: 365)),
                         );
                         if (pickedDate != null) {
+                          if (!dialogContext.mounted) return;
                           final pickedTime = await showTimePicker(
-                            context: context,
+                            context: dialogContext,
                             initialTime: TimeOfDay.fromDateTime(selectedDate),
                           );
                           if (pickedTime != null) {
@@ -184,7 +191,7 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                         double.tryParse(discountController.text.trim()) ??
                             0.0;
                     if (percent <= 0 || percent > 100) {
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      ScaffoldMessenger.of(parentContext).showSnackBar(
                         const SnackBar(
                             content: Text(
                                 "Please enter a valid percentage (1-100)")),
@@ -199,26 +206,39 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                       'discountUntil': Timestamp.fromDate(selectedDate),
                     };
 
-                    await _productsRef
-                        .doc(_currentProduct.doc)
-                        .update(discountData);
+                    try {
+                      await _productsRef
+                          .doc(_currentProduct.doc)
+                          .update(discountData);
 
-                    setState(() {
-                      _currentProduct = ProductModel(
-                        doc: _currentProduct.doc,
-                        title: _currentProduct.title,
-                        price: _currentProduct.price,
-                        avgRate: _currentProduct.avgRate,
-                        categoryDoc: _currentProduct.categoryDoc,
-                        description: _currentProduct.description,
-                        images: _currentProduct.images,
-                        SubCategoryDoc: _currentProduct.SubCategoryDoc,
-                        discountPercentage: percent,
-                        discountUntil: selectedDate,
-                      );
-                    });
+                      if (!mounted) return;
 
-                    if (context.mounted) Navigator.pop(ctx);
+                      setState(() {
+                        _currentProduct = ProductModel(
+                          doc: _currentProduct.doc,
+                          title: _currentProduct.title,
+                          price: _currentProduct.price,
+                          avgRate: _currentProduct.avgRate,
+                          categoryDoc: _currentProduct.categoryDoc,
+                          description: _currentProduct.description,
+                          images: _currentProduct.images,
+                          SubCategoryDoc: _currentProduct.SubCategoryDoc,
+                          discountPercentage: percent,
+                          discountUntil: selectedDate,
+                        );
+                      });
+
+                      if (ctx.mounted) Navigator.pop(ctx);
+                    } catch (e) {
+                      setDialogState(() => isSaving = false);
+                      if (parentContext.mounted) {
+                        ScaffoldMessenger.of(parentContext).showSnackBar(
+                          SnackBar(
+                              content:
+                              Text("Failed to apply discount: $e")),
+                        );
+                      }
+                    }
                   },
                   child: isSaving
                       ? const SizedBox(
@@ -296,8 +316,8 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                         return GestureDetector(
                           onTap: () => _openFullScreenImage(index),
                           child: Container(
-                            margin:
-                            const EdgeInsets.symmetric(horizontal: 16),
+                            margin: const EdgeInsets.symmetric(
+                                horizontal: 16),
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(20),
                               boxShadow: [
@@ -343,8 +363,7 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                       },
                     )
                         : Container(
-                      margin:
-                      const EdgeInsets.symmetric(horizontal: 16),
+                      margin: const EdgeInsets.symmetric(horizontal: 16),
                       decoration: BoxDecoration(
                         color: Colors.grey.shade100,
                         borderRadius: BorderRadius.circular(20),
@@ -566,7 +585,7 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                             ),
                             const SizedBox(width: 12),
                             Text(
-                              "Product ID: ${_currentProduct.doc.substring(0, 6)}...",
+                              "Product ID: ${_currentProduct.doc.length > 6 ? _currentProduct.doc.substring(0, 6) : _currentProduct.doc}...",
                               style: const TextStyle(
                                 fontSize: 12,
                                 color: AppColors.textMuted,
@@ -738,13 +757,16 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                                           ),
                                         ],
                                       ),
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        comment,
-                                        style: const TextStyle(
+                                      if (comment.isNotEmpty) ...[
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          comment,
+                                          style: const TextStyle(
                                             color: AppColors.textMuted,
-                                            fontSize: 13),
-                                      ),
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                      ],
                                     ],
                                   ),
                                 ),
@@ -765,7 +787,7 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
   }
 
   // Edit Product Dialog
-  void _showEditProductDialog(BuildContext context) {
+  void _showEditProductDialog(BuildContext parentContext) {
     final formKey = GlobalKey<FormState>();
     final titleController =
     TextEditingController(text: _currentProduct.title);
@@ -782,7 +804,7 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
     bool isSaving = false;
 
     showDialog(
-      context: context,
+      context: parentContext,
       barrierDismissible: false,
       builder: (ctx) {
         return StatefulBuilder(
@@ -807,13 +829,15 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                               return const LinearProgressIndicator();
                             }
                             return DropdownButtonFormField<String>(
-                              value: selectedCategoryId!.isNotEmpty
+                              value: selectedCategoryId != null &&
+                                  selectedCategoryId!.isNotEmpty
                                   ? selectedCategoryId
                                   : null,
                               decoration: const InputDecoration(
                                   labelText: "Select Category"),
                               items: snapshot.data!.docs.map((doc) {
-                                final data = doc.data() as Map<String, dynamic>;
+                                final data =
+                                doc.data() as Map<String, dynamic>;
                                 return DropdownMenuItem<String>(
                                   value: doc.id,
                                   child: Text(
@@ -866,12 +890,21 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                           controller: titleController,
                           decoration:
                           const InputDecoration(labelText: "Title"),
+                          validator: (val) => val == null || val.isEmpty
+                              ? "Required field"
+                              : null,
                         ),
                         const SizedBox(height: 12),
                         TextFormField(
                           controller: priceController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true),
                           decoration:
                           const InputDecoration(labelText: "Price"),
+                          validator: (val) =>
+                          double.tryParse(val ?? '') == null
+                              ? "Enter valid price"
+                              : null,
                         ),
                         const SizedBox(height: 12),
                         TextFormField(
@@ -899,53 +932,73 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                     if (formKey.currentState!.validate()) {
                       setDialogState(() => isSaving = true);
 
-                      List<String> uploadedUrls = [];
-                      for (var img in pickedImages) {
-                        final url =
-                        await CloudinaryService.uploadImage(img);
-                        if (url != null) uploadedUrls.add(url);
+                      try {
+                        List<String> uploadedUrls = [];
+                        for (var img in pickedImages) {
+                          final url =
+                          await CloudinaryService.uploadImage(img);
+                          if (url != null) uploadedUrls.add(url);
+                        }
+
+                        final finalImages = [
+                          ...existingImages,
+                          ...uploadedUrls
+                        ];
+
+                        final updatedData = {
+                          'title': titleController.text.trim(),
+                          'description': descController.text.trim(),
+                          'price': double.parse(
+                              priceController.text.trim()),
+                          'categoryId': selectedCategoryId,
+                          'subcategoryId': selectedSubcategoryId,
+                          'images': finalImages,
+                        };
+
+                        await _productsRef
+                            .doc(_currentProduct.doc)
+                            .update(updatedData);
+
+                        if (!mounted) return;
+
+                        setState(() {
+                          _currentProduct = ProductModel(
+                            doc: _currentProduct.doc,
+                            title: titleController.text.trim(),
+                            price: double.parse(
+                                priceController.text.trim()),
+                            avgRate: _currentProduct.avgRate,
+                            categoryDoc: selectedCategoryId ?? '',
+                            description: descController.text.trim(),
+                            images: finalImages,
+                            SubCategoryDoc: selectedSubcategoryId ?? '',
+                            discountPercentage:
+                            _currentProduct.discountPercentage,
+                            discountUntil: _currentProduct.discountUntil,
+                          );
+                        });
+
+                        if (ctx.mounted) Navigator.pop(ctx);
+                      } catch (e) {
+                        setDialogState(() => isSaving = false);
+                        if (parentContext.mounted) {
+                          ScaffoldMessenger.of(parentContext)
+                              .showSnackBar(
+                            SnackBar(
+                                content: Text(
+                                    "Failed to update product: $e")),
+                          );
+                        }
                       }
-
-                      final finalImages = [
-                        ...existingImages,
-                        ...uploadedUrls
-                      ];
-
-                      final updatedData = {
-                        'title': titleController.text.trim(),
-                        'description': descController.text.trim(),
-                        'price':
-                        double.parse(priceController.text.trim()),
-                        'categoryId': selectedCategoryId,
-                        'subcategoryId': selectedSubcategoryId,
-                        'images': finalImages,
-                      };
-
-                      await _productsRef
-                          .doc(_currentProduct.doc)
-                          .update(updatedData);
-
-                      setState(() {
-                        _currentProduct = ProductModel(
-                          doc: _currentProduct.doc,
-                          title: titleController.text.trim(),
-                          price:
-                          double.parse(priceController.text.trim()),
-                          avgRate: _currentProduct.avgRate,
-                          categoryDoc: selectedCategoryId ?? '',
-                          description: descController.text.trim(),
-                          images: finalImages,
-                          SubCategoryDoc: selectedSubcategoryId ?? '',
-                          discountPercentage:
-                          _currentProduct.discountPercentage,
-                          discountUntil: _currentProduct.discountUntil,
-                        );
-                      });
-
-                      if (context.mounted) Navigator.pop(ctx);
                     }
                   },
-                  child: const Text("Save",
+                  child: isSaving
+                      ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                          color: Colors.white, strokeWidth: 2))
+                      : const Text("Save",
                       style: TextStyle(color: Colors.white)),
                 ),
               ],
@@ -957,25 +1010,36 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
   }
 
   // Delete Product Confirmation Dialog
-  void _confirmDelete(BuildContext context) {
+  void _confirmDelete(BuildContext parentContext) {
     showDialog(
-      context: context,
+      context: parentContext,
       builder: (ctx) => AlertDialog(
         title: const Text("Delete Product"),
-        content: Text("Are you sure you want to delete '${_currentProduct.title}'?"),
+        content: Text(
+            "Are you sure you want to delete '${_currentProduct.title}'?"),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("Cancel")),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            style:
+            ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
             onPressed: () async {
-              for (var imgUrl in _currentProduct.images) {
-                await CloudinaryService.deleteImage(imgUrl);
-              }
-              await _productsRef.doc(_currentProduct.doc).delete();
-              if (context.mounted) {
-                Navigator.pop(ctx);
-                Navigator.pop(context);
+              try {
+                for (var imgUrl in _currentProduct.images) {
+                  await CloudinaryService.deleteImage(imgUrl);
+                }
+                await _productsRef.doc(_currentProduct.doc).delete();
+
+                if (ctx.mounted) Navigator.pop(ctx);
+                if (mounted) Navigator.pop(parentContext);
+              } catch (e) {
+                if (ctx.mounted) Navigator.pop(ctx);
+                if (parentContext.mounted) {
+                  ScaffoldMessenger.of(parentContext).showSnackBar(
+                    SnackBar(content: Text("Failed to delete product: $e")),
+                  );
+                }
               }
             },
             child: const Text("Delete", style: TextStyle(color: Colors.white)),
@@ -1010,6 +1074,12 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
     super.initState();
     _currentIndex = widget.initialIndex;
     _pageController = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   @override

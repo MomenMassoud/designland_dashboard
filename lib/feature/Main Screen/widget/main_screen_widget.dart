@@ -21,64 +21,83 @@ class MainScreenWidget extends StatefulWidget {
 }
 
 class _MainScreenWidgetState extends State<MainScreenWidget> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   UserModel? _userModel;
   int _selectedIndex = 0;
+
   final List<Widget> _screens = [
     HomeView(),
-    CategoryView(), // الشاشة الخاصة بك
+    CategoryView(),
     OrdersView(),
     ReportView(),
     ProductsView(),
     StaffView(),
     UsersView(),
   ];
+
   @override
   void initState() {
     super.initState();
-    _StartProgram();
+    _startProgram();
   }
 
-  void _StartProgram()async{
-    _userModel=await GetCurrentUserData(context);
-    setState(() {
-      _userModel;
-    });
+  void _startProgram() async {
+    _userModel = await GetCurrentUserData(context);
+    setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
-    return _userModel==null?Scaffold(
-      body: Center(
-        child: CircularProgressIndicator(),
-      ),
-    ): Scaffold(
-      backgroundColor: AppColors.bgLight,
-      body:_userModel!.role =="admin" || _userModel!.role=="staff" ?Row(
-        children: [
-          _buildSidebar(context),
+    if (_userModel == null) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(color: AppColors.primaryPurple),
+        ),
+      );
+    }
 
-          // 2. Main Content Area (منطقة المحتوى + الهيدر العلوي)
-          Expanded(
-            child: Column(
-              children: [
-                _buildTopHeader(),
+    if (_userModel!.role != "admin" && _userModel!.role != "staff") {
+      return  AccessDefindView();
+    }
 
-                // Dynamic Body View
-                Expanded(
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
-                    child: _screens[_selectedIndex],
-                  ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final bool isMobile = constraints.maxWidth < 800;
+
+        return Scaffold(
+          key: _scaffoldKey,
+          backgroundColor: AppColors.bgLight,
+          // إظهار Drawer فقط في الموبايل
+          drawer: isMobile ? Drawer(child: _buildSidebarContent()) : null,
+          body: Row(
+            children: [
+              // إظهار الـ Sidebar الدائم فقط في الشاشات الكبيرة
+              if (!isMobile) _buildSidebar(context),
+
+              // منطقة المحتوى الرئيسي والهيدر العلوي
+              Expanded(
+                child: Column(
+                  children: [
+                    _buildTopHeader(isMobile),
+
+                    // Dynamic Body View
+                    Expanded(
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        child: _screens[_selectedIndex],
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ):AccessDefindView(),
+        );
+      },
     );
   }
 
-  // ==================== SIDEBAR WIDGET ====================
+  // ==================== SIDEBAR CONTAINER ====================
   Widget _buildSidebar(BuildContext context) {
     return Container(
       width: 260,
@@ -94,34 +113,37 @@ class _MainScreenWidgetState extends State<MainScreenWidget> {
           ),
         ],
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          CircleAvatar(
-            radius: 50,
-            backgroundImage: AssetImage(AppImages.appPLogo),
-          ),
+      child: _buildSidebarContent(),
+    );
+  }
 
-          const Divider(height: 1, thickness: 0.5, color: Colors.black12),
-          const SizedBox(height: 16),
-
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: [
-                _buildNavItem(0, Icons.grid_view_rounded, "Home"),
-                _buildNavItem(1, Icons.category_outlined, "Categories"),
-                _buildNavItem(2, Icons.shopping_bag_outlined, "Orders"),
-                _buildNavItem(3, Icons.bar_chart_rounded, "Reports"),
-                _buildNavItem(4, Icons.inventory_2_outlined, "Products"),
-                _buildNavItem(5, Icons.badge_outlined, "Staff"),
-                _buildNavItem(6, Icons.people_alt_outlined, "Users"),
-              ],
-            ),
+  // ==================== SIDEBAR CONTENT ====================
+  Widget _buildSidebarContent() {
+    return Column(
+      children: [
+        const SizedBox(height: 24),
+        CircleAvatar(
+          radius: 45,
+          backgroundImage: AssetImage(AppImages.appPLogo),
+        ),
+        const SizedBox(height: 16),
+        const Divider(height: 1, thickness: 0.5, color: Colors.black12),
+        const SizedBox(height: 16),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            children: [
+              _buildNavItem(0, Icons.grid_view_rounded, "Home"),
+              _buildNavItem(1, Icons.category_outlined, "Categories"),
+              _buildNavItem(2, Icons.shopping_bag_outlined, "Orders"),
+              _buildNavItem(3, Icons.bar_chart_rounded, "Reports"),
+              _buildNavItem(4, Icons.inventory_2_outlined, "Products"),
+              _buildNavItem(5, Icons.badge_outlined, "Staff"),
+              _buildNavItem(6, Icons.people_alt_outlined, "Users"),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -134,22 +156,22 @@ class _MainScreenWidgetState extends State<MainScreenWidget> {
         borderRadius: BorderRadius.circular(14),
         gradient: isSelected
             ? const LinearGradient(
-                colors: [AppColors.primaryPurple, Color(0xFF7C3AED)],
-              )
+          colors: [AppColors.primaryPurple, Color(0xFF7C3AED)],
+        )
             : null,
         color: isSelected ? null : Colors.transparent,
         boxShadow: isSelected
             ? [
-                BoxShadow(
-                  color: AppColors.primaryPurple.withOpacity(0.3),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ]
+          BoxShadow(
+            color: AppColors.primaryPurple.withOpacity(0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ]
             : null,
       ),
       child: Material(
-        color: Colors.transparent, // يمنع حجب تأثير الـ Splash
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(14),
         child: ListTile(
           shape: RoundedRectangleBorder(
@@ -172,18 +194,26 @@ class _MainScreenWidgetState extends State<MainScreenWidget> {
             setState(() {
               _selectedIndex = index;
             });
+            // إغلاق الـ Drawer تلقائياً في الموبايل عند إختيار عنصر
+            if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
+              Navigator.pop(context);
+            }
           },
         ),
       ),
     );
   }
 
-
   // ==================== TOP HEADER WIDGET ====================
-  Widget _buildTopHeader() {
+  Widget _buildTopHeader(bool isMobile) {
     return Container(
-      margin: const EdgeInsets.only(top: 16, right: 16, bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      margin: EdgeInsets.only(
+        top: 16,
+        right: 16,
+        left: isMobile ? 16 : 0,
+        bottom: 8,
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
@@ -197,7 +227,16 @@ class _MainScreenWidgetState extends State<MainScreenWidget> {
       ),
       child: Row(
         children: [
-          // Global Search Field
+          // زر فتح القائمة الجانبية في شاشات الموبايل
+          if (isMobile)
+            IconButton(
+              icon: const Icon(Icons.menu, color: AppColors.textDark),
+              onPressed: () {
+                _scaffoldKey.currentState?.openDrawer();
+              },
+            ),
+
+          // حقل البحث
           Expanded(
             child: Container(
               height: 42,
@@ -207,7 +246,7 @@ class _MainScreenWidgetState extends State<MainScreenWidget> {
               ),
               child: const TextField(
                 decoration: InputDecoration(
-                  hintText: "Search anything...",
+                  hintText: "Search...",
                   prefixIcon: Icon(
                     Icons.search,
                     color: AppColors.textMuted,
@@ -219,52 +258,64 @@ class _MainScreenWidgetState extends State<MainScreenWidget> {
               ),
             ),
           ),
-          const SizedBox(width: 20),
+          const SizedBox(width: 12),
 
+          // بروفايل المستخدم وزر الخروج
           InkWell(
-            onTap: (){
+            onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) =>  ProfileView()),
+                MaterialPageRoute(builder: (context) => ProfileView()),
               );
             },
             child: Row(
               children: [
-                 CircleAvatar(
+                CircleAvatar(
                   radius: 18,
                   backgroundColor: AppColors.primaryPurple,
                   child: Text(
-                    "${_userModel!.Name.characters.first}",
-                    style: TextStyle(
+                    _userModel!.Name.isNotEmpty
+                        ? _userModel!.Name.characters.first
+                        : "",
+                    style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children:  [
-                    Text(
-                      "${_userModel!.Name}",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        color: AppColors.textDark,
+                if (!isMobile) const SizedBox(width: 10),
+
+                // إخفاء تفاصيل اسم المستخدم في الموبايل لتوفير المساحة
+                if (!isMobile)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _userModel!.Name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: AppColors.textDark,
+                        ),
                       ),
-                    ),
-                    Text(
-                      "${_userModel!.role}",
-                      style: TextStyle(fontSize: 11, color: AppColors.textMuted),
-                    ),
-                  ],
-                ),
-                const SizedBox(width: 20),
-                IconButton(onPressed: ()async{
-                  LogoutMethod(context);
-                },
-                    icon: Icon(Icons.logout,color: AppColors.lightPurpleGlow,))
+                      Text(
+                        _userModel!.role,
+                        style: const TextStyle(
+                            fontSize: 11, color: AppColors.textMuted),
+                      ),
+                    ],
+                  ),
+                const SizedBox(width: 8),
+                IconButton(
+                  onPressed: () async {
+                    LogoutMethod(context);
+                  },
+                  icon: const Icon(
+                    Icons.logout,
+                    color: AppColors.lightPurpleGlow,
+                  ),
+                )
               ],
             ),
           ),

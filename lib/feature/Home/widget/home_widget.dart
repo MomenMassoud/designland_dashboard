@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
-import '../../../Core/Utils/app.colors.dart'; // افترضنا وجود ألوان المشروع الأساسية هنا
+import '../../../Core/Utils/app.colors.dart';
 
 class HomeWidget extends StatefulWidget {
   const HomeWidget({super.key});
@@ -117,7 +117,7 @@ class _HomeWidgetState extends State<HomeWidget> {
     );
   }
 
-  // 1. Welcome Banner
+  // 1. Welcome Banner (معدل ليتناسب مع الموبايل)
   Widget _buildWelcomeBanner() {
     return Container(
       width: double.infinity,
@@ -137,46 +137,64 @@ class _HomeWidgetState extends State<HomeWidget> {
           )
         ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isMobile = constraints.maxWidth < 600;
+          return Flex(
+            direction: isMobile ? Axis.vertical : Axis.horizontal,
+            crossAxisAlignment: isMobile
+                ? CrossAxisAlignment.start
+                : CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                "Welcome Back, Admin! 👋",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
+              Expanded(
+                flex: isMobile ? 0 : 1,
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Welcome Back, Admin! 👋",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 6),
+                    Text(
+                      "Here is what's happening with your platform today.",
+                      style: TextStyle(color: Colors.white70, fontSize: 13),
+                    ),
+                  ],
                 ),
               ),
-              SizedBox(height: 6),
-              Text(
-                "Here is what's happening with your platform today.",
-                style: TextStyle(color: Colors.white70, fontSize: 14),
-              ),
+              if (isMobile) const SizedBox(height: 12),
+              Container(
+                padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.circle, color: Colors.greenAccent, size: 10),
+                    SizedBox(width: 8),
+                    Text(
+                      "System: Online",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              )
             ],
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.circle, color: Colors.greenAccent, size: 12),
-                const SizedBox(width: 8),
-                Text(
-                  "System: Online",
-                  style: const TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-          )
-        ],
+          );
+        },
       ),
     );
   }
@@ -185,7 +203,9 @@ class _HomeWidgetState extends State<HomeWidget> {
   Widget _buildPrimaryStatsGrid() {
     return LayoutBuilder(
       builder: (context, constraints) {
-        int crossAxisCount = constraints.maxWidth > 900 ? 4 : (constraints.maxWidth > 600 ? 2 : 1);
+        int crossAxisCount = constraints.maxWidth > 900
+            ? 4
+            : (constraints.maxWidth > 600 ? 2 : 1);
         return GridView(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -193,10 +213,9 @@ class _HomeWidgetState extends State<HomeWidget> {
             crossAxisCount: crossAxisCount,
             crossAxisSpacing: 16,
             mainAxisSpacing: 16,
-            childAspectRatio: 1.8,
+            childAspectRatio: constraints.maxWidth < 400 ? 2.2 : 1.8,
           ),
           children: [
-            // Today Visitors (Static or From Analytics Collection)
             _buildStatCard(
               title: "Today's Visitors",
               valueStream: null,
@@ -205,28 +224,24 @@ class _HomeWidgetState extends State<HomeWidget> {
               color: Colors.blue,
               subtitle: "+12.5% from yesterday",
             ),
-            // Total Users
             _buildStatCard(
               title: "Total Customers",
               valueStream: _usersRef.snapshots(),
               icon: Icons.people_alt_outlined,
               color: Colors.indigo,
             ),
-            // Total Employees
             _buildStatCard(
               title: "Employees & Staff",
               valueStream: _employeesRef.snapshots(),
               icon: Icons.badge_outlined,
               color: Colors.teal,
             ),
-            // Total Products
             _buildStatCard(
               title: "Total Products",
               valueStream: _productsRef.snapshots(),
               icon: Icons.inventory_2_outlined,
               color: Colors.orange,
             ),
-            // Categories & Subcategories Combined
             _buildCombinedCategoriesCard(),
           ],
         );
@@ -263,12 +278,15 @@ class _HomeWidgetState extends State<HomeWidget> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  color: AppColors.textMuted,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    color: AppColors.textMuted,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               Container(
@@ -277,7 +295,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                   color: color.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(icon, color: color, size: 22),
+                child: Icon(icon, color: color, size: 20),
               ),
             ],
           ),
@@ -296,7 +314,7 @@ class _HomeWidgetState extends State<HomeWidget> {
               return Text(
                 "$count",
                 style: const TextStyle(
-                  fontSize: 24,
+                  fontSize: 22,
                   fontWeight: FontWeight.bold,
                   color: AppColors.textDark,
                 ),
@@ -306,7 +324,7 @@ class _HomeWidgetState extends State<HomeWidget> {
               : Text(
             customValue ?? "0",
             style: const TextStyle(
-              fontSize: 24,
+              fontSize: 22,
               fontWeight: FontWeight.bold,
               color: AppColors.textDark,
             ),
@@ -319,6 +337,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
               ),
+              overflow: TextOverflow.ellipsis,
             )
           else
             const SizedBox.shrink(),
@@ -349,12 +368,15 @@ class _HomeWidgetState extends State<HomeWidget> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                "Categories & Sub",
-                style: TextStyle(
-                  color: AppColors.textMuted,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
+              const Expanded(
+                child: Text(
+                  "Categories & Sub",
+                  style: TextStyle(
+                    color: AppColors.textMuted,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               Container(
@@ -364,7 +386,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(Icons.category_outlined,
-                    color: Colors.purple, size: 22),
+                    color: Colors.purple, size: 20),
               ),
             ],
           ),
@@ -388,7 +410,10 @@ class _HomeWidgetState extends State<HomeWidget> {
                   );
                 },
               ),
-              const VerticalDivider(width: 1),
+              const SizedBox(
+                height: 30,
+                child: VerticalDivider(width: 1),
+              ),
               StreamBuilder<QuerySnapshot>(
                 stream: _subcategoriesRef.snapshots(),
                 builder: (context, snap) {
@@ -413,7 +438,7 @@ class _HomeWidgetState extends State<HomeWidget> {
     );
   }
 
-  // 3. Financials & Orders Status Breakdown
+  // 3. Financials & Orders Status Breakdown (معدل للموبايل)
   Widget _buildFinancialAndOrdersSection() {
     return StreamBuilder<QuerySnapshot>(
       stream: _ordersRef.snapshots(),
@@ -450,62 +475,60 @@ class _HomeWidgetState extends State<HomeWidget> {
               direction: isDesktop ? Axis.horizontal : Axis.vertical,
               children: [
                 // Revenue Card
-                Expanded(
-                  flex: isDesktop ? 1 : 0,
-                  child: Container(
-                    margin: EdgeInsets.only(
-                        bottom: isDesktop ? 0 : 12, right: isDesktop ? 12 : 0),
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.03),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text("Total Revenue",
-                                style: TextStyle(
-                                    color: AppColors.textMuted,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600)),
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.green.withOpacity(0.12),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Icon(Icons.attach_money,
-                                  color: Colors.green, size: 24),
+                Container(
+                  width: isDesktop ? null : double.infinity,
+                  margin: EdgeInsets.only(
+                      bottom: isDesktop ? 0 : 12, right: isDesktop ? 12 : 0),
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.03),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text("Total Revenue",
+                              style: TextStyle(
+                                  color: AppColors.textMuted,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600)),
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.green.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(10),
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          "\$${totalRevenue.toStringAsFixed(2)}",
-                          style: const TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green,
+                            child: const Icon(Icons.attach_money,
+                                color: Colors.green, size: 24),
                           ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        "\$${totalRevenue.toStringAsFixed(2)}",
+                        style: const TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green,
                         ),
-                        const SizedBox(height: 6),
-                        const Text(
-                          "Calculated from delivered orders",
-                          style: TextStyle(
-                              color: AppColors.textMuted, fontSize: 12),
-                        ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        "Calculated from delivered orders",
+                        style: TextStyle(
+                            color: AppColors.textMuted, fontSize: 12),
+                      ),
+                    ],
                   ),
                 ),
 
@@ -516,13 +539,13 @@ class _HomeWidgetState extends State<HomeWidget> {
                     children: [
                       Expanded(
                         child: _buildSmallStatusCard(
-                          title: "Active Orders",
+                          title: "Active",
                           count: activeOrders,
                           color: Colors.orange,
                           icon: Icons.pending_actions,
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: _buildSmallStatusCard(
                           title: "Completed",
@@ -531,7 +554,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                           icon: Icons.check_circle_outline,
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: _buildSmallStatusCard(
                           title: "Cancelled",
@@ -558,7 +581,7 @@ class _HomeWidgetState extends State<HomeWidget> {
     required IconData icon,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -573,12 +596,12 @@ class _HomeWidgetState extends State<HomeWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color, size: 22),
+          Icon(icon, color: color, size: 20),
           const SizedBox(height: 12),
           Text(
             "$count",
             style: const TextStyle(
-              fontSize: 22,
+              fontSize: 20,
               fontWeight: FontWeight.bold,
               color: AppColors.textDark,
             ),
@@ -586,9 +609,11 @@ class _HomeWidgetState extends State<HomeWidget> {
           const SizedBox(height: 4),
           Text(
             title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: AppColors.textMuted,
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -597,40 +622,51 @@ class _HomeWidgetState extends State<HomeWidget> {
     );
   }
 
-  // 4. Growth & Business Analytics
+  // 4. Growth & Business Analytics (معدل ليتناسب مع الموبايل)
   Widget _buildGrowthAnalyticsSection() {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildAnalyticsMetricCard(
-            title: "Monthly Growth Rate",
-            value: "+18.4%",
-            icon: Icons.trending_up,
-            color: Colors.blueAccent,
-            subtitle: "Compared to last month",
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildAnalyticsMetricCard(
-            title: "Average Order Value",
-            value: "\$145.20",
-            icon: Icons.shopping_bag_outlined,
-            color: Colors.purpleAccent,
-            subtitle: "Based on 30-day average",
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildAnalyticsMetricCard(
-            title: "Conversion Rate",
-            value: "3.85%",
-            icon: Icons.pie_chart_outline,
-            color: Colors.teal,
-            subtitle: "Visitors to Customers",
-          ),
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 600;
+        return Flex(
+          direction: isMobile ? Axis.vertical : Axis.horizontal,
+          children: [
+            Expanded(
+              flex: isMobile ? 0 : 1,
+              child: _buildAnalyticsMetricCard(
+                title: "Monthly Growth",
+                value: "+18.4%",
+                icon: Icons.trending_up,
+                color: Colors.blueAccent,
+                subtitle: "Compared to last month",
+              ),
+            ),
+            SizedBox(
+                width: isMobile ? 0 : 12, height: isMobile ? 12 : 0),
+            Expanded(
+              flex: isMobile ? 0 : 1,
+              child: _buildAnalyticsMetricCard(
+                title: "Avg Order Value",
+                value: "\$145.20",
+                icon: Icons.shopping_bag_outlined,
+                color: Colors.purpleAccent,
+                subtitle: "Based on 30-day average",
+              ),
+            ),
+            SizedBox(
+                width: isMobile ? 0 : 12, height: isMobile ? 12 : 0),
+            Expanded(
+              flex: isMobile ? 0 : 1,
+              child: _buildAnalyticsMetricCard(
+                title: "Conversion Rate",
+                value: "3.85%",
+                icon: Icons.pie_chart_outline,
+                color: Colors.teal,
+                subtitle: "Visitors to Customers",
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -642,6 +678,7 @@ class _HomeWidgetState extends State<HomeWidget> {
     required String subtitle,
   }) {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -691,6 +728,7 @@ class _HomeWidgetState extends State<HomeWidget> {
               fontSize: 10,
               fontWeight: FontWeight.w600,
             ),
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -768,12 +806,13 @@ class _HomeWidgetState extends State<HomeWidget> {
                   return ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: CircleAvatar(
-                      backgroundColor: _getStatusColor(status).withOpacity(0.15),
+                      backgroundColor:
+                      _getStatusColor(status).withOpacity(0.15),
                       child: Icon(Icons.shopping_bag,
                           color: _getStatusColor(status), size: 18),
                     ),
                     title: Text(
-                      "Order #${orderId.substring(0, 6)}",
+                      "Order #${orderId.length > 6 ? orderId.substring(0, 6) : orderId}",
                       style: const TextStyle(
                           fontWeight: FontWeight.bold, fontSize: 14),
                     ),
@@ -786,7 +825,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                       "\$${price.toStringAsFixed(2)}",
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 15,
+                        fontSize: 14,
                         color: AppColors.textDark,
                       ),
                     ),
