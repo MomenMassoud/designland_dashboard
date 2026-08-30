@@ -116,26 +116,62 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                           crossAxisCount: crossAxisCount,
                           crossAxisSpacing: 16,
                           mainAxisSpacing: 16,
-                          childAspectRatio: isMobile ? 2.3 : 0.85,
+                          childAspectRatio: isMobile ? 2.3 : 0.82,
                         ),
                         itemBuilder: (context, index) {
                           final doc = filteredDocs[index];
                           final data = doc.data() as Map<String, dynamic>;
-                          final product = ProductModel(
-                            doc: doc.id,
-                            title: data['title'] ?? '',
-                            price: (data['price'] ?? 0.0).toDouble(),
-                            avgRate: (data['avgRating'] ?? 0.0).toDouble(),
-                            categoryDoc: data['categoryId'] ?? '',
-                            description: data['description'] ?? '',
-                            images: List<String>.from(data['images'] ?? []),
-                            SubCategoryDoc: data['subcategoryId'] ?? '',
-                          );
 
-                          return _buildProductCard(
-                            context,
-                            product: product,
-                            isMobile: isMobile,
+                          final discountUntilTimestamp =
+                          data['discountUntil'] as Timestamp?;
+
+                          // StreamBuilder داخلي لجلب التقييمات وحساب المتوسط
+                          return StreamBuilder<QuerySnapshot>(
+                            stream: _productsRef
+                                .doc(doc.id)
+                                .collection('reviews')
+                                .snapshots(),
+                            builder: (context, reviewSnapshot) {
+                              double calculatedAvg = 0.0;
+
+                              if (reviewSnapshot.hasData &&
+                                  reviewSnapshot.data!.docs.isNotEmpty) {
+                                final reviews = reviewSnapshot.data!.docs;
+                                final totalRating = reviews.fold<double>(
+                                  0.0,
+                                      (sum, rDoc) =>
+                                  sum +
+                                      ((rDoc.data() as Map<String, dynamic>)[
+                                      'rating'] ??
+                                          0)
+                                          .toDouble(),
+                                );
+                                calculatedAvg = totalRating / reviews.length;
+                              } else {
+                                calculatedAvg =
+                                    (data['avgRating'] ?? 0.0).toDouble();
+                              }
+
+                              final product = ProductModel(
+                                doc: doc.id,
+                                title: data['title'] ?? '',
+                                price: (data['price'] ?? 0.0).toDouble(),
+                                discountPercentage:
+                                (data['discountPercentage'] ?? 0).toInt(),
+                                discountUntil: discountUntilTimestamp?.toDate(),
+                                avgRate: calculatedAvg,
+                                categoryDoc: data['categoryId'] ?? '',
+                                description: data['description'] ?? '',
+                                images: List<String>.from(data['images'] ?? []),
+                                SubCategoryDoc: data['subcategoryId'] ?? '',
+                              );
+
+                              return _buildProductCard(
+                                context,
+                                product: product,
+                                isMobile: isMobile,
+                              );
+                            },
                           );
                         },
                       );
@@ -279,7 +315,59 @@ class _ProductsWidgetState extends State<ProductsWidget> {
     );
   }
 
-  // Product Card Component
+  // Price Widget
+  Widget _buildPriceWidget(ProductModel product) {
+    if (product.hasActiveDiscount) {
+      return Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 6,
+        children: [
+          Text(
+            "\$${product.discountedPrice.toStringAsFixed(2)}",
+            style: const TextStyle(
+              color: Colors.green,
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+            ),
+          ),
+          Text(
+            "\$${product.price.toStringAsFixed(2)}",
+            style: const TextStyle(
+              color: Colors.grey,
+              decoration: TextDecoration.lineThrough,
+              fontSize: 12,
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.redAccent.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              "-${product.discountPercentage}%",
+              style: const TextStyle(
+                color: Colors.redAccent,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Text(
+      "\$${product.price.toStringAsFixed(2)}",
+      style: const TextStyle(
+        color: Colors.green,
+        fontWeight: FontWeight.bold,
+        fontSize: 15,
+      ),
+    );
+  }
+
+  // Product Card
   Widget _buildProductCard(
       BuildContext context, {
         required ProductModel product,
@@ -331,14 +419,7 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      "\$${product.price.toStringAsFixed(2)}",
-                      style: const TextStyle(
-                        color: Colors.green,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
+                    _buildPriceWidget(product),
                     const SizedBox(height: 4),
                     Row(
                       children: [
@@ -416,14 +497,7 @@ class _ProductsWidgetState extends State<ProductsWidget> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    "\$${product.price.toStringAsFixed(2)}",
-                    style: const TextStyle(
-                      color: Colors.green,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
+                  Expanded(child: _buildPriceWidget(product)),
                   Row(
                     children: [
                       const Icon(Icons.star,
@@ -457,12 +531,14 @@ class _ProductsWidgetState extends State<ProductsWidget> {
     );
   }
 
-  // Slide Side Sheet Panel (بديل متجاوب وأنيق للـ Pop-up Dialog)
+  // Slide Side Sheet Panel for Adding New Product
   void _openProductFormPanel(BuildContext context) {
     final formKey = GlobalKey<FormState>();
     final titleController = TextEditingController();
     final descController = TextEditingController();
     final priceController = TextEditingController();
+    final discountPercController = TextEditingController();
+    final discountDaysController = TextEditingController();
 
     String? selectedCategoryId;
     String? selectedSubcategoryId;
@@ -640,6 +716,42 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                     v == null || double.tryParse(v) == null
                                         ? "Enter valid price"
                                         : null,
+                                  ),
+                                  const SizedBox(height: 16),
+
+                                  // Discount Fields
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: TextFormField(
+                                          controller: discountPercController,
+                                          keyboardType: TextInputType.number,
+                                          decoration: InputDecoration(
+                                            labelText: "Discount (%)",
+                                            hintText: "e.g. 10",
+                                            border: OutlineInputBorder(
+                                              borderRadius:
+                                              BorderRadius.circular(10),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: TextFormField(
+                                          controller: discountDaysController,
+                                          keyboardType: TextInputType.number,
+                                          decoration: InputDecoration(
+                                            labelText: "Duration (Days)",
+                                            hintText: "e.g. 7",
+                                            border: OutlineInputBorder(
+                                              borderRadius:
+                                              BorderRadius.circular(10),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                   const SizedBox(height: 16),
 
@@ -835,13 +947,38 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                         return;
                                       }
 
+                                      final int discountVal =
+                                          int.tryParse(discountPercController
+                                              .text
+                                              .trim()) ??
+                                              0;
+                                      final int discountDays =
+                                          int.tryParse(discountDaysController
+                                              .text
+                                              .trim()) ??
+                                              0;
+
+                                      DateTime? discountUntilDate;
+                                      if (discountVal > 0 &&
+                                          discountDays > 0) {
+                                        discountUntilDate = DateTime.now()
+                                            .add(Duration(
+                                            days: discountDays));
+                                      }
+
                                       await _productsRef.add({
-                                        'title': titleController.text
-                                            .trim(),
-                                        'description': descController.text
-                                            .trim(),
+                                        'title':
+                                        titleController.text.trim(),
+                                        'description':
+                                        descController.text.trim(),
                                         'price': double.parse(
                                             priceController.text.trim()),
+                                        'discountPercentage': discountVal,
+                                        'discountUntil': discountUntilDate !=
+                                            null
+                                            ? Timestamp.fromDate(
+                                            discountUntilDate)
+                                            : null,
                                         'categoryId': selectedCategoryId,
                                         'subcategoryId':
                                         selectedSubcategoryId,
