@@ -7,6 +7,7 @@ import 'package:dashboard_desginland/feature/Orders/view/orders_view.dart';
 import 'package:dashboard_desginland/feature/Profile/view/profile_view.dart';
 import 'package:dashboard_desginland/feature/Staff/view/staff_view.dart';
 import 'package:dashboard_desginland/feature/Users/view/users_view.dart';
+import 'package:dashboard_desginland/feature/analytics/view/analytics_view.dart';
 import 'package:dashboard_desginland/feature/products/view/products_view.dart';
 import 'package:dashboard_desginland/model/user_model.dart';
 import 'package:flutter/material.dart';
@@ -34,6 +35,7 @@ class _MainScreenWidgetState extends State<MainScreenWidget> {
     ProductsView(),
     StaffView(),
     UsersView(),
+    AnalyticsView(),
     AboutView(),
   ];
 
@@ -50,16 +52,22 @@ class _MainScreenWidgetState extends State<MainScreenWidget> {
 
   @override
   Widget build(BuildContext context) {
-    if (_userModel == null) {
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(color: AppColors.primaryPurple),
-        ),
-      );
-    }
+    try{
+      if (_userModel == null) {
+        return const Scaffold(
+          body: Center(
+            child: CircularProgressIndicator(color: AppColors.primaryPurple),
+          ),
+        );
+      }
 
-    if (_userModel!.role != "admin" && _userModel!.role != "staff") {
-      return  AccessDefindView();
+      if (_userModel!.role != "admin" && _userModel!.role != "staff") {
+        return  AccessDefindView();
+      }
+    }
+    catch(e){
+      print(e);
+      LogoutMethod(context);
     }
 
     return LayoutBuilder(
@@ -142,7 +150,8 @@ class _MainScreenWidgetState extends State<MainScreenWidget> {
               _buildNavItem(4, Icons.inventory_2_outlined, "Products"),
               _buildNavItem(5, Icons.badge_outlined, "Staff"),
               _buildNavItem(6, Icons.people_alt_outlined, "Users"),
-              _buildNavItem(7, Icons.info_outline, "About"),
+              _buildNavItem(7, Icons.analytics, "Analytics"),
+              _buildNavItem(8, Icons.info_outline, "About"),
             ],
           ),
         ),

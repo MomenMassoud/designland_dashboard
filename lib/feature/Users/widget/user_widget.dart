@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:dashboard_desginland/Core/widgets/error_dailog_custom.dart';
 import 'package:dashboard_desginland/feature/Access%20Defind/view/access_defind_view.dart';
 import 'package:dashboard_desginland/feature/Users/widget/user_details_widget.dart';
 import 'package:flutter/material.dart';
@@ -196,6 +197,8 @@ class _UserWidgetState extends State<UserWidget> {
               final String name = data['name'] ?? 'N/A';
               final String email = data['email'] ?? 'N/A';
               final String imageUrl = data['image'] ?? data['profilePic'] ?? '';
+               bool block=data['block'] ??false;
+              final String id=doc.id;
 
               String createdAtStr = 'N/A';
               if (data['createdAt'] is Timestamp) {
@@ -232,8 +235,21 @@ class _UserWidgetState extends State<UserWidget> {
                   DataCell(Text(createdAtStr)),
                   DataCell(
                     IconButton(
-                      icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                      onPressed: () => _confirmDeleteUser(doc.id, name),
+                      icon:block?  Icon(Icons.block, color: Colors.redAccent):Icon(Icons.block, color: Colors.green),
+                      onPressed: ()async{
+                        FirebaseFirestore fire=FirebaseFirestore.instance;
+                        try{
+                          await fire.collection('user').doc(id).update({
+                            'block':!block
+                          });
+                          setState(() {
+                            block=!block;
+                          });
+                        }
+                        catch(e){
+                          showErrorDialog(context, "Error", e.toString());
+                        }
+                      },
                     ),
                   ),
                 ],
