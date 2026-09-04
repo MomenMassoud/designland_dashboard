@@ -13,6 +13,10 @@ class AccessDefindWidget extends StatefulWidget{
 class _AccessDefindWidget extends State<AccessDefindWidget>{
   @override
   Widget build(BuildContext context) {
-    return Scaffold();
+    return Scaffold(
+      body: Center(
+        child: Text("Access Defined !",style: TextStyle(fontSize: 18),),
+      ),
+    );
   }
 }

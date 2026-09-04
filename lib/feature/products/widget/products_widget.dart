@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:dashboard_desginland/feature/Access%20Defind/view/access_defind_view.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -8,6 +9,8 @@ import '../../../Core/Utils/app.colors.dart';
 import '../../../Core/server/cloudinara_server.dart';
 import 'package:dashboard_desginland/feature/products/view/product_details_view.dart';
 import 'package:dashboard_desginland/model/product_model.dart';
+
+import '../../../Core/server/get_permision.dart';
 
 class ProductsWidget extends StatefulWidget {
   const ProductsWidget({super.key});
@@ -26,7 +29,19 @@ class _ProductsWidgetState extends State<ProductsWidget> {
 
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = "";
-
+  List<String> _permision=[];
+  void Start()async{
+    _permision=await GetPermisionUser();
+    setState(() {
+      _permision;
+    });
+  }
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    Start();
+  }
   @override
   void dispose() {
     _searchController.dispose();
@@ -35,7 +50,7 @@ class _ProductsWidgetState extends State<ProductsWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return _permision.contains("products")? Scaffold(
       backgroundColor: AppColors.bgLight,
       body: LayoutBuilder(
         builder: (context, constraints) {
@@ -183,7 +198,7 @@ class _ProductsWidgetState extends State<ProductsWidget> {
           );
         },
       ),
-    );
+    ):AccessDefindView();
   }
 
   // Header Section

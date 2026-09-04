@@ -1,4 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:dashboard_desginland/Core/server/get_permision.dart';
+import 'package:dashboard_desginland/feature/Access%20Defind/view/access_defind_view.dart';
 import 'package:dashboard_desginland/feature/SubCategory/view/subcategory_view.dart';
 import 'package:dashboard_desginland/model/category_model.dart';
 import 'package:file_picker/file_picker.dart';
@@ -21,16 +23,28 @@ class _CategoryWidgetState extends State<CategoryWidget> {
 
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = "";
-
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    Start();
+  }
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
   }
+  List<String> _permision=[];
+  void Start()async{
+    _permision=await GetPermisionUser();
+    setState(() {
+      _permision;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return _permision.contains("categories")? Scaffold(
       backgroundColor: AppColors.bgLight,
       body: LayoutBuilder(
         builder: (context, constraints) {
@@ -151,7 +165,7 @@ class _CategoryWidgetState extends State<CategoryWidget> {
           );
         },
       ),
-    );
+    ):AccessDefindView();
   }
 
   // Header Component

@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:dashboard_desginland/feature/Access%20Defind/view/access_defind_view.dart';
 import 'package:dashboard_desginland/feature/Users/widget/user_details_widget.dart';
 import 'package:flutter/material.dart';
 import '../../../Core/Utils/app.colors.dart';
+import '../../../Core/server/get_permision.dart';
 
 class UserWidget extends StatefulWidget {
   const UserWidget({super.key});
@@ -17,7 +19,19 @@ class _UserWidgetState extends State<UserWidget> {
 
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = "";
-
+  List<String> _permision=[];
+  void Start()async{
+    _permision=await GetPermisionUser();
+    setState(() {
+      _permision;
+    });
+  }
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    Start();
+  }
   @override
   void dispose() {
     _searchController.dispose();
@@ -38,7 +52,7 @@ class _UserWidgetState extends State<UserWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return _permision.contains("users")? Scaffold(
       backgroundColor: AppColors.bgLight,
       body: LayoutBuilder(
         builder: (context, constraints) {
@@ -98,7 +112,7 @@ class _UserWidgetState extends State<UserWidget> {
           );
         },
       ),
-    );
+    ):AccessDefindView();
   }
 
   Widget _buildHeader(bool isMobile) {

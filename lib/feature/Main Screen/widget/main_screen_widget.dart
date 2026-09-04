@@ -1,4 +1,5 @@
 import 'package:dashboard_desginland/Core/Utils/app.images.dart';
+import 'package:dashboard_desginland/feature/About/view/about_view.dart';
 import 'package:dashboard_desginland/feature/Access%20Defind/view/access_defind_view.dart';
 import 'package:dashboard_desginland/feature/Home/view/home_view.dart';
 import 'package:dashboard_desginland/feature/Login/function/auth_function.dart';
@@ -33,6 +34,7 @@ class _MainScreenWidgetState extends State<MainScreenWidget> {
     ProductsView(),
     StaffView(),
     UsersView(),
+    AboutView(),
   ];
 
   @override
@@ -140,6 +142,7 @@ class _MainScreenWidgetState extends State<MainScreenWidget> {
               _buildNavItem(4, Icons.inventory_2_outlined, "Products"),
               _buildNavItem(5, Icons.badge_outlined, "Staff"),
               _buildNavItem(6, Icons.people_alt_outlined, "Users"),
+              _buildNavItem(7, Icons.info_outline, "About"),
             ],
           ),
         ),
