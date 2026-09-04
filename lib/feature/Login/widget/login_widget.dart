@@ -2,6 +2,7 @@ import 'package:dashboard_desginland/feature/ForgetPassword/view/forget_password
 import 'package:dashboard_desginland/feature/Login/function/auth_function.dart';
 import 'package:dashboard_desginland/feature/Main%20Screen/view/main_screen_view.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../Core/Utils/app.colors.dart';
 import '../../../Core/Utils/app.images.dart';
 
@@ -26,18 +27,23 @@ class _LoginWidgetState extends State<LoginWidget> {
     super.dispose();
   }
 
-  void _handleLogin()async {
+  void _handleLogin() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
-      if(await LoginFunction(context, _emailController.text, _passwordController.text)){
-        Navigator.pushReplacementNamed(context, MainScreenView.id);
-      }
-      Future.delayed(const Duration(seconds: 2), () {
+      try {
+        final success = await LoginFunction(
+          context,
+          _emailController.text,
+          _passwordController.text,
+        );
+        if (success && mounted) {
+          Navigator.pushReplacementNamed(context, MainScreenView.id);
+        }
+      } finally {
         if (mounted) {
           setState(() => _isLoading = false);
-          // Navigator.pushReplacementNamed(context, '/dashboard');
         }
-      });
+      }
     }
   }
 
@@ -46,40 +52,49 @@ class _LoginWidgetState extends State<LoginWidget> {
     final size = MediaQuery.of(context).size;
     final isDesktop = size.width > 850;
 
-    return Scaffold(
-      backgroundColor: AppColors.bgLight,
-      body: Center(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: 1000),
-              height: isDesktop ? 600 : null,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.06),
-                    blurRadius: 30,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ),
+      child: Scaffold(
+        backgroundColor: AppColors.bgLight,
+        body: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.symmetric(
+                horizontal: isDesktop ? 24.0 : 16.0,
+                vertical: 24.0,
               ),
-              child: isDesktop
-                  ? Row(
-                children: [
-                  // الجانب الأيسر: الهوية والبنفسجي
-                  Expanded(child: _buildBrandingSide(size)),
-                  // الجانب الأيمن: فورم الدخول
-                  Expanded(child: _buildLoginForm(context)),
-                ],
-              )
-                  : Column(
-                children: [
-                  _buildMobileHeader(),
-                  _buildLoginForm(context),
-                ],
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 1000),
+                height: isDesktop ? 600 : null,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(isDesktop ? 24 : 16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.06),
+                      blurRadius: 30,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: isDesktop
+                    ? Row(
+                  children: [
+                    Expanded(child: _buildBrandingSide(size)),
+                    Expanded(child: _buildLoginForm(context, isDesktop: true)),
+                  ],
+                )
+                    : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildMobileHeader(),
+                    _buildLoginForm(context, isDesktop: false),
+                  ],
+                ),
               ),
             ),
           ),
@@ -88,7 +103,6 @@ class _LoginWidgetState extends State<LoginWidget> {
     );
   }
 
-  // الجانب البنفسجي لـ Dashboard الشاشات الكبيرة
   Widget _buildBrandingSide(Size size) {
     return Container(
       decoration: const BoxDecoration(
@@ -104,7 +118,7 @@ class _LoginWidgetState extends State<LoginWidget> {
         children: [
           Image.asset(
             AppImages.appPLogo,
-            width: 240,
+            width: 220,
             fit: BoxFit.contain,
           ),
           const SizedBox(height: 24),
@@ -131,28 +145,29 @@ class _LoginWidgetState extends State<LoginWidget> {
     );
   }
 
-  // هيدر بسيط للشاشات الصغيرة (Mobile)
   Widget _buildMobileHeader() {
     return Container(
-      padding: const EdgeInsets.all(24),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
       decoration: const BoxDecoration(
         color: AppColors.primaryPurple,
         borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
+          topLeft: Radius.circular(16),
+          topRight: Radius.circular(16),
         ),
       ),
       child: Column(
         children: [
           Image.asset(
             AppImages.appPLogo,
-            height: 100,
+            height: 70,
+            fit: BoxFit.contain,
           ),
           const SizedBox(height: 12),
           const Text(
             "DesignLand Dashboard",
             style: TextStyle(
-              fontSize: 20,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
               color: Colors.white,
             ),
@@ -162,33 +177,35 @@ class _LoginWidgetState extends State<LoginWidget> {
     );
   }
 
-  // الفورم الرئيسي لبيانات الدخول
-  Widget _buildLoginForm(BuildContext context) {
+  Widget _buildLoginForm(BuildContext context, {required bool isDesktop}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
+      padding: EdgeInsets.symmetric(
+        horizontal: isDesktop ? 40 : 20,
+        vertical: isDesktop ? 32 : 24,
+      ),
       child: Form(
         key: _formKey,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               "Sign In",
               style: TextStyle(
-                fontSize: 26,
+                fontSize: isDesktop ? 26 : 22,
                 fontWeight: FontWeight.bold,
                 color: AppColors.textDark,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             const Text(
               "Enter your credentials to access the admin panel",
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 13,
                 color: AppColors.textMuted,
               ),
             ),
-            const SizedBox(height: 32),
+            SizedBox(height: isDesktop ? 32 : 20),
 
             // Email Input
             TextFormField(
@@ -197,7 +214,8 @@ class _LoginWidgetState extends State<LoginWidget> {
               decoration: InputDecoration(
                 labelText: "Email Address",
                 hintText: "admin@designland.eg",
-                prefixIcon: const Icon(Icons.email_outlined),
+                prefixIcon: const Icon(Icons.email_outlined, size: 20),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -219,7 +237,7 @@ class _LoginWidgetState extends State<LoginWidget> {
                 return null;
               },
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
             // Password Input
             TextFormField(
@@ -227,12 +245,14 @@ class _LoginWidgetState extends State<LoginWidget> {
               obscureText: _isPasswordObscure,
               decoration: InputDecoration(
                 labelText: "Password",
-                prefixIcon: const Icon(Icons.lock_outline),
+                prefixIcon: const Icon(Icons.lock_outline, size: 20),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 suffixIcon: IconButton(
                   icon: Icon(
                     _isPasswordObscure
                         ? Icons.visibility_off_outlined
                         : Icons.visibility_outlined,
+                    size: 20,
                   ),
                   onPressed: () {
                     setState(() {
@@ -261,16 +281,18 @@ class _LoginWidgetState extends State<LoginWidget> {
                 return null;
               },
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
 
-            // Forgot Password (Optional)
+            // Forgot Password
             Align(
               alignment: Alignment.centerRight,
               child: TextButton(
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) =>  ForgetPasswordView()),
+                    MaterialPageRoute(
+                      builder: (context) =>  ForgetPasswordView(),
+                    ),
                   );
                 },
                 child: const Text(
@@ -278,16 +300,17 @@ class _LoginWidgetState extends State<LoginWidget> {
                   style: TextStyle(
                     color: AppColors.primaryPurple,
                     fontWeight: FontWeight.w600,
+                    fontSize: 13,
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
 
             // Login Button
             SizedBox(
               width: double.infinity,
-              height: 50,
+              height: 48,
               child: ElevatedButton(
                 onPressed: _isLoading ? null : _handleLogin,
                 style: ElevatedButton.styleFrom(
@@ -295,21 +318,21 @@ class _LoginWidgetState extends State<LoginWidget> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  elevation: 2,
+                  elevation: 1,
                 ),
                 child: _isLoading
                     ? const SizedBox(
-                  height: 24,
-                  width: 24,
+                  height: 22,
+                  width: 22,
                   child: CircularProgressIndicator(
                     color: Colors.white,
-                    strokeWidth: 2.5,
+                    strokeWidth: 2,
                   ),
                 )
                     : const Text(
                   "Login to Dashboard",
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 15,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),

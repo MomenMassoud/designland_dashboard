@@ -24,7 +24,25 @@ class _HomeWidgetState extends State<HomeWidget> {
   FirebaseFirestore.instance.collection('orders');
   final CollectionReference _employeesRef =
   FirebaseFirestore.instance.collection('employees');
+  int _staffCount=0;
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    Start();
+  }
+  void Start()async{
+    try{
+      FirebaseFirestore.instance.collection('user').where('role',isEqualTo: "staff").get().then((value){
+        setState(() {
+          _staffCount=value.size;
+        });
+      });
+    }
+    catch(e){
 
+    }
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -312,7 +330,7 @@ class _HomeWidgetState extends State<HomeWidget> {
               }
               final count = snapshot.data?.docs.length ?? 0;
               return Text(
-                "$count",
+                "$_staffCount",
                 style: const TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,

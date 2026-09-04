@@ -71,7 +71,7 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
           description: _currentProduct.description,
           images: _currentProduct.images,
           SubCategoryDoc: _currentProduct.SubCategoryDoc,
-          discountPercentage: 0.0,
+          discountPercentage: 0,
           discountUntil: null,
         );
       });
@@ -188,8 +188,8 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                       ? null
                       : () async {
                     final percent =
-                        double.tryParse(discountController.text.trim()) ??
-                            0.0;
+                        int.tryParse(discountController.text.trim()) ??
+                            0;
                     if (percent <= 0 || percent > 100) {
                       ScaffoldMessenger.of(parentContext).showSnackBar(
                         const SnackBar(

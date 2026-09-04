@@ -1,10 +1,8 @@
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dashboard_desginland/feature/Access%20Defind/view/access_defind_view.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-
 import '../../../Core/Utils/app.colors.dart';
 import '../../../Core/server/cloudinara_server.dart';
 import 'package:dashboard_desginland/feature/products/view/product_details_view.dart';
@@ -29,19 +27,21 @@ class _ProductsWidgetState extends State<ProductsWidget> {
 
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = "";
-  List<String> _permision=[];
-  void Start()async{
-    _permision=await GetPermisionUser();
+  List<String> _permision = [];
+
+  void Start() async {
+    _permision = await GetPermisionUser();
     setState(() {
       _permision;
     });
   }
+
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
     Start();
   }
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -50,7 +50,8 @@ class _ProductsWidgetState extends State<ProductsWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return _permision.contains("products")? Scaffold(
+    return _permision.contains("products")
+        ? Scaffold(
       backgroundColor: AppColors.bgLight,
       body: LayoutBuilder(
         builder: (context, constraints) {
@@ -63,15 +64,10 @@ class _ProductsWidgetState extends State<ProductsWidget> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header Responsive
                 _buildHeader(context, isMobile),
                 const SizedBox(height: 20),
-
-                // Search Bar
                 _buildSearchBar(),
                 const SizedBox(height: 20),
-
-                // Content Section (Responsive Grid Cards)
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
                     stream: _productsRef.snapshots(),
@@ -81,7 +77,8 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                           child: Text("Error loading products!"),
                         );
                       }
-                      if (snapshot.connectionState == ConnectionState.waiting) {
+                      if (snapshot.connectionState ==
+                          ConnectionState.waiting) {
                         return const Center(
                           child: CircularProgressIndicator(
                             color: AppColors.primaryPurple,
@@ -92,8 +89,9 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                       final docs = snapshot.data?.docs ?? [];
                       final filteredDocs = docs.where((doc) {
                         final data = doc.data() as Map<String, dynamic>;
-                        final title =
-                        (data['title'] ?? '').toString().toLowerCase();
+                        final title = (data['title'] ?? '')
+                            .toString()
+                            .toLowerCase();
                         return title.contains(_searchQuery);
                       }).toList();
 
@@ -108,14 +106,14 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                               Text(
                                 "No products found matching your search.",
                                 style: TextStyle(
-                                    color: AppColors.textMuted, fontSize: 16),
+                                    color: AppColors.textMuted,
+                                    fontSize: 16),
                               ),
                             ],
                           ),
                         );
                       }
 
-                      // Dynamic Grid Columns calculation
                       int crossAxisCount = 4;
                       if (isMobile) {
                         crossAxisCount = 1;
@@ -127,7 +125,8 @@ class _ProductsWidgetState extends State<ProductsWidget> {
 
                       return GridView.builder(
                         itemCount: filteredDocs.length,
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        gridDelegate:
+                        SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: crossAxisCount,
                           crossAxisSpacing: 16,
                           mainAxisSpacing: 16,
@@ -140,7 +139,6 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                           final discountUntilTimestamp =
                           data['discountUntil'] as Timestamp?;
 
-                          // StreamBuilder داخلي لجلب التقييمات وحساب المتوسط
                           return StreamBuilder<QuerySnapshot>(
                             stream: _productsRef
                                 .doc(doc.id)
@@ -154,31 +152,50 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                 final reviews = reviewSnapshot.data!.docs;
                                 final totalRating = reviews.fold<double>(
                                   0.0,
-                                      (sum, rDoc) =>
-                                  sum +
-                                      ((rDoc.data() as Map<String, dynamic>)[
-                                      'rating'] ??
-                                          0)
-                                          .toDouble(),
+                                      (sum, rDoc) {
+                                    final rData = rDoc.data()
+                                    as Map<String, dynamic>;
+                                    final ratingVal = rData['rating'];
+                                    final num ratingNum =
+                                    (ratingVal is num) ? ratingVal : 0;
+                                    return sum + ratingNum.toDouble();
+                                  },
                                 );
-                                calculatedAvg = totalRating / reviews.length;
-                              } else {
                                 calculatedAvg =
-                                    (data['avgRating'] ?? 0.0).toDouble();
+                                    totalRating / reviews.length;
+                              } else {
+                                final avgVal = data['avgRating'];
+                                calculatedAvg = (avgVal is num)
+                                    ? avgVal.toDouble()
+                                    : 0.0;
                               }
+
+                              final priceVal = data['price'];
+                              final double parsedPrice = (priceVal is num)
+                                  ? priceVal.toDouble()
+                                  : 0.0;
+
+                              final discountVal =
+                              data['discountPercentage'];
+                              final int parsedDiscount =
+                              (discountVal is num)
+                                  ? discountVal.toInt()
+                                  : 0;
 
                               final product = ProductModel(
                                 doc: doc.id,
                                 title: data['title'] ?? '',
-                                price: (data['price'] ?? 0.0).toDouble(),
-                                discountPercentage:
-                                (data['discountPercentage'] ?? 0).toInt(),
-                                discountUntil: discountUntilTimestamp?.toDate(),
+                                price: parsedPrice,
+                                discountPercentage: data['discountPercentage']??0,
+                                discountUntil:
+                                discountUntilTimestamp?.toDate(),
                                 avgRate: calculatedAvg,
                                 categoryDoc: data['categoryId'] ?? '',
                                 description: data['description'] ?? '',
-                                images: List<String>.from(data['images'] ?? []),
-                                SubCategoryDoc: data['subcategoryId'] ?? '',
+                                images: List<String>.from(
+                                    data['images'] ?? []),
+                                SubCategoryDoc:
+                                data['subcategoryId'] ?? '',
                               );
 
                               return _buildProductCard(
@@ -198,10 +215,10 @@ class _ProductsWidgetState extends State<ProductsWidget> {
           );
         },
       ),
-    ):AccessDefindView();
+    )
+        : AccessDefindView();
   }
 
-  // Header Section
   Widget _buildHeader(BuildContext context, bool isMobile) {
     if (isMobile) {
       return Column(
@@ -287,7 +304,6 @@ class _ProductsWidgetState extends State<ProductsWidget> {
     );
   }
 
-  // Search Bar
   Widget _buildSearchBar() {
     return Container(
       decoration: BoxDecoration(
@@ -330,7 +346,6 @@ class _ProductsWidgetState extends State<ProductsWidget> {
     );
   }
 
-  // Price Widget
   Widget _buildPriceWidget(ProductModel product) {
     if (product.hasActiveDiscount) {
       return Wrap(
@@ -382,7 +397,6 @@ class _ProductsWidgetState extends State<ProductsWidget> {
     );
   }
 
-  // Product Card
   Widget _buildProductCard(
       BuildContext context, {
         required ProductModel product,
@@ -413,7 +427,8 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                   width: 80,
                   height: 80,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => _buildPlaceholder(80),
+                  errorBuilder: (_, __, ___) =>
+                      _buildPlaceholder(80),
                 )
                     : _buildPlaceholder(80),
               ),
@@ -546,7 +561,6 @@ class _ProductsWidgetState extends State<ProductsWidget> {
     );
   }
 
-  // Slide Side Sheet Panel for Adding New Product
   void _openProductFormPanel(BuildContext context) {
     final formKey = GlobalKey<FormState>();
     final titleController = TextEditingController();
@@ -559,6 +573,7 @@ class _ProductsWidgetState extends State<ProductsWidget> {
     String? selectedSubcategoryId;
 
     List<XFile> pickedImages = [];
+    List<Uint8List> imagesBytes = [];
     bool isSaving = false;
 
     showGeneralDialog(
@@ -625,7 +640,6 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // Category Dropdown
                                   StreamBuilder<QuerySnapshot>(
                                     stream: _categoriesRef.snapshots(),
                                     builder: (context, snapshot) {
@@ -663,8 +677,6 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                     },
                                   ),
                                   const SizedBox(height: 16),
-
-                                  // Subcategory Dropdown
                                   if (selectedCategoryId != null) ...[
                                     StreamBuilder<QuerySnapshot>(
                                       stream: _subcategoriesRef
@@ -703,7 +715,6 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                     ),
                                     const SizedBox(height: 16),
                                   ],
-
                                   TextFormField(
                                     controller: titleController,
                                     decoration: InputDecoration(
@@ -717,7 +728,6 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                         : null,
                                   ),
                                   const SizedBox(height: 16),
-
                                   TextFormField(
                                     controller: priceController,
                                     keyboardType: TextInputType.number,
@@ -733,8 +743,6 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                         : null,
                                   ),
                                   const SizedBox(height: 16),
-
-                                  // Discount Fields
                                   Row(
                                     children: [
                                       Expanded(
@@ -769,7 +777,6 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                     ],
                                   ),
                                   const SizedBox(height: 16),
-
                                   TextFormField(
                                     controller: descController,
                                     maxLines: 3,
@@ -784,8 +791,6 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                         : null,
                                   ),
                                   const SizedBox(height: 20),
-
-                                  // Image Picker
                                   const Text(
                                     "Product Images",
                                     style: TextStyle(
@@ -803,32 +808,24 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                     ),
                                     onPressed: () async {
                                       try {
-                                        FilePickerResult? result =
-                                        await FilePicker.platform.pickFiles(
-                                          type: FileType.image,
-                                          allowMultiple: true,
-                                          withData: true,
+                                        final ImagePicker picker = ImagePicker();
+                                        final List<XFile> images =
+                                        await picker.pickMultiImage(
+                                          imageQuality: 85,
                                         );
 
-                                        if (result != null &&
-                                            result.files.isNotEmpty) {
-                                          List<XFile> tempImages = [];
-                                          for (var file in result.files) {
-                                            if (file.bytes != null) {
-                                              tempImages.add(
-                                                XFile.fromData(
-                                                  file.bytes!,
-                                                  name: file.name,
-                                                ),
-                                              );
-                                            }
+                                        if (images.isNotEmpty) {
+                                          List<Uint8List> bytesList = [];
+                                          for (var img in images) {
+                                            bytesList.add(await img.readAsBytes());
                                           }
                                           setPanelState(() {
-                                            pickedImages = tempImages;
+                                            pickedImages = images;
+                                            imagesBytes = bytesList;
                                           });
                                         }
                                       } catch (e) {
-                                        debugPrint("Error picking files: $e");
+                                        debugPrint("Error picking images: $e");
                                       }
                                     },
                                     icon: const Icon(Icons.add_a_photo_outlined),
@@ -836,47 +833,29 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                       "Select Images (${pickedImages.length} selected)",
                                     ),
                                   ),
-
-                                  // Image Previews
-                                  if (pickedImages.isNotEmpty) ...[
+                                  if (imagesBytes.isNotEmpty) ...[
                                     const SizedBox(height: 12),
                                     SizedBox(
                                       height: 80,
                                       child: ListView.builder(
                                         scrollDirection: Axis.horizontal,
-                                        itemCount: pickedImages.length,
+                                        itemCount: imagesBytes.length,
                                         itemBuilder: (context, index) {
-                                          return FutureBuilder<List<int>>(
-                                            future: pickedImages[index]
-                                                .readAsBytes(),
-                                            builder: (context, snapshot) {
-                                              if (snapshot.hasData) {
-                                                return Container(
-                                                  margin: const EdgeInsets.only(
-                                                      right: 8),
-                                                  width: 80,
-                                                  height: 80,
-                                                  decoration: BoxDecoration(
-                                                    borderRadius:
-                                                    BorderRadius.circular(8),
-                                                    image: DecorationImage(
-                                                      image: MemoryImage(
-                                                        Uint8List.fromList(
-                                                            snapshot.data!),
-                                                      ),
-                                                      fit: BoxFit.cover,
-                                                    ),
-                                                  ),
-                                                );
-                                              }
-                                              return Container(
-                                                width: 80,
-                                                height: 80,
-                                                margin: const EdgeInsets.only(
-                                                    right: 8),
-                                                color: Colors.grey.shade200,
-                                              );
-                                            },
+                                          return Container(
+                                            margin:
+                                            const EdgeInsets.only(right: 8),
+                                            width: 80,
+                                            height: 80,
+                                            decoration: BoxDecoration(
+                                              borderRadius:
+                                              BorderRadius.circular(8),
+                                              image: DecorationImage(
+                                                image: MemoryImage(
+                                                  imagesBytes[index],
+                                                ),
+                                                fit: BoxFit.cover,
+                                              ),
+                                            ),
                                           );
                                         },
                                       ),
@@ -935,76 +914,87 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                       setPanelState(
                                               () => isSaving = true);
 
-                                      List<String> uploadedUrls = [];
-                                      for (var img in pickedImages) {
-                                        final url =
-                                        await CloudinaryService
-                                            .uploadImage(img);
-                                        if (url != null) {
-                                          uploadedUrls.add(url);
+                                      try {
+                                        List<String> uploadedUrls = [];
+                                        for (var img in pickedImages) {
+                                          final url =
+                                          await CloudinaryService
+                                              .uploadImage(img);
+                                          if (url != null) {
+                                            uploadedUrls.add(url);
+                                          }
                                         }
-                                      }
 
-                                      if (uploadedUrls.isEmpty) {
+                                        if (uploadedUrls.isEmpty) {
+                                          setPanelState(
+                                                  () => isSaving = false);
+                                          if (context.mounted) {
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              const SnackBar(
+                                                content: Text(
+                                                  "Failed to upload images to Cloudinary!",
+                                                ),
+                                                backgroundColor:
+                                                Colors.red,
+                                              ),
+                                            );
+                                          }
+                                          return;
+                                        }
+
+                                        final int discountVal =
+                                            int.tryParse(
+                                                discountPercController
+                                                    .text
+                                                    .trim()) ??
+                                                0;
+                                        final int discountDays =
+                                            int.tryParse(
+                                                discountDaysController
+                                                    .text
+                                                    .trim()) ??
+                                                0;
+
+                                        DateTime? discountUntilDate;
+                                        if (discountVal > 0 &&
+                                            discountDays > 0) {
+                                          discountUntilDate = DateTime.now()
+                                              .add(Duration(
+                                              days: discountDays));
+                                        }
+
+                                        await _productsRef.add({
+                                          'title':
+                                          titleController.text.trim(),
+                                          'description':
+                                          descController.text.trim(),
+                                          'price': double.parse(
+                                              priceController.text.trim()),
+                                          'discountPercentage':
+                                          discountVal,
+                                          'discountUntil':
+                                          discountUntilDate != null
+                                              ? Timestamp.fromDate(
+                                              discountUntilDate)
+                                              : null,
+                                          'categoryId': selectedCategoryId,
+                                          'subcategoryId':
+                                          selectedSubcategoryId,
+                                          'images': uploadedUrls,
+                                          'avgRating': 0.0,
+                                          'createdAt':
+                                          FieldValue.serverTimestamp(),
+                                        });
+
+                                        if (context.mounted) {
+                                          Navigator.pop(ctx);
+                                        }
+                                      } catch (e) {
+                                        debugPrint(
+                                            "Error saving product: $e");
                                         setPanelState(
                                                 () => isSaving = false);
-                                        if (context.mounted) {
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            const SnackBar(
-                                              content: Text(
-                                                "Failed to upload images to Cloudinary!",
-                                              ),
-                                              backgroundColor: Colors.red,
-                                            ),
-                                          );
-                                        }
-                                        return;
-                                      }
-
-                                      final int discountVal =
-                                          int.tryParse(discountPercController
-                                              .text
-                                              .trim()) ??
-                                              0;
-                                      final int discountDays =
-                                          int.tryParse(discountDaysController
-                                              .text
-                                              .trim()) ??
-                                              0;
-
-                                      DateTime? discountUntilDate;
-                                      if (discountVal > 0 &&
-                                          discountDays > 0) {
-                                        discountUntilDate = DateTime.now()
-                                            .add(Duration(
-                                            days: discountDays));
-                                      }
-
-                                      await _productsRef.add({
-                                        'title':
-                                        titleController.text.trim(),
-                                        'description':
-                                        descController.text.trim(),
-                                        'price': double.parse(
-                                            priceController.text.trim()),
-                                        'discountPercentage': discountVal,
-                                        'discountUntil': discountUntilDate !=
-                                            null
-                                            ? Timestamp.fromDate(
-                                            discountUntilDate)
-                                            : null,
-                                        'categoryId': selectedCategoryId,
-                                        'subcategoryId':
-                                        selectedSubcategoryId,
-                                        'images': uploadedUrls,
-                                        'avgRating': 0.0,
-                                        'createdAt':
-                                        FieldValue.serverTimestamp(),
-                                      });
-
-                                      if (context.mounted) {
-                                        Navigator.pop(ctx);
                                       }
                                     }
                                   },

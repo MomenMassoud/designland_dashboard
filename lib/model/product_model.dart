@@ -9,12 +9,12 @@ class ProductModel {
   String SubCategoryDoc;
   double avgRate;
   List<String> images;
-  final double discountPercentage; // نسبة الخصم مثلاً 15.0
+  final int discountPercentage; // نسبة الخصم مثلاً 15.0
   final DateTime? discountUntil;   // تاريخ ووقت انتهاء الخصم
   ProductModel({
     required this.doc,required this.title,required this.price,required this.avgRate,required this.categoryDoc,
     required this.description,required this.images,required this.SubCategoryDoc,
-    this.discountPercentage = 0.0,
+    this.discountPercentage = 0,
     this.discountUntil,
 });
   bool get hasActiveDiscount {

@@ -3,7 +3,6 @@ import 'package:dashboard_desginland/Core/server/get_permision.dart';
 import 'package:dashboard_desginland/feature/Access%20Defind/view/access_defind_view.dart';
 import 'package:dashboard_desginland/feature/SubCategory/view/subcategory_view.dart';
 import 'package:dashboard_desginland/model/category_model.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -23,20 +22,22 @@ class _CategoryWidgetState extends State<CategoryWidget> {
 
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = "";
+
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
     Start();
   }
+
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
   }
-  List<String> _permision=[];
-  void Start()async{
-    _permision=await GetPermisionUser();
+
+  List<String> _permision = [];
+  void Start() async {
+    _permision = await GetPermisionUser();
     setState(() {
       _permision;
     });
@@ -44,27 +45,24 @@ class _CategoryWidgetState extends State<CategoryWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return _permision.contains("categories")? Scaffold(
+    return _permision.contains("categories")
+        ? Scaffold(
       backgroundColor: AppColors.bgLight,
       body: LayoutBuilder(
         builder: (context, constraints) {
           final bool isMobile = constraints.maxWidth < 600;
-          final bool isTablet = constraints.maxWidth >= 600 && constraints.maxWidth < 1024;
+          final bool isTablet =
+              constraints.maxWidth >= 600 && constraints.maxWidth < 1024;
 
           return Padding(
             padding: EdgeInsets.all(isMobile ? 16.0 : 24.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header Section (Responsive)
                 _buildHeader(context, isMobile),
                 const SizedBox(height: 20),
-
-                // Search Bar
                 _buildSearchBar(),
                 const SizedBox(height: 20),
-
-                // Content Section (Grid / Responsive List)
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
                     stream: _categoriesRef.snapshots(),
@@ -74,7 +72,8 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                           child: Text("Error loading categories!"),
                         );
                       }
-                      if (snapshot.connectionState == ConnectionState.waiting) {
+                      if (snapshot.connectionState ==
+                          ConnectionState.waiting) {
                         return const Center(
                           child: CircularProgressIndicator(
                             color: AppColors.primaryPurple,
@@ -84,13 +83,14 @@ class _CategoryWidgetState extends State<CategoryWidget> {
 
                       final docs = snapshot.data?.docs ?? [];
 
-                      // Search Filtering
                       final filteredDocs = docs.where((doc) {
                         final data = doc.data() as Map<String, dynamic>;
-                        final nameAr =
-                        (data['nameAr'] ?? '').toString().toLowerCase();
-                        final nameEn =
-                        (data['nameEn'] ?? '').toString().toLowerCase();
+                        final nameAr = (data['nameAr'] ?? '')
+                            .toString()
+                            .toLowerCase();
+                        final nameEn = (data['nameEn'] ?? '')
+                            .toString()
+                            .toLowerCase();
                         return nameAr.contains(_searchQuery) ||
                             nameEn.contains(_searchQuery);
                       }).toList();
@@ -106,14 +106,14 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                               Text(
                                 "No categories found matching your search.",
                                 style: TextStyle(
-                                    color: AppColors.textMuted, fontSize: 16),
+                                    color: AppColors.textMuted,
+                                    fontSize: 16),
                               ),
                             ],
                           ),
                         );
                       }
 
-                      // Dynamic CrossAxisCount according to screen width
                       int crossAxisCount = 4;
                       if (isMobile) {
                         crossAxisCount = 1;
@@ -125,7 +125,8 @@ class _CategoryWidgetState extends State<CategoryWidget> {
 
                       return GridView.builder(
                         itemCount: filteredDocs.length,
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        gridDelegate:
+                        SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: crossAxisCount,
                           crossAxisSpacing: 16,
                           mainAxisSpacing: 16,
@@ -165,10 +166,10 @@ class _CategoryWidgetState extends State<CategoryWidget> {
           );
         },
       ),
-    ):AccessDefindView();
+    )
+        : AccessDefindView();
   }
 
-  // Header Component
   Widget _buildHeader(BuildContext context, bool isMobile) {
     if (isMobile) {
       return Column(
@@ -240,8 +241,7 @@ class _CategoryWidgetState extends State<CategoryWidget> {
           icon: const Icon(Icons.add, color: Colors.white),
           label: const Text(
             "Add New Category",
-            style:
-            TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.primaryPurple,
@@ -255,7 +255,6 @@ class _CategoryWidgetState extends State<CategoryWidget> {
     );
   }
 
-  // Search Bar Component
   Widget _buildSearchBar() {
     return Container(
       decoration: BoxDecoration(
@@ -278,8 +277,7 @@ class _CategoryWidgetState extends State<CategoryWidget> {
         },
         decoration: InputDecoration(
           hintText: "Search categories by Arabic or English name...",
-          prefixIcon:
-          const Icon(Icons.search, color: AppColors.primaryPurple),
+          prefixIcon: const Icon(Icons.search, color: AppColors.primaryPurple),
           suffixIcon: _searchQuery.isNotEmpty
               ? IconButton(
             icon: const Icon(Icons.clear, color: Colors.grey),
@@ -299,7 +297,6 @@ class _CategoryWidgetState extends State<CategoryWidget> {
     );
   }
 
-  // Modern Category Card Item
   Widget _buildCategoryCard(
       BuildContext context, {
         required CategoryModel cat,
@@ -465,7 +462,33 @@ class _CategoryWidgetState extends State<CategoryWidget> {
     );
   }
 
-  // Side Drawer / Sheet (بديل الـ Dialog للتحكم السلس بلمسة حديثة)
+  void _confirmDelete(BuildContext context, String docId, String nameEn, String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Delete Category"),
+        content: Text("Are you sure you want to delete '$nameEn'?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () async {
+              if (imageUrl.isNotEmpty) {
+                await CloudinaryService.deleteImage(imageUrl);
+              }
+              await _categoriesRef.doc(docId).delete();
+              if (context.mounted) Navigator.pop(ctx);
+            },
+            child: const Text("Delete", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _openCategoryFormPanel(
       BuildContext context, {
         String? docId,
@@ -480,6 +503,8 @@ class _CategoryWidgetState extends State<CategoryWidget> {
     String? imageUrl = currentImageUrl;
     bool isSaving = false;
 
+    final ImagePicker picker = ImagePicker();
+
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -492,8 +517,9 @@ class _CategoryWidgetState extends State<CategoryWidget> {
             color: Colors.transparent,
             child: StatefulBuilder(
               builder: (context, setPanelState) {
-                final double panelWidth =
-                MediaQuery.of(context).size.width > 600 ? 450 : MediaQuery.of(context).size.width;
+                final double panelWidth = MediaQuery.of(context).size.width > 600
+                    ? 450
+                    : MediaQuery.of(context).size.width;
 
                 return Container(
                   width: panelWidth,
@@ -555,28 +581,17 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                                   GestureDetector(
                                     onTap: () async {
                                       try {
-                                        FilePickerResult? result =
-                                        await FilePicker.platform.pickFiles(
-                                          type: FileType.image,
-                                          allowMultiple: false,
-                                          withData: true,
+                                        final XFile? image = await picker.pickImage(
+                                          source: ImageSource.gallery,
+                                          imageQuality: 85,
                                         );
-
-                                        if (result != null &&
-                                            result.files.isNotEmpty) {
-                                          final file = result.files.first;
-                                          if (file.bytes != null) {
-                                            setPanelState(() {
-                                              pickedImage = XFile.fromData(
-                                                file.bytes!,
-                                                name: file.name,
-                                              );
-                                            });
-                                          }
+                                        if (image != null) {
+                                          setPanelState(() {
+                                            pickedImage = image;
+                                          });
                                         }
                                       } catch (e) {
-                                        debugPrint(
-                                            "Error picking category image: $e");
+                                        debugPrint("Error picking image: $e");
                                       }
                                     },
                                     child: Container(
@@ -589,25 +604,22 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                                             color: Colors.grey.shade300),
                                       ),
                                       child: pickedImage != null
-                                          ? FutureBuilder<List<int>>(
-                                        future:
-                                        pickedImage!.readAsBytes(),
+                                          ? FutureBuilder<Uint8List>(
+                                        future: pickedImage!.readAsBytes(),
                                         builder: (context, snapshot) {
                                           if (snapshot.hasData) {
                                             return ClipRRect(
                                               borderRadius:
-                                              BorderRadius.circular(
-                                                  12),
+                                              BorderRadius.circular(12),
                                               child: Image.memory(
-                                                Uint8List.fromList(
-                                                    snapshot.data!),
+                                                snapshot.data!,
                                                 fit: BoxFit.cover,
                                               ),
                                             );
                                           }
                                           return const Center(
-                                              child:
-                                              CircularProgressIndicator());
+                                            child: CircularProgressIndicator(),
+                                          );
                                         },
                                       )
                                           : (imageUrl != null &&
@@ -707,20 +719,16 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                                   onPressed: isSaving
                                       ? null
                                       : () async {
-                                    if (formKey.currentState!
-                                        .validate()) {
-                                      setPanelState(
-                                              () => isSaving = true);
+                                    if (formKey.currentState!.validate()) {
+                                      setPanelState(() => isSaving = true);
 
                                       if (pickedImage != null) {
                                         final uploadedUrl =
                                         await CloudinaryService
-                                            .uploadImage(
-                                            pickedImage!);
+                                            .uploadImage(pickedImage!);
                                         if (uploadedUrl != null) {
                                           if (currentImageUrl != null &&
-                                              currentImageUrl
-                                                  .isNotEmpty) {
+                                              currentImageUrl.isNotEmpty) {
                                             await CloudinaryService
                                                 .deleteImage(
                                                 currentImageUrl);
@@ -787,47 +795,13 @@ class _CategoryWidgetState extends State<CategoryWidget> {
           position: Tween<Offset>(
             begin: const Offset(1, 0),
             end: Offset.zero,
-          ).animate(CurvedAnimation(parent: anim1, curve: Curves.easeOutCubic)),
+          ).animate(
+            CurvedAnimation(parent: anim1, curve: Curves.easeOutCubic),
+          ),
           child: child,
         );
       },
     );
   }
 
-  void _confirmDelete(
-      BuildContext context,
-      String docId,
-      String categoryName,
-      String imageUrl,
-      ) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text("Delete Category"),
-        content: Text("Are you sure you want to delete '$categoryName'?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text("Cancel"),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-            onPressed: () async {
-              if (imageUrl.isNotEmpty) {
-                await CloudinaryService.deleteImage(imageUrl);
-              }
-
-              await _categoriesRef.doc(docId).delete();
-
-              if (context.mounted) {
-                Navigator.pop(ctx);
-              }
-            },
-            child: const Text("Delete", style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
 }

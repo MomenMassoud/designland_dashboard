@@ -751,7 +751,7 @@ class _ReportWidgetState extends State<ReportWidget> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -774,13 +774,13 @@ class _ReportWidgetState extends State<ReportWidget> {
               ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.redAccent,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                icon: const Icon(Icons.picture_as_pdf, color: Colors.white, size: 18),
-                label: const Text("Export PDF", style: TextStyle(color: Colors.white)),
+                icon: const Icon(Icons.picture_as_pdf, color: Colors.white, size: 10),
+                label: const Text("Export PDF", style: TextStyle(color: Colors.white,fontSize: 10)),
                 onPressed: () => _generatePaymentsPdfReport(),
               ),
             ],

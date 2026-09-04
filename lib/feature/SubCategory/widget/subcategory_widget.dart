@@ -1,6 +1,5 @@
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../Core/Utils/app.colors.dart';
@@ -51,26 +50,23 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
       body: LayoutBuilder(
         builder: (context, constraints) {
           final bool isMobile = constraints.maxWidth < 600;
-          final bool isTablet = constraints.maxWidth >= 600 && constraints.maxWidth < 1024;
+          final bool isTablet =
+              constraints.maxWidth >= 600 && constraints.maxWidth < 1024;
 
           return Padding(
             padding: EdgeInsets.all(isMobile ? 16.0 : 24.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header Section (Responsive)
                 _buildHeader(context, isMobile),
                 const SizedBox(height: 20),
-
-                // Search Bar
                 _buildSearchBar(),
                 const SizedBox(height: 20),
-
-                // Content Section (Responsive Grid)
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
                     stream: _subcategoriesRef
-                        .where('categoryId', isEqualTo: widget.categoryModel.doc)
+                        .where('categoryId',
+                        isEqualTo: widget.categoryModel.doc)
                         .snapshots(),
                     builder: (context, snapshot) {
                       if (snapshot.hasError) {
@@ -78,7 +74,8 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
                           child: Text("Error loading subcategories!"),
                         );
                       }
-                      if (snapshot.connectionState == ConnectionState.waiting) {
+                      if (snapshot.connectionState ==
+                          ConnectionState.waiting) {
                         return const Center(
                           child: CircularProgressIndicator(
                             color: AppColors.primaryPurple,
@@ -88,7 +85,6 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
 
                       final docs = snapshot.data?.docs ?? [];
 
-                      // Search Filtering
                       final filteredDocs = docs.where((doc) {
                         final data = doc.data() as Map<String, dynamic>;
                         final nameAr =
@@ -117,7 +113,6 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
                         );
                       }
 
-                      // Dynamic Grid Columns based on Screen Width
                       int crossAxisCount = 4;
                       if (isMobile) {
                         crossAxisCount = 1;
@@ -164,7 +159,6 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
     );
   }
 
-  // Header Component
   Widget _buildHeader(BuildContext context, bool isMobile) {
     if (isMobile) {
       return Column(
@@ -250,7 +244,6 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
     );
   }
 
-  // Search Bar Component
   Widget _buildSearchBar() {
     return Container(
       decoration: BoxDecoration(
@@ -293,7 +286,6 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
     );
   }
 
-  // Subcategory Card Component
   Widget _buildSubcategoryCard(
       BuildContext context, {
         required String docId,
@@ -447,7 +439,6 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
     );
   }
 
-  // Slide Side Sheet Panel (بديل متجاوب وأنيق للـ Pop-up Dialog)
   void _openSubcategoryFormPanel(
       BuildContext context, {
         String? docId,
@@ -459,6 +450,7 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
     final nameArController = TextEditingController(text: currentNameAr ?? '');
     final nameEnController = TextEditingController(text: currentNameEn ?? '');
     XFile? pickedImage;
+    Uint8List? imageBytes;
     String? imageUrl = currentImageUrl;
     bool isSaving = false;
 
@@ -538,24 +530,18 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
                                   GestureDetector(
                                     onTap: () async {
                                       try {
-                                        FilePickerResult? result =
-                                        await FilePicker.platform.pickFiles(
-                                          type: FileType.image,
-                                          allowMultiple: false,
-                                          withData: true,
+                                        final ImagePicker picker = ImagePicker();
+                                        final XFile? image = await picker.pickImage(
+                                          source: ImageSource.gallery,
+                                          imageQuality: 85,
                                         );
 
-                                        if (result != null &&
-                                            result.files.isNotEmpty) {
-                                          final file = result.files.first;
-                                          if (file.bytes != null) {
-                                            setPanelState(() {
-                                              pickedImage = XFile.fromData(
-                                                file.bytes!,
-                                                name: file.name,
-                                              );
-                                            });
-                                          }
+                                        if (image != null) {
+                                          final bytes = await image.readAsBytes();
+                                          setPanelState(() {
+                                            pickedImage = image;
+                                            imageBytes = bytes;
+                                          });
                                         }
                                       } catch (e) {
                                         debugPrint(
@@ -571,27 +557,14 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
                                         border: Border.all(
                                             color: Colors.grey.shade300),
                                       ),
-                                      child: pickedImage != null
-                                          ? FutureBuilder<List<int>>(
-                                        future:
-                                        pickedImage!.readAsBytes(),
-                                        builder: (context, snapshot) {
-                                          if (snapshot.hasData) {
-                                            return ClipRRect(
-                                              borderRadius:
-                                              BorderRadius.circular(
-                                                  12),
-                                              child: Image.memory(
-                                                Uint8List.fromList(
-                                                    snapshot.data!),
-                                                fit: BoxFit.cover,
-                                              ),
-                                            );
-                                          }
-                                          return const Center(
-                                              child:
-                                              CircularProgressIndicator());
-                                        },
+                                      child: imageBytes != null
+                                          ? ClipRRect(
+                                        borderRadius:
+                                        BorderRadius.circular(12),
+                                        child: Image.memory(
+                                          imageBytes!,
+                                          fit: BoxFit.cover,
+                                        ),
                                       )
                                           : (imageUrl != null &&
                                           imageUrl!.isNotEmpty)
@@ -695,48 +668,55 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
                                       setPanelState(
                                               () => isSaving = true);
 
-                                      if (pickedImage != null) {
-                                        final uploadedUrl =
-                                        await CloudinaryService
-                                            .uploadImage(
-                                            pickedImage!);
-                                        if (uploadedUrl != null) {
-                                          if (currentImageUrl != null &&
-                                              currentImageUrl
-                                                  .isNotEmpty) {
-                                            await CloudinaryService
-                                                .deleteImage(
-                                                currentImageUrl);
+                                      try {
+                                        if (pickedImage != null) {
+                                          final uploadedUrl =
+                                          await CloudinaryService
+                                              .uploadImage(
+                                              pickedImage!);
+                                          if (uploadedUrl != null) {
+                                            if (currentImageUrl != null &&
+                                                currentImageUrl
+                                                    .isNotEmpty) {
+                                              await CloudinaryService
+                                                  .deleteImage(
+                                                  currentImageUrl);
+                                            }
+                                            imageUrl = uploadedUrl;
                                           }
-                                          imageUrl = uploadedUrl;
                                         }
-                                      }
 
-                                      final dataMap = {
-                                        'categoryId':
-                                        widget.categoryModel.doc,
-                                        'nameAr':
-                                        nameArController.text.trim(),
-                                        'nameEn':
-                                        nameEnController.text.trim(),
-                                        'imageUrl': imageUrl ?? '',
-                                        'updatedAt':
-                                        FieldValue.serverTimestamp(),
-                                      };
+                                        final dataMap = {
+                                          'categoryId':
+                                          widget.categoryModel.doc,
+                                          'nameAr':
+                                          nameArController.text.trim(),
+                                          'nameEn':
+                                          nameEnController.text.trim(),
+                                          'imageUrl': imageUrl ?? '',
+                                          'updatedAt':
+                                          FieldValue.serverTimestamp(),
+                                        };
 
-                                      if (docId == null) {
-                                        dataMap['createdAt'] =
-                                            FieldValue.serverTimestamp();
-                                        await _subcategoriesRef
-                                            .add(dataMap);
-                                      } else {
-                                        await _subcategoriesRef
-                                            .doc(docId)
-                                            .update(dataMap);
-                                      }
+                                        if (docId == null) {
+                                          dataMap['createdAt'] =
+                                              FieldValue.serverTimestamp();
+                                          await _subcategoriesRef
+                                              .add(dataMap);
+                                        } else {
+                                          await _subcategoriesRef
+                                              .doc(docId)
+                                              .update(dataMap);
+                                        }
 
-                                      if (context.mounted) {
-                                        Navigator.pop(ctx);
+                                        if (context.mounted) {
+                                          Navigator.pop(ctx);
+                                        }
+                                      } catch (e) {
+                                        debugPrint(
+                                            "Error saving subcategory: $e");
+                                        setPanelState(
+                                                () => isSaving = false);
                                       }
                                     }
                                   },
@@ -773,7 +753,8 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
           position: Tween<Offset>(
             begin: const Offset(1, 0),
             end: Offset.zero,
-          ).animate(CurvedAnimation(parent: anim1, curve: Curves.easeOutCubic)),
+          ).animate(
+              CurvedAnimation(parent: anim1, curve: Curves.easeOutCubic)),
           child: child,
         );
       },
