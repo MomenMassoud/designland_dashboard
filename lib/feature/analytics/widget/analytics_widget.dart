@@ -1,9 +1,13 @@
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dashboard_desginland/Core/widgets/error_dailog_custom.dart';
 import 'package:dashboard_desginland/feature/Access%20Defind/view/access_defind_view.dart';
+import 'package:excel/excel.dart' as import_excel;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:universal_html/html.dart' as html;
 
 class AnalyticsWidget extends StatefulWidget {
   const AnalyticsWidget({Key? key}) : super(key: key);
@@ -49,6 +53,121 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
     }
   }
 
+  // دالة إنشاء وحفظ ملف Excel بدون استخدام path_provider
+  Future<void> _exportToExcel({
+    required int totalSessions,
+    required int guestSessions,
+    required int userSessions,
+    required int totalSearches,
+    required int guestSearches,
+    required int userSearches,
+    required double avgDuration,
+    required Map<String, int> searchQueries,
+    required List<Map<String, dynamic>> liveProducts,
+  }) async {
+    try {
+      var excel = import_excel.Excel.createExcel();
+
+      // 1. شيت الملخص العام للمؤشرات
+      import_excel.Sheet summarySheet = excel['الملخص العام'];
+      excel.setDefaultSheet('الملخص العام');
+
+      summarySheet.appendRow([
+        import_excel.TextCellValue('المؤشر'),
+        import_excel.TextCellValue('القيمة'),
+      ]);
+      summarySheet.appendRow([
+        import_excel.TextCellValue('إجمالي الجلسات'),
+        import_excel.IntCellValue(totalSessions),
+      ]);
+      summarySheet.appendRow([
+        import_excel.TextCellValue('جلسات الضيوف'),
+        import_excel.IntCellValue(guestSessions),
+      ]);
+      summarySheet.appendRow([
+        import_excel.TextCellValue('جلسات المستخدمين المسجلين'),
+        import_excel.IntCellValue(userSessions),
+      ]);
+      summarySheet.appendRow([
+        import_excel.TextCellValue('إجمالي عمليات البحث'),
+        import_excel.IntCellValue(totalSearches),
+      ]);
+      summarySheet.appendRow([
+        import_excel.TextCellValue('بحث الضيوف'),
+        import_excel.IntCellValue(guestSearches),
+      ]);
+      summarySheet.appendRow([
+        import_excel.TextCellValue('بحث المستخدمين'),
+        import_excel.IntCellValue(userSearches),
+      ]);
+      summarySheet.appendRow([
+        import_excel.TextCellValue('متوسط وقت البقاء (دقائق)'),
+        import_excel.DoubleCellValue(
+            double.parse(avgDuration.toStringAsFixed(2))),
+      ]);
+
+      // 2. شيت الأكثر بحثاً
+      import_excel.Sheet searchesSheet = excel['الكلمات الأكثر بحثاً'];
+      searchesSheet.appendRow([
+        import_excel.TextCellValue('كلمة البحث'),
+        import_excel.TextCellValue('عدد مرات البحث'),
+      ]);
+
+      searchQueries.forEach((query, count) {
+        searchesSheet.appendRow([
+          import_excel.TextCellValue(query),
+          import_excel.IntCellValue(count),
+        ]);
+      });
+
+      // 3. شيت مشاهدات المنتجات
+      import_excel.Sheet productsSheet = excel['مشاهدات المنتجات'];
+      productsSheet.appendRow([
+        import_excel.TextCellValue('العنوان / المعرف'),
+        import_excel.TextCellValue('عدد المشاهدات'),
+      ]);
+
+      for (var prod in liveProducts) {
+        String title = prod['rawItem']['title'] ?? prod['id'];
+        int views = prod['views'] ?? 0;
+        productsSheet.appendRow([
+          import_excel.TextCellValue(title),
+          import_excel.IntCellValue(views),
+        ]);
+      }
+
+      // تحويل البيانات لـ Bytes
+      List<int>? fileBytes = excel.save();
+      if (fileBytes != null) {
+        final fileName = "Analytics_Report_${DateTime.now().millisecondsSinceEpoch}.xlsx";
+
+        if (kIsWeb) {
+          // حفظ وتنزيل الملف في منصات الويب (Web)
+          final blob = html.Blob([fileBytes], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+          final url = html.Url.createObjectUrlFromBlob(blob);
+          final anchor = html.AnchorElement(href: url)
+            ..setAttribute("download", fileName)
+            ..click();
+          html.Url.revokeObjectUrl(url);
+        } else {
+          // حفظ الملف في بيئة التطبيقات الجوالة عبر الدليل الحالي بدون path_provider
+          final file = File(fileName);
+          await file.writeAsBytes(fileBytes);
+        }
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('تم إنشاء وحفظ ملف Excel بنجاح: $fileName')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        showErrorDialog(context, "خطأ في التصدير", e.toString());
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (isLoadingRole) {
@@ -58,252 +177,512 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
     }
 
     if (role != "admin") {
-      return  AccessDefindView();
+      return AccessDefindView();
     }
 
-    return Scaffold(
-      backgroundColor: Colors.grey.shade100,
-      appBar: AppBar(
-        title: const Text(
-          'مركز إدارة التحليلات والبزنس',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-        ),
-        centerTitle: true,
-        elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.picture_as_pdf_outlined, color: Colors.redAccent),
-            tooltip: 'تصدير التقرير',
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('جاري إعداد تقرير البزنس المطبوع...')),
+    return StreamBuilder<QuerySnapshot>(
+      stream: _firestore.collection('analytics_sessions').snapshots(),
+      builder: (context, sessionSnap) {
+        if (sessionSnap.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (sessionSnap.hasError) {
+          return Scaffold(
+            body: Center(
+                child: Text('حدث خطأ في تحميل البيانات: ${sessionSnap.error}')),
+          );
+        }
+
+        var sessionDocs = sessionSnap.data?.docs ?? [];
+
+        return StreamBuilder<QuerySnapshot>(
+          stream: _firestore.collection('search_history').snapshots(),
+          builder: (context, searchSnap) {
+            if (searchSnap.connectionState == ConnectionState.waiting) {
+              return const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
               );
-            },
-          ),
+            }
+
+            var searchDocs = searchSnap.data?.docs ?? [];
+
+            // فلترة الجلسات
+            DateTime now = DateTime.now();
+            sessionDocs = sessionDocs.where((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              Timestamp? startTs = data['startTime'] as Timestamp?;
+              if (startTs == null) return true;
+              DateTime dt = startTs.toDate();
+
+              if (selectedPeriod == 'today') {
+                return dt.year == now.year &&
+                    dt.month == now.month &&
+                    dt.day == now.day;
+              } else if (selectedPeriod == '7days') {
+                return now.difference(dt).inDays <= 7;
+              }
+              return true;
+            }).toList();
+
+            // فلترة أبحاث الزوار
+            searchDocs = searchDocs.where((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              Timestamp? createTs = data['createdAt'] as Timestamp?;
+              if (createTs == null) return true;
+              DateTime dt = createTs.toDate();
+
+              if (selectedPeriod == 'today') {
+                return dt.year == now.year &&
+                    dt.month == now.month &&
+                    dt.day == now.day;
+              } else if (selectedPeriod == '7days') {
+                return now.difference(dt).inDays <= 7;
+              }
+              return true;
+            }).toList();
+
+            int totalSessions = sessionDocs.length;
+            int guestSessions = 0;
+            int userSessions = 0;
+            double totalDurationInMinutes = 0;
+
+            Map<String, int> platformCount = {};
+            Map<int, int> hourlyActivity = {};
+            Map<String, Map<String, dynamic>> productStatsMap = {};
+            Map<String, int> visitedTabsCount = {};
+
+            for (var doc in sessionDocs) {
+              final data = doc.data() as Map<String, dynamic>;
+
+              bool isGuest = data['isGuest'] ?? true;
+              if (isGuest) {
+                guestSessions++;
+              } else {
+                userSessions++;
+              }
+
+              Timestamp? startTs = data['startTime'] as Timestamp?;
+              Timestamp? lastActiveTs = data['lastActiveTime'] as Timestamp?;
+              if (startTs != null) {
+                int hour = startTs.toDate().hour;
+                hourlyActivity[hour] = (hourlyActivity[hour] ?? 0) + 1;
+
+                if (lastActiveTs != null) {
+                  final duration =
+                  lastActiveTs.toDate().difference(startTs.toDate());
+                  totalDurationInMinutes += duration.inSeconds / 60.0;
+                }
+              }
+
+              String platform =
+              (data['platform'] ?? 'غير معروف').toString().toUpperCase();
+              platformCount[platform] = (platformCount[platform] ?? 0) + 1;
+
+              List<dynamic> visitedTabs = data['visitedTabs'] ?? [];
+              for (var tab in visitedTabs) {
+                String tabName = tab.toString();
+                if (tabName.isNotEmpty) {
+                  visitedTabsCount[tabName] =
+                      (visitedTabsCount[tabName] ?? 0) + 1;
+                }
+              }
+
+              List<dynamic> viewedProducts = data['viewedProducts'] ?? [];
+              for (var item in viewedProducts) {
+                if (item is Map<String, dynamic>) {
+                  String id =
+                      item['id'] ?? item['productId'] ?? item['title'] ?? '';
+                  if (id.isEmpty) continue;
+
+                  if (!productStatsMap.containsKey(id)) {
+                    productStatsMap[id] = {
+                      'id': id,
+                      'rawItem': item,
+                      'views': 1,
+                    };
+                  } else {
+                    productStatsMap[id]!['views'] =
+                        (productStatsMap[id]!['views'] as int) + 1;
+                  }
+                }
+              }
+            }
+
+            int totalSearches = searchDocs.length;
+            int guestSearches = 0;
+            int userSearches = 0;
+            Map<String, int> searchQueriesCount = {};
+
+            for (var doc in searchDocs) {
+              final data = doc.data() as Map<String, dynamic>;
+              bool isGuest = data['gust'] ?? data['isGuest'] ?? false;
+              if (isGuest) {
+                guestSearches++;
+              } else {
+                userSearches++;
+              }
+
+              String query = (data['query'] ?? '').toString().trim();
+              if (query.isNotEmpty) {
+                searchQueriesCount[query] =
+                    (searchQueriesCount[query] ?? 0) + 1;
+              }
+            }
+
+            double avgSessionDuration = totalSessions > 0
+                ? (totalDurationInMinutes / totalSessions)
+                : 0;
+
+            int peakHour = 0;
+            int maxHourCount = 0;
+            hourlyActivity.forEach((hour, count) {
+              if (count > maxHourCount) {
+                maxHourCount = count;
+                peakHour = hour;
+              }
+            });
+
+            Map<String, int> productViewsCount = {};
+            productStatsMap.forEach((key, value) {
+              String title = value['rawItem']['title'] ?? key;
+              productViewsCount[title] = value['views'] as int;
+            });
+
+            List<Map<String, dynamic>> recommendations =
+            _generateRecommendations(
+              totalSessions: totalSessions,
+              guestSessions: guestSessions,
+              avgDuration: avgSessionDuration,
+              productViews: productViewsCount,
+              peakHour: peakHour,
+              searchQueriesCount: searchQueriesCount,
+            );
+
+            return Scaffold(
+              backgroundColor: Colors.grey.shade100,
+              appBar: AppBar(
+                title: const Text(
+                  'مركز إدارة التحليلات والبزنس',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                ),
+                centerTitle: true,
+                elevation: 0,
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.black87,
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.table_chart_outlined,
+                        color: Colors.green),
+                    tooltip: 'تصدير Excel',
+                    onPressed: () async {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('جاري إعداد وحفظ ملف Excel...')),
+                      );
+
+                      await _exportToExcel(
+                        totalSessions: totalSessions,
+                        guestSessions: guestSessions,
+                        userSessions: userSessions,
+                        totalSearches: totalSearches,
+                        guestSearches: guestSearches,
+                        userSearches: userSearches,
+                        avgDuration: avgSessionDuration,
+                        searchQueries: searchQueriesCount,
+                        liveProducts: productStatsMap.values.toList(),
+                      );
+                    },
+                  ),
+                ],
+              ),
+              body: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildTimeFilterBar(),
+                    const SizedBox(height: 16),
+
+                    if (recommendations.isNotEmpty) ...[
+                      _buildSectionHeader('توصيات وتحليلات نمو البزنس 🚀'),
+                      const SizedBox(height: 12),
+                      _buildRecommendationsSection(recommendations),
+                      const SizedBox(height: 24),
+                    ],
+
+                    _buildSectionHeader('مؤشرات الأداء الرئيسية (KPIs)'),
+                    const SizedBox(height: 12),
+                    GridView.count(
+                      crossAxisCount:
+                      MediaQuery.of(context).size.width > 800 ? 4 : 2,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      childAspectRatio: 1.4,
+                      children: [
+                        _buildKpiCard(
+                          title: 'إجمالي الجلسات',
+                          value: '$totalSessions',
+                          subtitle:
+                          'ضيوف: $guestSessions | مسجلين: $userSessions',
+                          icon: Icons.bar_chart_rounded,
+                          color: Colors.blue,
+                        ),
+                        _buildKpiCard(
+                          title: 'إجمالي عمليات البحث',
+                          value: '$totalSearches',
+                          subtitle: 'بحث ضيوف: $guestSearches',
+                          icon: Icons.search_rounded,
+                          color: Colors.orange,
+                        ),
+                        _buildKpiCard(
+                          title: 'متوسط وقت البقاء',
+                          value:
+                          '${avgSessionDuration.toStringAsFixed(1)} دقيقة',
+                          subtitle: 'معدل التفاعل',
+                          icon: Icons.timer_outlined,
+                          color: Colors.purple,
+                        ),
+                        _buildKpiCard(
+                          title: 'ساعة الذروة (Peak)',
+                          value: '$peakHour:00',
+                          subtitle: '$maxHourCount زائر في هذا الوقت',
+                          icon: Icons.access_time_filled_sharp,
+                          color: Colors.deepOrange,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
+                    _buildSectionHeader('الكلمات والأصناف الأكثر بحثاً 🔍'),
+                    const SizedBox(height: 12),
+                    _buildTopSearchesCard(searchQueriesCount),
+                    const SizedBox(height: 24),
+
+                    _buildSectionHeader('سجل أبحاث الزوار والمستخدمين الأخيرة'),
+                    const SizedBox(height: 12),
+                    _buildRecentSearchesList(searchDocs),
+                    const SizedBox(height: 24),
+
+                    _buildSectionHeader(
+                        'نشاط الزوار حسب ساعات اليوم (Peak Hours)'),
+                    const SizedBox(height: 12),
+                    _buildHourlyActivityChart(hourlyActivity),
+                    const SizedBox(height: 24),
+
+                    _buildSectionHeader('توزيع المنصات والأجهزة (Pie Chart)'),
+                    const SizedBox(height: 12),
+                    _buildPieChartCard(platformCount, totalSessions),
+                    const SizedBox(height: 24),
+
+                    _buildSectionHeader(
+                        'رسم بياني لأعلى المنتجات مشاهدة (Bar Chart)'),
+                    const SizedBox(height: 12),
+                    _buildProductBarChartCard(productViewsCount),
+                    const SizedBox(height: 24),
+
+                    _buildSectionHeader('أداء المنتجات بالبيانات الحية'),
+                    const SizedBox(height: 12),
+                    _buildLiveProductsGrid(productStatsMap.values.toList()),
+                    const SizedBox(height: 24),
+
+                    _buildSectionHeader('سجل الجلسات الأخيرة والتفاصيل'),
+                    const SizedBox(height: 12),
+                    _buildRecentSessionsList(sessionDocs),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildTopSearchesCard(Map<String, int> searchQueries) {
+    if (searchQueries.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Center(
+          child: Text('لا توجد عمليات بحث مسجلة في هذه الفترة',
+              style: TextStyle(color: Colors.grey)),
+        ),
+      );
+    }
+
+    var sortedSearches = searchQueries.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    var topList = sortedSearches.take(6).toList();
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10)
         ],
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: _firestore.collection('analytics_sessions').snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: topList.map((e) {
+          return Chip(
+            avatar: const CircleAvatar(
+              backgroundColor: Colors.orangeAccent,
+              child: Icon(Icons.search, size: 12, color: Colors.white),
+            ),
+            label: Text(
+              '${e.key} (${e.value})',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            ),
+            backgroundColor: Colors.orange.shade50,
+            side: BorderSide(color: Colors.orange.shade200),
+          );
+        }).toList(),
+      ),
+    );
+  }
 
-          if (snapshot.hasError) {
-            return Center(child: Text('حدث خطأ في تحميل البيانات: ${snapshot.error}'));
-          }
+  Widget _buildRecentSearchesList(List<QueryDocumentSnapshot> docs) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10)
+        ],
+      ),
+      child: ListView.separated(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: docs.length > 5 ? 5 : docs.length,
+        separatorBuilder: (context, index) => const Divider(height: 1),
+        itemBuilder: (context, index) {
+          final data = docs[index].data() as Map<String, dynamic>;
+          bool isGuest = data['gust'] ?? data['isGuest'] ?? false;
+          String query = data['query'] ?? 'بحث فارغ';
+          String userId = data['userID'] ?? data['userId'] ?? 'guest';
 
-          var docs = snapshot.data?.docs ?? [];
+          Timestamp? createdAt = data['createdAt'] as Timestamp?;
+          String timeStr = createdAt != null
+              ? '${createdAt.toDate().hour.toString().padLeft(2, '0')}:${createdAt.toDate().minute.toString().padLeft(2, '0')}'
+              : 'غير محدد';
 
-          if (docs.isEmpty) {
-            return const Center(
-              child: Text(
-                'لا توجد بيانات تحليلات مجهزة حالياً',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
+          if (isGuest || userId == 'guest') {
+            return ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: Colors.amber,
+                child: Icon(Icons.person_outline, color: Colors.white),
+              ),
+              title: Text(
+                '"$query"',
+                style:
+                const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              ),
+              subtitle: const Text('المصدر: زائر ضيف (Guest)'),
+              trailing: Text(
+                timeStr,
+                style: const TextStyle(color: Colors.grey, fontSize: 12),
               ),
             );
           }
 
-          // تطبيق فلترة الفترة الزمنية
-          DateTime now = DateTime.now();
-          docs = docs.where((doc) {
-            final data = doc.data() as Map<String, dynamic>;
-            Timestamp? startTs = data['startTime'] as Timestamp?;
-            if (startTs == null) return true;
-            DateTime dt = startTs.toDate();
-
-            if (selectedPeriod == 'today') {
-              return dt.year == now.year && dt.month == now.month && dt.day == now.day;
-            } else if (selectedPeriod == '7days') {
-              return now.difference(dt).inDays <= 7;
-            }
-            return true;
-          }).toList();
-
-          int totalSessions = docs.length;
-          int guestSessions = 0;
-          int userSessions = 0;
-          double totalDurationInMinutes = 0;
-
-          Map<String, int> platformCount = {};
-          Map<int, int> hourlyActivity = {}; // ساعات الذروة (0 -> 23)
-          Map<String, Map<String, dynamic>> productStatsMap = {};
-
-          int totalProductViewsCount = 0;
-
-          for (var doc in docs) {
-            final data = doc.data() as Map<String, dynamic>;
-
-            bool isGuest = data['isGuest'] ?? true;
-            if (isGuest) {
-              guestSessions++;
-            } else {
-              userSessions++;
-            }
-
-            Timestamp? startTs = data['startTime'] as Timestamp?;
-            Timestamp? lastActiveTs = data['lastActiveTime'] as Timestamp?;
-            if (startTs != null) {
-              int hour = startTs.toDate().hour;
-              hourlyActivity[hour] = (hourlyActivity[hour] ?? 0) + 1;
-
-              if (lastActiveTs != null) {
-                final duration = lastActiveTs.toDate().difference(startTs.toDate());
-                totalDurationInMinutes += duration.inSeconds / 60.0;
-              }
-            }
-
-            String platform = (data['platform'] ?? 'غير معروف').toString().toUpperCase();
-            platformCount[platform] = (platformCount[platform] ?? 0) + 1;
-
-            List<dynamic> viewedProducts = data['viewedProducts'] ?? [];
-            for (var item in viewedProducts) {
-              if (item is Map<String, dynamic>) {
-                String id = item['id'] ?? item['productId'] ?? item['title'] ?? '';
-                if (id.isEmpty) continue;
-
-                totalProductViewsCount++;
-
-                if (!productStatsMap.containsKey(id)) {
-                  productStatsMap[id] = {
-                    'id': id,
-                    'rawItem': item,
-                    'views': 1,
-                  };
-                } else {
-                  productStatsMap[id]!['views'] =
-                      (productStatsMap[id]!['views'] as int) + 1;
+          return FutureBuilder<DocumentSnapshot>(
+            future: _firestore.collection('user').doc(userId).get(),
+            builder: (context, userSnapshot) {
+              String userName = 'مستخدم ($userId)';
+              if (userSnapshot.hasData && userSnapshot.data!.exists) {
+                final userData =
+                userSnapshot.data!.data() as Map<String, dynamic>?;
+                if (userData != null) {
+                  userName =
+                      userData['name'] ?? userData['username'] ?? userName;
                 }
               }
-            }
-          }
 
-          double avgSessionDuration =
-          totalSessions > 0 ? (totalDurationInMinutes / totalSessions) : 0;
-
-          // العثور على ساعة الذروة
-          int peakHour = 0;
-          int maxHourCount = 0;
-          hourlyActivity.forEach((hour, count) {
-            if (count > maxHourCount) {
-              maxHourCount = count;
-              peakHour = hour;
-            }
-          });
-
-          Map<String, int> productViewsCount = {};
-          productStatsMap.forEach((key, value) {
-            String title = value['rawItem']['title'] ?? key;
-            productViewsCount[title] = value['views'] as int;
-          });
-
-          List<Map<String, dynamic>> recommendations = _generateRecommendations(
-            totalSessions: totalSessions,
-            guestSessions: guestSessions,
-            avgDuration: avgSessionDuration,
-            productViews: productViewsCount,
-            peakHour: peakHour,
-          );
-
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // --- شريط الفلترة الزمنية ---
-                _buildTimeFilterBar(),
-                const SizedBox(height: 16),
-
-                // --- 1. قسم التوصيات الذكية للبزنس ---
-                if (recommendations.isNotEmpty) ...[
-                  _buildSectionHeader('توصيات وتحليلات نمو البزنس 🚀'),
-                  const SizedBox(height: 12),
-                  _buildRecommendationsSection(recommendations),
-                  const SizedBox(height: 24),
-                ],
-
-                // --- 2. كروت المؤشرات الأساسية (KPIs) ---
-                _buildSectionHeader('مؤشرات الأداء الرئيسية (KPIs)'),
-                const SizedBox(height: 12),
-                GridView.count(
-                  crossAxisCount: MediaQuery.of(context).size.width > 800 ? 4 : 2,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 1.4,
-                  children: [
-                    _buildKpiCard(
-                      title: 'إجمالي الجلسات',
-                      value: '$totalSessions',
-                      subtitle: 'زيارة إجمالية',
-                      icon: Icons.bar_chart_rounded,
-                      color: Colors.blue,
-                    ),
-                    _buildKpiCard(
-                      title: 'متوسط وقت البقاء',
-                      value: '${avgSessionDuration.toStringAsFixed(1)} دقيقة',
-                      subtitle: 'معدل التفاعل',
-                      icon: Icons.timer_outlined,
-                      color: Colors.purple,
-                    ),
-                    _buildKpiCard(
-                      title: 'ساعة الذروة (Peak)',
-                      value: '$peakHour:00',
-                      subtitle: '$maxHourCount زائر في هذا الوقت',
-                      icon: Icons.access_time_filled_sharp,
-                      color: Colors.deepOrange,
-                    ),
-                    _buildKpiCard(
-                      title: 'مشاهدات المنتجات',
-                      value: '$totalProductViewsCount',
-                      subtitle: 'تفاعل مع الكتالوج',
-                      icon: Icons.shopping_bag_outlined,
-                      color: Colors.teal,
-                    ),
-                  ],
+              return ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Colors.blueAccent,
+                  child: Icon(Icons.person, color: Colors.white),
                 ),
-                const SizedBox(height: 24),
-
-                // --- 3. تحليل ساعات الذروة والنشاط ---
-                _buildSectionHeader('نشاط الزوار حسب ساعات اليوم (Peak Hours)'),
-                const SizedBox(height: 12),
-                _buildHourlyActivityChart(hourlyActivity),
-                const SizedBox(height: 24),
-
-                // --- 4. الرسم البياني الدائري للمنصات (Pie Chart) ---
-                _buildSectionHeader('توزيع المنصات والأجهزة (Pie Chart)'),
-                const SizedBox(height: 12),
-                _buildPieChartCard(platformCount, totalSessions),
-                const SizedBox(height: 24),
-
-                // --- 5. الرسم البياني الشريطي للمنتجات (Bar Chart) ---
-                _buildSectionHeader('رسم بياني لأعلى المنتجات مشاهدة (Bar Chart)'),
-                const SizedBox(height: 12),
-                _buildProductBarChartCard(productViewsCount),
-                const SizedBox(height: 24),
-
-                // --- 6. شبكة المنتجات الحية المسحوبة من Firestore ---
-                _buildSectionHeader('أداء المنتجات بالبيانات الحية'),
-                const SizedBox(height: 12),
-                _buildLiveProductsGrid(productStatsMap.values.toList()),
-                const SizedBox(height: 24),
-
-                // --- 7. سجل الجلسات الأخيرة ---
-                _buildSectionHeader('سجل الجلسات الأخيرة والتفاصيل'),
-                const SizedBox(height: 12),
-                _buildRecentSessionsList(docs),
-              ],
-            ),
+                title: Text(
+                  '"$query"',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+                subtitle: Text('المستخدم: $userName'),
+                trailing: Text(
+                  timeStr,
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+              );
+            },
           );
         },
       ),
     );
   }
 
-  // --- شريط الفلترة الزمنية ---
+  List<Map<String, dynamic>> _generateRecommendations({
+    required int totalSessions,
+    required int guestSessions,
+    required double avgDuration,
+    required Map<String, int> productViews,
+    required int peakHour,
+    required Map<String, int> searchQueriesCount,
+  }) {
+    List<Map<String, dynamic>> list = [];
+
+    if (searchQueriesCount.isNotEmpty) {
+      var topSearch = searchQueriesCount.entries
+          .reduce((a, b) => a.value > b.value ? a : b);
+      if (topSearch.value >= 2) {
+        list.add({
+          'title': 'طلب عالي على كلمة بحث معينة 🔍',
+          'desc':
+          'يبحث الزوار بكثرة عن "${topSearch.key}". يمكنك توفير منتجات إضافية تندرج تحت هذا الاسم أو تحسين ظهورها.',
+          'icon': Icons.search_outlined,
+          'color': Colors.amber.shade900,
+        });
+      }
+    }
+
+    if (peakHour > 0) {
+      list.add({
+        'title': 'الوقت المثالي لإرسال الإشعارات والعروض ⏰',
+        'desc':
+        'أعلى فترة نشاط للزوار هي الساعة $peakHour:00. يُنصح ببرمجة العروض الخاطفة والإشعارات في هذا الوقت.',
+        'icon': Icons.notifications_active_outlined,
+        'color': Colors.deepOrange,
+      });
+    }
+
+    if (productViews.isNotEmpty) {
+      var topProduct =
+      productViews.entries.reduce((a, b) => a.value > b.value ? a : b);
+      if (topProduct.value >= 2) {
+        list.add({
+          'title': 'المنتج الأكثر طلبًا واهتمامًا 🔥',
+          'desc':
+          'المنتج "${topProduct.key}" يحظى بأعلى معدل اهتمام بـ (${topProduct.value} مشاهدة).',
+          'icon': Icons.local_fire_department_outlined,
+          'color': Colors.redAccent,
+        });
+      }
+    }
+
+    return list;
+  }
+
   Widget _buildTimeFilterBar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -352,14 +731,75 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
     );
   }
 
-  // --- رسم بياني لساعات الذروة ---
+  Widget _buildSectionHeader(String title) {
+    return Text(
+      title,
+      style: const TextStyle(
+        fontSize: 17,
+        fontWeight: FontWeight.bold,
+        color: Colors.black87,
+      ),
+    );
+  }
+
+  Widget _buildRecommendationsSection(
+      List<Map<String, dynamic>> recommendations) {
+    return Column(
+      children: recommendations.map((rec) {
+        return Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: (rec['color'] as Color).withOpacity(0.08),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: (rec['color'] as Color).withOpacity(0.3)),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                backgroundColor: rec['color'],
+                radius: 20,
+                child: Icon(rec['icon'], color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      rec['title'],
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        color: rec['color'],
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      rec['desc'],
+                      style:
+                      const TextStyle(fontSize: 13, color: Colors.black87),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+
   Widget _buildHourlyActivityChart(Map<int, int> hourlyActivity) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10)],
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10)
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -376,7 +816,9 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                 alignment: BarChartAlignment.spaceAround,
                 maxY: (hourlyActivity.values.isEmpty
                     ? 5
-                    : hourlyActivity.values.reduce((a, b) => a > b ? a : b) + 2)
+                    : hourlyActivity.values
+                    .reduce((a, b) => a > b ? a : b) +
+                    2)
                     .toDouble(),
                 barTouchData: BarTouchData(enabled: true),
                 titlesData: FlTitlesData(
@@ -387,15 +829,19 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                       getTitlesWidget: (val, meta) {
                         int hour = val.toInt();
                         if (hour % 4 == 0) {
-                          return Text('$hour:00', style: const TextStyle(fontSize: 9));
+                          return Text('$hour:00',
+                              style: const TextStyle(fontSize: 9));
                         }
                         return const SizedBox();
                       },
                     ),
                   ),
-                  leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  leftTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
                 ),
                 gridData: const FlGridData(show: false),
                 borderData: FlBorderData(show: false),
@@ -406,7 +852,9 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                     barRods: [
                       BarChartRodData(
                         toY: count.toDouble(),
-                        color: count > 0 ? Colors.deepOrangeAccent : Colors.grey.shade300,
+                        color: count > 0
+                            ? Colors.deepOrangeAccent
+                            : Colors.grey.shade300,
                         width: 8,
                         borderRadius: BorderRadius.circular(4),
                       ),
@@ -421,50 +869,6 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
     );
   }
 
-  // --- محرك التوصيات للبزنس ---
-  List<Map<String, dynamic>> _generateRecommendations({
-    required int totalSessions,
-    required int guestSessions,
-    required double avgDuration,
-    required Map<String, int> productViews,
-    required int peakHour,
-  }) {
-    List<Map<String, dynamic>> list = [];
-
-    if (peakHour > 0) {
-      list.add({
-        'title': 'الوقت المثالي لإرسال الإشعارات والعروض ⏰',
-        'desc': 'أعلى فترة نشاط للزوار هي الساعة $peakHour:00. يُنصح ببرمجة العروض الخاطفة والإشعارات في هذا الوقت لضمان أعلى نسبة فتح وقراءة.',
-        'icon': Icons.notifications_active_outlined,
-        'color': Colors.deepOrange,
-      });
-    }
-
-    if (productViews.isNotEmpty) {
-      var topProduct = productViews.entries.reduce((a, b) => a.value > b.value ? a : b);
-      if (topProduct.value >= 2) {
-        list.add({
-          'title': 'المنتج الأكثر طلبًا واهتمامًا 🔥',
-          'desc': 'المنتج "${topProduct.key}" يحظى بأعلى معدل اهتمام بـ (${topProduct.value} مشاهدة). يُفضل وضعه في البانر الرئيسي للتطبيق.',
-          'icon': Icons.local_fire_department_outlined,
-          'color': Colors.redAccent,
-        });
-      }
-    }
-
-    if (totalSessions > 0 && (guestSessions / totalSessions) > 0.5) {
-      list.add({
-        'title': 'استراتيجية تحويل الزوار إلى عملاء مسجلين 🎯',
-        'desc': 'أكثر من 50% من الزوار ضيوف (Guests). يمكنك إنشاء خصم حصري عند التسجيل لأول مرة لتشجيعهم على إنشاء حساب.',
-        'icon': Icons.card_giftcard_outlined,
-        'color': Colors.blue,
-      });
-    }
-
-    return list;
-  }
-
-  // --- 5. شبكة الكروت بالبيانات الحية ---
   Widget _buildLiveProductsGrid(List<Map<String, dynamic>> productStatsList) {
     if (productStatsList.isEmpty) {
       return Container(
@@ -480,7 +884,8 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
       );
     }
 
-    productStatsList.sort((a, b) => (b['views'] as int).compareTo(a['views'] as int));
+    productStatsList
+        .sort((a, b) => (b['views'] as int).compareTo(a['views'] as int));
 
     return GridView.builder(
       shrinkWrap: true,
@@ -514,7 +919,9 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
             final num avgRating = data['avgRating'] ?? 0;
 
             String imageUrl = '';
-            if (data['images'] != null && (data['images'] is List) && (data['images'] as List).isNotEmpty) {
+            if (data['images'] != null &&
+                (data['images'] is List) &&
+                (data['images'] as List).isNotEmpty) {
               imageUrl = data['images'][0].toString();
             } else if (data['image'] != null) {
               imageUrl = data['image'].toString();
@@ -538,7 +945,8 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                   Stack(
                     children: [
                       ClipRRect(
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                        borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(16)),
                         child: Container(
                           height: 130,
                           width: double.infinity,
@@ -548,16 +956,19 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                             imageUrl,
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) =>
-                            const Icon(Icons.image_not_supported, color: Colors.grey),
+                            const Icon(Icons.image_not_supported,
+                                color: Colors.grey),
                           )
-                              : const Icon(Icons.shopping_bag_outlined, color: Colors.grey, size: 40),
+                              : const Icon(Icons.shopping_bag_outlined,
+                              color: Colors.grey, size: 40),
                         ),
                       ),
                       Positioned(
                         top: 8,
                         right: 8,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
                             color: Colors.black.withOpacity(0.6),
                             borderRadius: BorderRadius.circular(12),
@@ -615,11 +1026,13 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                                     .collection('reviews')
                                     .snapshots(),
                                 builder: (context, reviewSnap) {
-                                  int reviewsCount = reviewSnap.data?.docs.length ?? 0;
+                                  int reviewsCount =
+                                      reviewSnap.data?.docs.length ?? 0;
 
                                   return Row(
                                     children: [
-                                      const Icon(Icons.star_rounded, size: 16, color: Colors.amber),
+                                      const Icon(Icons.star_rounded,
+                                          size: 16, color: Colors.amber),
                                       const SizedBox(width: 2),
                                       Text(
                                         '${avgRating.toStringAsFixed(1)} ',
@@ -642,7 +1055,8 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                               ),
                               Row(
                                 children: [
-                                  const Icon(Icons.remove_red_eye_outlined, size: 14, color: Colors.blue),
+                                  const Icon(Icons.remove_red_eye_outlined,
+                                      size: 14, color: Colors.blue),
                                   const SizedBox(width: 3),
                                   Text(
                                     '$views',
@@ -666,65 +1080,6 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
           },
         );
       },
-    );
-  }
-
-  // --- بقية عناصر الواجهة والرسوم البيانية ---
-  Widget _buildSectionHeader(String title) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontSize: 17,
-        fontWeight: FontWeight.bold,
-        color: Colors.black87,
-      ),
-    );
-  }
-
-  Widget _buildRecommendationsSection(List<Map<String, dynamic>> recommendations) {
-    return Column(
-      children: recommendations.map((rec) {
-        return Container(
-          margin: const EdgeInsets.only(bottom: 10),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: (rec['color'] as Color).withOpacity(0.08),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: (rec['color'] as Color).withOpacity(0.3)),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CircleAvatar(
-                backgroundColor: rec['color'],
-                radius: 20,
-                child: Icon(rec['icon'], color: Colors.white, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      rec['title'],
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                        color: rec['color'],
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      rec['desc'],
-                      style: const TextStyle(fontSize: 13, color: Colors.black87),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
     );
   }
 
@@ -776,7 +1131,8 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                 getTooltipItem: (group, groupIndex, rod, rodIndex) {
                   return BarTooltipItem(
                     '${topProducts[groupIndex].key}\n${rod.toY.toInt()} مشاهدة',
-                    const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    const TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold),
                   );
                 },
               ),
@@ -797,7 +1153,8 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                         padding: const EdgeInsets.only(top: 8.0),
                         child: Text(
                           title,
-                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                              fontSize: 10, fontWeight: FontWeight.bold),
                         ),
                       );
                     }
@@ -813,15 +1170,18 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                     if (value % 1 == 0) {
                       return Text(
                         value.toInt().toString(),
-                        style: const TextStyle(fontSize: 10, color: Colors.grey),
+                        style:
+                        const TextStyle(fontSize: 10, color: Colors.grey),
                       );
                     }
                     return const SizedBox();
                   },
                 ),
               ),
-              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              topTitles:
+              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              rightTitles:
+              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
             ),
             gridData: FlGridData(
               show: true,
@@ -862,7 +1222,13 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
       return const SizedBox();
     }
 
-    final colors = [Colors.blue, Colors.green, Colors.orange, Colors.purple, Colors.red];
+    final colors = [
+      Colors.blue,
+      Colors.green,
+      Colors.orange,
+      Colors.purple,
+      Colors.red
+    ];
     int colorIndex = 0;
 
     List<PieChartSectionData> sections = platforms.entries.map((entry) {
@@ -923,13 +1289,15 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                         height: 12,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: colors[platforms.keys.toList().indexOf(e.key) % colors.length],
+                          color: colors[platforms.keys.toList().indexOf(e.key) %
+                              colors.length],
                         ),
                       ),
                       const SizedBox(width: 8),
                       Text(
                         '${e.key}: ${e.value} جلسة',
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                        style: const TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w500),
                       ),
                     ],
                   ),
@@ -1045,7 +1413,8 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                 'زائر ضيف (Guest)',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
               ),
-              subtitle: Text('المنصة: $platform | المشاهدات: ${viewedProducts.length}'),
+              subtitle:
+              Text('المنصة: $platform | المشاهدات: ${viewedProducts.length}'),
               trailing: Text(
                 'بدأت $timeStr',
                 style: const TextStyle(color: Colors.grey, fontSize: 12),
@@ -1060,9 +1429,11 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
               String userEmail = '';
 
               if (userSnapshot.hasData && userSnapshot.data!.exists) {
-                final userData = userSnapshot.data!.data() as Map<String, dynamic>?;
+                final userData =
+                userSnapshot.data!.data() as Map<String, dynamic>?;
                 if (userData != null) {
-                  displayName = userData['name'] ?? userData['username'] ?? displayName;
+                  displayName =
+                      userData['name'] ?? userData['username'] ?? displayName;
                   userEmail = userData['email'] ?? '';
                 }
               }
@@ -1070,11 +1441,13 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
               return ListTile(
                 leading: const CircleAvatar(
                   backgroundColor: Colors.green,
-                  child: Icon(Icons.verified_user_outlined, color: Colors.white),
+                  child:
+                  Icon(Icons.verified_user_outlined, color: Colors.white),
                 ),
                 title: Text(
                   displayName,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 14),
                 ),
                 subtitle: Text(
                   '${userEmail.isNotEmpty ? "$userEmail | " : ""}المنصة: $platform | المشاهدات: ${viewedProducts.length}',

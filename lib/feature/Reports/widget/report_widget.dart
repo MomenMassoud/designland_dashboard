@@ -1,16 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dashboard_desginland/feature/Access%20Defind/view/access_defind_view.dart';
+import 'package:excel/excel.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
-
+import 'package:universal_html/html.dart' as html;
 import '../../../Core/Utils/app.colors.dart';
 import '../../../Core/server/get_permision.dart';
 
-enum ReportType { users, orders, payments, products }
+enum ReportType { combinedFinancial, orders, users }
 
 class ReportWidget extends StatefulWidget {
   const ReportWidget({super.key});
@@ -20,27 +18,36 @@ class ReportWidget extends StatefulWidget {
 }
 
 class _ReportWidgetState extends State<ReportWidget> {
-  @override
-  void initState() {
-    // TODO: implement initState
-    super.initState();
-    Start();
-  }
-  List<String> _permision=[];
-  void Start()async{
-    _permision=await GetPermisionUser();
-    setState(() {
-      _permision;
-    });
-  }
+  List<String> _permision = [];
   DateTimeRange? _selectedDateRange;
   String _searchQuery = "";
-  ReportType _selectedReportType = ReportType.users;
-  String _selectedOrderStatusFilter = "ALL";
+  ReportType _selectedReportType = ReportType.combinedFinancial;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPermissions();
+  }
+
+  void _loadPermissions() async {
+    _permision = await GetPermisionUser();
+    setState(() {});
+  }
+
+  String _formatDateTime(dynamic timestamp) {
+    if (timestamp == null) return "N/A";
+    if (timestamp is Timestamp) {
+      return DateFormat('yyyy-MM-dd hh:mm a').format(timestamp.toDate());
+    } else if (timestamp is DateTime) {
+      return DateFormat('yyyy-MM-dd hh:mm a').format(timestamp);
+    }
+    return "N/A";
+  }
 
   @override
   Widget build(BuildContext context) {
-    return _permision.contains("reports")? Scaffold(
+    return _permision.contains("reports")
+        ? Scaffold(
       backgroundColor: AppColors.bgLight,
       appBar: AppBar(
         backgroundColor: Colors.white,
@@ -49,19 +56,12 @@ class _ReportWidgetState extends State<ReportWidget> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "Comprehensive System Reports",
-              style: TextStyle(
-                color: AppColors.textDark,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
+              "Comprehensive Financial Reports",
+              style: TextStyle(color: AppColors.textDark, fontWeight: FontWeight.bold, fontSize: 18),
             ),
             Text(
-              "Detailed analytical reports with PDF export",
-              style: TextStyle(
-                color: AppColors.textMuted,
-                fontSize: 12,
-              ),
+              "Order Expenses, General Expenses & Revenue Logs",
+              style: TextStyle(color: AppColors.textMuted, fontSize: 12),
             ),
           ],
         ),
@@ -77,25 +77,17 @@ class _ReportWidgetState extends State<ReportWidget> {
           ],
         ),
       ),
-    ):AccessDefindView();
+    )
+        : AccessDefindView();
   }
 
-  // ===========================================================================
-  // 1. FILTER HEADER BAR
-  // ===========================================================================
   Widget _buildFilterHeader() {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Wrap(
         spacing: 16,
@@ -106,7 +98,7 @@ class _ReportWidgetState extends State<ReportWidget> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade300),
+              border: BoxBorder.all(color: Colors.grey.shade300),
               borderRadius: BorderRadius.circular(12),
             ),
             child: DropdownButtonHideUnderline(
@@ -114,11 +106,29 @@ class _ReportWidgetState extends State<ReportWidget> {
                 value: _selectedReportType,
                 icon: const Icon(Icons.arrow_drop_down, color: AppColors.primaryPurple),
                 onChanged: (ReportType? newValue) {
-                  if (newValue != null) {
-                    setState(() => _selectedReportType = newValue);
-                  }
+                  if (newValue != null) setState(() => _selectedReportType = newValue);
                 },
                 items: const [
+                  DropdownMenuItem(
+                    value: ReportType.combinedFinancial,
+                    child: Row(
+                      children: [
+                        Icon(Icons.account_balance_wallet_outlined, size: 20, color: Colors.green),
+                        SizedBox(width: 8),
+                        Text("Financial Ledger & Expenses", style: TextStyle(fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                  DropdownMenuItem(
+                    value: ReportType.orders,
+                    child: Row(
+                      children: [
+                        Icon(Icons.shopping_bag_outlined, size: 20, color: Colors.orange),
+                        SizedBox(width: 8),
+                        Text("Orders & Manual Orders", style: TextStyle(fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
                   DropdownMenuItem(
                     value: ReportType.users,
                     child: Row(
@@ -129,36 +139,6 @@ class _ReportWidgetState extends State<ReportWidget> {
                       ],
                     ),
                   ),
-                  DropdownMenuItem(
-                    value: ReportType.orders,
-                    child: Row(
-                      children: [
-                        Icon(Icons.shopping_bag_outlined, size: 20, color: Colors.orange),
-                        SizedBox(width: 8),
-                        Text("Orders Report", style: TextStyle(fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                  ),
-                  DropdownMenuItem(
-                    value: ReportType.payments,
-                    child: Row(
-                      children: [
-                        Icon(Icons.payments_outlined, size: 20, color: Colors.green),
-                        SizedBox(width: 8),
-                        Text("Payments Report", style: TextStyle(fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                  ),
-                  DropdownMenuItem(
-                    value: ReportType.products,
-                    child: Row(
-                      children: [
-                        Icon(Icons.inventory_2_outlined, size: 20, color: Colors.blue),
-                        SizedBox(width: 8),
-                        Text("Products Report (Coming Soon)", style: TextStyle(color: Colors.grey)),
-                      ],
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -166,9 +146,7 @@ class _ReportWidgetState extends State<ReportWidget> {
           OutlinedButton.icon(
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
             icon: const Icon(Icons.date_range, color: AppColors.primaryPurple),
             label: Text(
@@ -184,26 +162,19 @@ class _ReportWidgetState extends State<ReportWidget> {
                 lastDate: DateTime.now(),
                 initialDateRange: _selectedDateRange,
               );
-              if (picked != null) {
-                setState(() => _selectedDateRange = picked);
-              }
+              if (picked != null) setState(() => _selectedDateRange = picked);
             },
           ),
           if (_selectedDateRange != null)
             IconButton(
               icon: const Icon(Icons.clear, color: Colors.red),
               onPressed: () => setState(() => _selectedDateRange = null),
-              tooltip: "Clear Date Filter",
             ),
           SizedBox(
             width: 250,
             child: TextField(
               decoration: InputDecoration(
-                hintText: _selectedReportType == ReportType.payments
-                    ? "Search Order ID, Notes..."
-                    : _selectedReportType == ReportType.orders
-                    ? "Search Order ID, Title..."
-                    : "Search user, email, phone...",
+                hintText: "Search...",
                 prefixIcon: const Icon(Icons.search, size: 20),
                 contentPadding: const EdgeInsets.symmetric(vertical: 10),
                 border: OutlineInputBorder(
@@ -221,34 +192,22 @@ class _ReportWidgetState extends State<ReportWidget> {
 
   Widget _buildSelectedReportView() {
     switch (_selectedReportType) {
-      case ReportType.users:
-        return _buildUsersReportSection();
+      case ReportType.combinedFinancial:
+        return _buildCombinedFinancialSection();
       case ReportType.orders:
         return _buildOrdersReportSection();
-      case ReportType.payments:
-        return _buildPaymentsReportSection();
-      case ReportType.products:
-        return const Center(child: Text("Products Report Under Development"));
+      case ReportType.users:
+        return _buildUsersReportSection();
     }
   }
 
   // ===========================================================================
-  // 2. USERS REPORT SECTION
+  // 1. UNIFIED FINANCIAL LEDGER (المصروفات بأنواعها + المقبوضات)
   // ===========================================================================
-  Widget _buildUsersReportSection() {
+  Widget _buildCombinedFinancialSection() {
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -258,221 +217,221 @@ class _ReportWidgetState extends State<ReportWidget> {
               const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    "Detailed Customers Report",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textDark,
-                    ),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    "Showing accounts with role 'user' & their complete activity",
-                    style: TextStyle(color: AppColors.textMuted, fontSize: 12),
-                  ),
+                  Text("Combined Financial Ledger", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text("Shows Order Expenses, External Expenses & Payments", style: TextStyle(color: Colors.grey, fontSize: 12)),
                 ],
               ),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.redAccent,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              Row(
+                children: [
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryPurple),
+                    icon: const Icon(Icons.add, color: Colors.white, size: 18),
+                    label: const Text("Add General Expense", style: TextStyle(color: Colors.white)),
+                    onPressed: () => _showAddExpenseDialog(),
                   ),
-                ),
-                icon: const Icon(Icons.picture_as_pdf, color: Colors.white, size: 18),
-                label: const Text("Export PDF", style: TextStyle(color: Colors.white)),
-                onPressed: () => _generateUsersPdfReport(),
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                    icon: const Icon(Icons.table_chart, color: Colors.white, size: 18),
+                    label: const Text("Export Excel Sheet", style: TextStyle(color: Colors.white)),
+                    onPressed: () => _exportFinancialExcel(),
+                  ),
+                ],
               ),
             ],
           ),
           const SizedBox(height: 16),
           const Divider(),
           StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('user')
-                .where('role', isEqualTo: 'user')
-                .snapshots(),
-            builder: (context, userAuthSnap) {
-              if (userAuthSnap.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              final authDocs = userAuthSnap.data?.docs ?? [];
+            stream: FirebaseFirestore.instance.collection('payments').snapshots(),
+            builder: (context, paymentsSnap) {
+              final paymentDocs = paymentsSnap.data?.docs ?? [];
 
               return StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance.collection('users').snapshots(),
-                builder: (context, usersDetailsSnap) {
-                  if (usersDetailsSnap.connectionState == ConnectionState.waiting) {
+                stream: FirebaseFirestore.instance.collection('expenses').snapshots(),
+                builder: (context, expensesSnap) {
+                  final expenseDocs = expensesSnap.data?.docs ?? [];
+
+                  if (paymentsSnap.connectionState == ConnectionState.waiting || expensesSnap.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
                   }
 
-                  final detailsDocs = usersDetailsSnap.data?.docs ?? [];
-                  List<Map<String, dynamic>> combinedUsers = [];
+                  List<Map<String, dynamic>> combinedList = [];
 
-                  for (var authDoc in authDocs) {
-                    final authData = authDoc.data() as Map<String, dynamic>;
-                    final uid = authDoc.id;
-
-                    final matchingDetailDoc = detailsDocs
-                        .cast<QueryDocumentSnapshot?>()
-                        .firstWhere(
-                          (d) => d?.id == uid,
-                      orElse: () => null,
-                    );
-
-                    final detailsData = matchingDetailDoc != null
-                        ? (matchingDetailDoc.data() as Map<String, dynamic>? ?? {})
-                        : <String, dynamic>{};
-
-                    combinedUsers.add({
-                      'uid': uid,
-                      'name': authData['name'] ?? detailsData['name'] ?? 'N/A',
-                      'email': authData['email'] ?? 'N/A',
-                      'role': authData['role'] ?? 'user',
-                      'isBlocked': authData['isBlocked'] ?? false,
-                      'phone': detailsData['phone'] ?? 'N/A',
-                      'addresses': detailsData['addresses'] ?? [],
+                  // 1. مدفوعات الأوردرات (Income)
+                  for (var doc in paymentDocs) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    combinedList.add({
+                      'id': doc.id,
+                      'category': 'Payment In',
+                      'notes': data['notes'] ?? 'Order Payment',
+                      'orderId': data['orderId'] ?? '',
+                      'userId': data['userId'] ?? '',
+                      'amount': (data['amount'] ?? 0).toDouble(),
+                      'createdAt': data['createdAt'] ?? data['timestamp'] ?? data['date'],
                     });
                   }
 
-                  if (_searchQuery.isNotEmpty) {
-                    combinedUsers = combinedUsers.where((u) {
-                      final name = u['name'].toString().toLowerCase();
-                      final email = u['email'].toString().toLowerCase();
-                      final phone = u['phone'].toString().toLowerCase();
-                      return name.contains(_searchQuery) ||
-                          email.contains(_searchQuery) ||
-                          phone.contains(_searchQuery);
-                    }).toList();
+                  // 2. المصروفات (Expenses - سواء مرتبط بأوردر أو خارجي)
+                  for (var doc in expenseDocs) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    final String orderId = data['orderId'] ?? '';
+                    final bool isOrderExpense = orderId.isNotEmpty;
+
+                    combinedList.add({
+                      'id': doc.id,
+                      'category': isOrderExpense ? 'Order Expense' : 'General Expense',
+                      'notes': data['notes'] ?? data['title'] ?? 'Expense',
+                      'orderId': orderId,
+                      'userId': data['userId'] ?? '',
+                      'amount': (data['amount'] ?? 0).toDouble(),
+                      'createdAt': data['createdAt'] ?? data['date'],
+                    });
                   }
 
-                  return FutureBuilder<List<QuerySnapshot>>(
-                    future: Future.wait(
-                      combinedUsers.map((u) => FirebaseFirestore.instance
-                          .collection('users')
-                          .doc(u['uid'])
-                          .collection('orders')
-                          .get()),
+                  // الترتيب حسب الوقت (الأحدث أولاً)
+                  combinedList.sort((a, b) {
+                    DateTime dtA = (a['createdAt'] is Timestamp) ? (a['createdAt'] as Timestamp).toDate() : DateTime.fromMillisecondsSinceEpoch(0);
+                    DateTime dtB = (b['createdAt'] is Timestamp) ? (b['createdAt'] as Timestamp).toDate() : DateTime.fromMillisecondsSinceEpoch(0);
+                    return dtB.compareTo(dtA);
+                  });
+
+                  if (combinedList.isEmpty) {
+                    return const Center(child: Padding(padding: EdgeInsets.all(20), child: Text("No Records Found")));
+                  }
+
+                  return SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: DataTable(
+                      columns: const [
+                        DataColumn(label: Text("Transaction ID")),
+                        DataColumn(label: Text("Type")),
+                        DataColumn(label: Text("Notes / Description")),
+                        DataColumn(label: Text("Order ID")),
+                        DataColumn(label: Text("User ID")),
+                        DataColumn(label: Text("Amount")),
+                        DataColumn(label: Text("Date & Time")),
+                      ],
+                      rows: combinedList.map((item) {
+                        final String category = item['category'];
+                        final bool isIncome = category == 'Payment In';
+                        final bool isOrderExpense = category == 'Order Expense';
+
+                        Color chipColor = Colors.green;
+                        if (isOrderExpense) chipColor = Colors.orange;
+                        if (category == 'General Expense') chipColor = Colors.red;
+
+                        return DataRow(cells: [
+                          DataCell(Text("#${item['id'].toString().substring(0, item['id'].toString().length > 8 ? 8 : item['id'].toString().length)}")),
+                          DataCell(Chip(
+                            label: Text(category, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                            backgroundColor: chipColor,
+                          )),
+                          DataCell(Text(item['notes'])),
+                          DataCell(Text(item['orderId'].isNotEmpty ? "#${item['orderId'].toString().substring(0, item['orderId'].toString().length > 8 ? 8 : item['orderId'].toString().length)}" : "-")),
+                          DataCell(Text(item['userId'].isNotEmpty ? "#${item['userId'].toString().substring(0, item['userId'].toString().length > 8 ? 8 : item['userId'].toString().length)}" : "-")),
+                          DataCell(Text(
+                            "${isIncome ? '+' : '-'}\$${item['amount'].toStringAsFixed(2)}",
+                            style: TextStyle(fontWeight: FontWeight.bold, color: isIncome ? Colors.green : Colors.red),
+                          )),
+                          DataCell(Text(_formatDateTime(item['createdAt']))),
+                        ]);
+                      }).toList(),
                     ),
+                  );
+                },
+              );
+            },
+          )
+        ],
+      ),
+    );
+  }
+
+  // ===========================================================================
+  // 2. ORDERS REPORT SECTION
+  // ===========================================================================
+  Widget _buildOrdersReportSection() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text("Orders Report", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                icon: const Icon(Icons.table_chart, color: Colors.white, size: 18),
+                label: const Text("Export Excel Sheet", style: TextStyle(color: Colors.white)),
+                onPressed: () => _exportOrdersExcel(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance.collection('manual_orders').snapshots(),
+            builder: (context, manualSnap) {
+              final manualDocs = manualSnap.data?.docs ?? [];
+
+              return StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance.collection('users').snapshots(),
+                builder: (context, usersSnap) {
+                  final userDocs = usersSnap.data?.docs ?? [];
+
+                  return FutureBuilder<List<QuerySnapshot>>(
+                    future: Future.wait(userDocs.map((u) => u.reference.collection('orders').get())),
                     builder: (context, ordersSnapshots) {
-                      if (ordersSnapshots.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
+                      if (ordersSnapshots.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
 
-                      for (int i = 0; i < combinedUsers.length; i++) {
-                        int totalOrders = 0;
-                        double totalSpent = 0.0;
+                      List<Map<String, dynamic>> allOrders = [];
 
-                        if (ordersSnapshots.hasData && i < ordersSnapshots.data!.length) {
-                          for (var orderDoc in ordersSnapshots.data![i].docs) {
-                            final oData = orderDoc.data() as Map<String, dynamic>;
-                            Timestamp? createdAt = oData['createdAt'] as Timestamp?;
-
-                            if (_selectedDateRange != null && createdAt != null) {
-                              DateTime oDate = createdAt.toDate();
-                              if (oDate.isBefore(_selectedDateRange!.start) ||
-                                  oDate.isAfter(_selectedDateRange!.end.add(const Duration(days: 1)))) {
-                                continue;
-                              }
-                            }
-
-                            totalOrders++;
-                            totalSpent += (oData['totalPrice'] ?? 0.0).toDouble();
+                      if (ordersSnapshots.hasData) {
+                        for (int i = 0; i < ordersSnapshots.data!.length; i++) {
+                          final userData = userDocs[i].data() as Map<String, dynamic>? ?? {};
+                          for (var oDoc in ordersSnapshots.data![i].docs) {
+                            final orderData = oDoc.data() as Map<String, dynamic>;
+                            orderData['orderId'] = oDoc.id;
+                            orderData['userName'] = userData['name'] ?? 'System User';
+                            orderData['type'] = 'System';
+                            allOrders.add(orderData);
                           }
                         }
-
-                        combinedUsers[i]['totalOrders'] = totalOrders;
-                        combinedUsers[i]['totalSpent'] = totalSpent;
                       }
 
-                      if (combinedUsers.isEmpty) {
-                        return const Padding(
-                          padding: EdgeInsets.all(20.0),
-                          child: Center(child: Text("No users found matching current filters.")),
-                        );
+                      for (var mDoc in manualDocs) {
+                        final mData = mDoc.data() as Map<String, dynamic>;
+                        mData['orderId'] = mDoc.id;
+                        mData['userName'] = mData['customerName'] ?? 'Manual Customer';
+                        mData['type'] = 'Manual';
+                        allOrders.add(mData);
                       }
 
                       return SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: DataTable(
-                          headingRowColor: WidgetStateProperty.all(Colors.grey.shade100),
                           columns: const [
-                            DataColumn(label: Text("User Name", style: TextStyle(fontWeight: FontWeight.bold))),
-                            DataColumn(label: Text("Email / Role", style: TextStyle(fontWeight: FontWeight.bold))),
-                            DataColumn(label: Text("Phone", style: TextStyle(fontWeight: FontWeight.bold))),
-                            DataColumn(label: Text("Addresses", style: TextStyle(fontWeight: FontWeight.bold))),
-                            DataColumn(label: Text("Orders Count", style: TextStyle(fontWeight: FontWeight.bold))),
-                            DataColumn(label: Text("Total Spent", style: TextStyle(fontWeight: FontWeight.bold))),
-                            DataColumn(label: Text("Status", style: TextStyle(fontWeight: FontWeight.bold))),
+                            DataColumn(label: Text("Order ID")),
+                            DataColumn(label: Text("Type")),
+                            DataColumn(label: Text("Customer")),
+                            DataColumn(label: Text("Total Price")),
+                            DataColumn(label: Text("Date & Time")),
+                            DataColumn(label: Text("Status")),
                           ],
-                          rows: combinedUsers.map((user) {
-                            final List addresses = user['addresses'] as List;
-                            final addressText = addresses
-                                .map((a) => "${a['title'] ?? ''}: ${a['details'] ?? ''}")
-                                .join(" | ");
-
-                            return DataRow(
-                              cells: [
-                                DataCell(
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(user['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                                      Text(
-                                        "UID: ${user['uid'].toString().substring(0, user['uid'].toString().length > 6 ? 6 : user['uid'].toString().length)}...",
-                                        style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                DataCell(
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(user['email']),
-                                      Text("Role: ${user['role']}",
-                                          style: const TextStyle(fontSize: 11, color: Colors.purple)),
-                                    ],
-                                  ),
-                                ),
-                                DataCell(Text(user['phone'])),
-                                DataCell(
-                                  SizedBox(
-                                    width: 180,
-                                    child: Text(
-                                      addressText.isEmpty ? "No address registered" : addressText,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(fontSize: 11),
-                                    ),
-                                  ),
-                                ),
-                                DataCell(Center(child: Text("${user['totalOrders']}"))),
-                                DataCell(Text("\$${user['totalSpent'].toStringAsFixed(2)}",
-                                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green))),
-                                DataCell(
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: user['isBlocked'] ? Colors.red.withOpacity(0.1) : Colors.green.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      user['isBlocked'] ? "Blocked" : "Active",
-                                      style: TextStyle(
-                                        color: user['isBlocked'] ? Colors.red : Colors.green,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            );
+                          rows: allOrders.map((order) {
+                            return DataRow(cells: [
+                              DataCell(Text("#${order['orderId'].toString().substring(0, 8)}")),
+                              DataCell(Chip(
+                                label: Text(order['type'], style: const TextStyle(color: Colors.white, fontSize: 10)),
+                                backgroundColor: order['type'] == 'Manual' ? Colors.purple : Colors.blue,
+                              )),
+                              DataCell(Text(order['userName'])),
+                              DataCell(Text("\$${(order['totalPrice'] ?? 0.0).toStringAsFixed(2)}")),
+                              DataCell(Text(_formatDateTime(order['createdAt'] ?? order['date']))),
+                              DataCell(Text(order['status'] ?? 'Pending')),
+                            ]);
                           }).toList(),
                         ),
                       );
@@ -481,512 +440,55 @@ class _ReportWidgetState extends State<ReportWidget> {
                 },
               );
             },
-          ),
+          )
         ],
       ),
     );
   }
 
   // ===========================================================================
-  // 3. ORDERS REPORT SECTION
+  // 3. USERS REPORT SECTION
   // ===========================================================================
-  Widget _buildOrdersReportSection() {
+  Widget _buildUsersReportSection() {
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Comprehensive Orders Report",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textDark,
-                    ),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    "Track active, pending, completed and cancelled orders",
-                    style: TextStyle(color: AppColors.textMuted, fontSize: 12),
-                  ),
-                ],
-              ),
+              const Text("Users Report", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.redAccent,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                icon: const Icon(Icons.picture_as_pdf, color: Colors.white, size: 18),
-                label: const Text("Export PDF", style: TextStyle(color: Colors.white)),
-                onPressed: () => _generateOrdersPdfReport(),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                icon: const Icon(Icons.table_chart, color: Colors.white, size: 18),
+                label: const Text("Export Excel Sheet", style: TextStyle(color: Colors.white)),
+                onPressed: () => _exportUsersExcel(),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _buildStatusChip("ALL", "All Orders", Colors.grey),
-              _buildStatusChip("PENDING", "Pending", Colors.orange),
-              _buildStatusChip("IN_PROGRESS", "In Progress / Active", Colors.blue),
-              _buildStatusChip("COMPLETED", "Completed", Colors.green),
-              _buildStatusChip("CANCELLED", "Cancelled", Colors.red),
-            ],
-          ),
-          const SizedBox(height: 16),
-          const Divider(),
           StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance.collection('users').snapshots(),
-            builder: (context, usersSnap) {
-              if (usersSnap.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+              final docs = snapshot.data!.docs;
 
-              final userDocs = usersSnap.data?.docs ?? [];
-
-              return FutureBuilder<List<QuerySnapshot>>(
-                future: Future.wait(
-                  userDocs.map((u) => u.reference.collection('orders').get()),
-                ),
-                builder: (context, ordersSnapshots) {
-                  if (ordersSnapshots.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-
-                  List<Map<String, dynamic>> allOrders = [];
-
-                  if (ordersSnapshots.hasData) {
-                    for (int i = 0; i < ordersSnapshots.data!.length; i++) {
-                      final uDoc = userDocs[i];
-                      final userData = uDoc.data() as Map<String, dynamic>? ?? {};
-                      final userName = userData['name'] ?? 'Unknown User';
-                      final userPhone = userData['phone'] ?? 'N/A';
-
-                      for (var oDoc in ordersSnapshots.data![i].docs) {
-                        final orderData = oDoc.data() as Map<String, dynamic>;
-                        orderData['orderId'] = oDoc.id;
-                        orderData['userName'] = userName;
-                        orderData['userPhone'] = userPhone;
-                        orderData['userId'] = uDoc.id;
-                        allOrders.add(orderData);
-                      }
-                    }
-                  }
-
-                  if (_selectedDateRange != null) {
-                    allOrders = allOrders.where((order) {
-                      Timestamp? createdAt = order['createdAt'] as Timestamp?;
-                      if (createdAt == null) return false;
-                      DateTime oDate = createdAt.toDate();
-                      return !oDate.isBefore(_selectedDateRange!.start) &&
-                          !oDate.isAfter(_selectedDateRange!.end.add(const Duration(days: 1)));
-                    }).toList();
-                  }
-
-                  if (_selectedOrderStatusFilter != "ALL") {
-                    allOrders = allOrders.where((order) {
-                      final st = (order['status'] ?? '').toString().toUpperCase();
-                      if (_selectedOrderStatusFilter == "PENDING") {
-                        return st == 'PENDING';
-                      } else if (_selectedOrderStatusFilter == "IN_PROGRESS") {
-                        return st != 'CANCELLED' && st != 'COMPLETED' && st != 'DELIVERED' && st != 'PENDING';
-                      } else if (_selectedOrderStatusFilter == "COMPLETED") {
-                        return st == 'COMPLETED' || st == 'DELIVERED';
-                      } else if (_selectedOrderStatusFilter == "CANCELLED") {
-                        return st == 'CANCELLED';
-                      }
-                      return true;
-                    }).toList();
-                  }
-
-                  if (_searchQuery.isNotEmpty) {
-                    allOrders = allOrders.where((o) {
-                      final orderId = o['orderId'].toString().toLowerCase();
-                      final userName = o['userName'].toString().toLowerCase();
-                      final userPhone = o['userPhone'].toString().toLowerCase();
-                      return orderId.contains(_searchQuery) ||
-                          userName.contains(_searchQuery) ||
-                          userPhone.contains(_searchQuery);
-                    }).toList();
-                  }
-
-                  allOrders.sort((a, b) {
-                    Timestamp? tA = a['createdAt'] as Timestamp?;
-                    Timestamp? tB = b['createdAt'] as Timestamp?;
-                    if (tA == null) return 1;
-                    if (tB == null) return -1;
-                    return tB.compareTo(tA);
-                  });
-
-                  if (allOrders.isEmpty) {
-                    return const Padding(
-                      padding: EdgeInsets.all(20.0),
-                      child: Center(child: Text("No orders found matching current status/filters.")),
-                    );
-                  }
-
-                  return SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: DataTable(
-                      headingRowColor: WidgetStateProperty.all(Colors.grey.shade100),
-                      columns: const [
-                        DataColumn(label: Text("Order ID", style: TextStyle(fontWeight: FontWeight.bold))),
-                        DataColumn(label: Text("Customer", style: TextStyle(fontWeight: FontWeight.bold))),
-                        DataColumn(label: Text("Date", style: TextStyle(fontWeight: FontWeight.bold))),
-                        DataColumn(label: Text("Items", style: TextStyle(fontWeight: FontWeight.bold))),
-                        DataColumn(label: Text("Total Price", style: TextStyle(fontWeight: FontWeight.bold))),
-                        DataColumn(label: Text("Status", style: TextStyle(fontWeight: FontWeight.bold))),
-                      ],
-                      rows: allOrders.map((order) {
-                        final orderId = order['orderId'] ?? '';
-                        final userName = order['userName'] ?? 'N/A';
-                        final userPhone = order['userPhone'] ?? 'N/A';
-                        final status = (order['status'] ?? 'Pending').toString();
-                        final totalPrice = (order['totalPrice'] ?? 0.0).toDouble();
-                        final List items = order['items'] is List ? (order['items'] as List) : [];
-
-                        Timestamp? createdAt = order['createdAt'] as Timestamp?;
-                        final dateStr = createdAt != null
-                            ? DateFormat('yyyy/MM/dd hh:mm a').format(createdAt.toDate())
-                            : 'N/A';
-
-                        return DataRow(
-                          cells: [
-                            DataCell(
-                              Text(
-                                "#${orderId.length > 8 ? orderId.substring(0, 8) : orderId}",
-                                style: const TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                            DataCell(
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(userName, style: const TextStyle(fontWeight: FontWeight.w600)),
-                                  Text(userPhone, style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
-                                ],
-                              ),
-                            ),
-                            DataCell(Text(dateStr, style: const TextStyle(fontSize: 12))),
-                            DataCell(
-                              Text("${items.length} item(s)", style: const TextStyle(fontWeight: FontWeight.w500)),
-                            ),
-                            DataCell(
-                              Text(
-                                "\$${totalPrice.toStringAsFixed(2)}",
-                                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green),
-                              ),
-                            ),
-                            DataCell(
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: _getOrderStatusColor(status).withOpacity(0.12),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  status.toUpperCase(),
-                                  style: TextStyle(
-                                    color: _getOrderStatusColor(status),
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 11,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        );
-                      }).toList(),
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ===========================================================================
-  // 4. PAYMENTS REPORT SECTION (الكولكشن الجديد)
-  // ===========================================================================
-  Widget _buildPaymentsReportSection() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Transactions & Payments Report",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textDark,
-                    ),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    "Real-time financial transactions log from 'payment' collection",
-                    style: TextStyle(color: AppColors.textMuted, fontSize: 12),
-                  ),
+              return DataTable(
+                columns: const [
+                  DataColumn(label: Text("Name")),
+                  DataColumn(label: Text("Email")),
+                  DataColumn(label: Text("Phone")),
                 ],
-              ),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.redAccent,
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                icon: const Icon(Icons.picture_as_pdf, color: Colors.white, size: 10),
-                label: const Text("Export PDF", style: TextStyle(color: Colors.white,fontSize: 10)),
-                onPressed: () => _generatePaymentsPdfReport(),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          const Divider(),
-
-          StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance.collection('payments').snapshots(),
-            builder: (context, paymentSnap) {
-              if (paymentSnap.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              final paymentDocs = paymentSnap.data?.docs ?? [];
-
-              return StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance.collection('users').snapshots(),
-                builder: (context, usersSnap) {
-                  if (usersSnap.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-
-                  final userDocs = usersSnap.data?.docs ?? [];
-
-                  List<Map<String, dynamic>> paymentsList = [];
-                  double totalCollectedAmount = 0.0;
-
-                  for (var pDoc in paymentDocs) {
-                    final data = pDoc.data() as Map<String, dynamic>;
-                    final userId = data['userId'] ?? '';
-
-                    final userMatch = userDocs.cast<QueryDocumentSnapshot?>().firstWhere(
-                          (u) => u?.id == userId,
-                      orElse: () => null,
-                    );
-
-                    final userData = userMatch != null
-                        ? (userMatch.data() as Map<String, dynamic>? ?? {})
-                        : <String, dynamic>{};
-
-                    paymentsList.add({
-                      'paymentId': pDoc.id,
-                      'amount': (data['amount'] ?? 0).toDouble(),
-                      'notes': data['notes'] ?? 'N/A',
-                      'orderId': data['orderId'] ?? 'N/A',
-                      'paymentDate': data['paymentDate'] as Timestamp?,
-                      'userId': userId,
-                      'userName': userData['name'] ?? 'Unknown User',
-                      'userPhone': userData['phone'] ?? 'N/A',
-                    });
-                  }
-
-                  // 1. الفلترة بالتاريخ
-                  if (_selectedDateRange != null) {
-                    paymentsList = paymentsList.where((p) {
-                      Timestamp? pDate = p['paymentDate'];
-                      if (pDate == null) return false;
-                      DateTime date = pDate.toDate();
-                      return !date.isBefore(_selectedDateRange!.start) &&
-                          !date.isAfter(_selectedDateRange!.end.add(const Duration(days: 1)));
-                    }).toList();
-                  }
-
-                  // 2. الفلترة بالبحث
-                  if (_searchQuery.isNotEmpty) {
-                    paymentsList = paymentsList.where((p) {
-                      final orderId = p['orderId'].toString().toLowerCase();
-                      final notes = p['notes'].toString().toLowerCase();
-                      final userName = p['userName'].toString().toLowerCase();
-                      final userPhone = p['userPhone'].toString().toLowerCase();
-                      return orderId.contains(_searchQuery) ||
-                          notes.contains(_searchQuery) ||
-                          userName.contains(_searchQuery) ||
-                          userPhone.contains(_searchQuery);
-                    }).toList();
-                  }
-
-                  // ترتيب التواريخ من الأحدث للأقدم
-                  paymentsList.sort((a, b) {
-                    Timestamp? tA = a['paymentDate'];
-                    Timestamp? tB = b['paymentDate'];
-                    if (tA == null) return 1;
-                    if (tB == null) return -1;
-                    return tB.compareTo(tA);
-                  });
-
-                  for (var item in paymentsList) {
-                    totalCollectedAmount += item['amount'];
-                  }
-
-                  if (paymentsList.isEmpty) {
-                    return const Padding(
-                      padding: EdgeInsets.all(20.0),
-                      child: Center(child: Text("No payments found matching current filters.")),
-                    );
-                  }
-
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Total Revenue Card
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        margin: const EdgeInsets.only(bottom: 16),
-                        decoration: BoxDecoration(
-                          color: Colors.green.shade50,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.green.shade200),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.account_balance_wallet, color: Colors.green),
-                            const SizedBox(width: 8),
-                            Text(
-                              "Total Processed Revenue: \$${totalCollectedAmount.toStringAsFixed(2)}",
-                              style: const TextStyle(
-                                color: Colors.green,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: DataTable(
-                          headingRowColor: WidgetStateProperty.all(Colors.grey.shade100),
-                          columns: const [
-                            DataColumn(label: Text("Payment ID", style: TextStyle(fontWeight: FontWeight.bold))),
-                            DataColumn(label: Text("Order ID", style: TextStyle(fontWeight: FontWeight.bold))),
-                            DataColumn(label: Text("Customer", style: TextStyle(fontWeight: FontWeight.bold))),
-                            DataColumn(label: Text("Amount", style: TextStyle(fontWeight: FontWeight.bold))),
-                            DataColumn(label: Text("Method / Notes", style: TextStyle(fontWeight: FontWeight.bold))),
-                            DataColumn(label: Text("Payment Date", style: TextStyle(fontWeight: FontWeight.bold))),
-                          ],
-                          rows: paymentsList.map((p) {
-                            final paymentId = p['paymentId'];
-                            final orderId = p['orderId'];
-                            final Timestamp? date = p['paymentDate'];
-                            final dateStr = date != null
-                                ? DateFormat('yyyy/MM/dd hh:mm a').format(date.toDate())
-                                : 'N/A';
-
-                            return DataRow(
-                              cells: [
-                                DataCell(
-                                  Text(
-                                    "#${paymentId.length > 8 ? paymentId.substring(0, 8) : paymentId}",
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                                  ),
-                                ),
-                                DataCell(
-                                  Text(
-                                    "#${orderId.length > 8 ? orderId.substring(0, 8) : orderId}",
-                                    style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.w500),
-                                  ),
-                                ),
-                                DataCell(
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(p['userName'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                                      Text(p['userPhone'], style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
-                                    ],
-                                  ),
-                                ),
-                                DataCell(
-                                  Text(
-                                    "\$${p['amount'].toStringAsFixed(2)}",
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.green,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ),
-                                DataCell(
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: Colors.blue.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      p['notes'],
-                                      style: const TextStyle(
-                                        color: Colors.blue,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                DataCell(Text(dateStr, style: const TextStyle(fontSize: 12))),
-                              ],
-                            );
-                          }).toList(),
-                        ),
-                      ),
-                    ],
-                  );
-                },
+                rows: docs.map((doc) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  return DataRow(cells: [
+                    DataCell(Text(data['name'] ?? 'N/A')),
+                    DataCell(Text(data['email'] ?? 'N/A')),
+                    DataCell(Text(data['phone'] ?? 'N/A')),
+                  ]);
+                }).toList(),
               );
             },
           ),
@@ -995,347 +497,180 @@ class _ReportWidgetState extends State<ReportWidget> {
     );
   }
 
-  Widget _buildStatusChip(String key, String label, Color color) {
-    final bool isSelected = _selectedOrderStatusFilter == key;
-    return ChoiceChip(
-      label: Text(label),
-      selected: isSelected,
-      selectedColor: color.withOpacity(0.2),
-      labelStyle: TextStyle(
-        color: isSelected ? color : Colors.black87,
-        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+  // ===========================================================================
+  // ADD EXTERNAL EXPENSE DIALOG (مطابق تماماً للهيكلة المتفق عليها)
+  // ===========================================================================
+  void _showAddExpenseDialog() {
+    final notesController = TextEditingController();
+    final amountController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Add General Expense"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: notesController, decoration: const InputDecoration(labelText: "Notes / Description (e.g. سيرفرات / شحن)")),
+            TextField(controller: amountController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: "Amount")),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+          ElevatedButton(
+            onPressed: () async {
+              if (notesController.text.isNotEmpty && amountController.text.isNotEmpty) {
+                final amount = int.tryParse(amountController.text) ?? double.tryParse(amountController.text) ?? 0;
+
+                await FirebaseFirestore.instance.collection('expenses').add({
+                  'amount': amount,
+                  'notes': notesController.text.trim(),
+                  'createdAt': FieldValue.serverTimestamp(),
+                  'orderId': null, // مصروف عام غير مرتبط بأوردر
+                  'userId': null,
+                });
+
+                Navigator.pop(ctx);
+              }
+            },
+            child: const Text("Save Expense"),
+          ),
+        ],
       ),
-      onSelected: (bool selected) {
-        if (selected) {
-          setState(() => _selectedOrderStatusFilter = key);
-        }
-      },
     );
   }
 
-  Color _getOrderStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'cancelled':
-        return Colors.red;
-      case 'completed':
-      case 'delivered':
-        return Colors.green;
-      case 'pending':
-        return Colors.orange;
-      default:
-        return Colors.blue;
+  // ===========================================================================
+  // EXCEL EXPORT ENGINE
+  // ===========================================================================
+  void _downloadExcelSheet(Excel excel, String fileName) {
+    List<int>? fileBytes = excel.save();
+    if (fileBytes != null && kIsWeb) {
+      final blob = html.Blob([fileBytes], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      final anchor = html.AnchorElement(href: url)
+        ..setAttribute("download", "$fileName.xlsx")
+        ..click();
+      html.Url.revokeObjectUrl(url);
     }
   }
 
-  // ===========================================================================
-  // 5. PDF EXPORT FUNCTIONS
-  // ===========================================================================
+  Future<void> _exportFinancialExcel() async {
+    var excel = Excel.createExcel();
+    Sheet sheetObject = excel['Financial_Ledger'];
+    excel.delete('Sheet1');
 
-  Future<void> _generatePaymentsPdfReport() async {
-    final pdf = pw.Document();
-    final paymentSnap = await FirebaseFirestore.instance.collection('payment').get();
-    final usersSnap = await FirebaseFirestore.instance.collection('users').get();
+    sheetObject.appendRow([
+      TextCellValue('Transaction ID'),
+      TextCellValue('Category'),
+      TextCellValue('Notes'),
+      TextCellValue('Order ID'),
+      TextCellValue('User ID'),
+      TextCellValue('Amount'),
+      TextCellValue('Date & Time'),
+    ]);
 
-    List<Map<String, dynamic>> exportData = [];
-    double totalSum = 0.0;
-
-    for (var pDoc in paymentSnap.docs) {
+    final paymentsSnap = await FirebaseFirestore.instance.collection('payments').get();
+    for (var pDoc in paymentsSnap.docs) {
       final data = pDoc.data();
-      final userId = data['userId'] ?? '';
-      Timestamp? date = data['paymentDate'] as Timestamp?;
-
-      if (_selectedDateRange != null && date != null) {
-        DateTime pDate = date.toDate();
-        if (pDate.isBefore(_selectedDateRange!.start) ||
-            pDate.isAfter(_selectedDateRange!.end.add(const Duration(days: 1)))) {
-          continue;
-        }
-      }
-
-      final userMatch = usersSnap.docs.cast<QueryDocumentSnapshot?>().firstWhere(
-            (u) => u?.id == userId,
-        orElse: () => null,
-      );
-
-      final userData = userMatch != null
-          ? (userMatch.data() as Map<String, dynamic>? ?? {})
-          : <String, dynamic>{};
-
-      final amount = (data['amount'] ?? 0).toDouble();
-      totalSum += amount;
-
-      exportData.add({
-        'id': pDoc.id.substring(0, pDoc.id.length > 8 ? 8 : pDoc.id.length),
-        'orderId': (data['orderId'] ?? 'N/A').toString(),
-        'customer': userData['name'] ?? 'Unknown User',
-        'amount': amount,
-        'notes': data['notes'] ?? 'N/A',
-        'date': date != null ? DateFormat('yyyy-MM-dd HH:mm').format(date.toDate()) : 'N/A',
-      });
+      sheetObject.appendRow([
+        TextCellValue(pDoc.id),
+        TextCellValue('Payment In'),
+        TextCellValue(data['notes'] ?? 'Order Payment'),
+        TextCellValue(data['orderId'] ?? ''),
+        TextCellValue(data['userId'] ?? ''),
+        DoubleCellValue((data['amount'] ?? 0.0).toDouble()),
+        TextCellValue(_formatDateTime(data['createdAt'] ?? data['timestamp'] ?? data['date'])),
+      ]);
     }
 
-    pdf.addPage(
-      pw.Page(
-        pageFormat: PdfPageFormat.a4,
-        build: (pw.Context context) {
-          return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Header(
-                level: 0,
-                child: pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text("Payments & Revenue Financial Report",
-                        style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
-                    pw.Text(DateFormat('yyyy-MM-dd').format(DateTime.now())),
-                  ],
-                ),
-              ),
-              pw.SizedBox(height: 10),
-              pw.Text("Total Revenue: \$${totalSum.toStringAsFixed(2)}",
-                  style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
-              pw.SizedBox(height: 12),
-              pw.Table.fromTextArray(
-                headers: ['Payment ID', 'Order ID', 'Customer', 'Amount', 'Method/Notes', 'Date'],
-                data: exportData
-                    .map((p) => [
-                  p['id'],
-                  p['orderId'].length > 8 ? p['orderId'].substring(0, 8) : p['orderId'],
-                  p['customer'],
-                  '\$${p['amount'].toStringAsFixed(2)}',
-                  p['notes'],
-                  p['date'],
-                ])
-                    .toList(),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-
-    final pdfBytes = await pdf.save();
-
-    if (kIsWeb) {
-      await Printing.sharePdf(
-        bytes: pdfBytes,
-        filename: 'Payments_Report_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf',
-      );
-    } else {
-      await Printing.layoutPdf(
-        onLayout: (PdfPageFormat format) async => pdfBytes,
-        name: 'Payments_Report_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf',
-      );
+    final expensesSnap = await FirebaseFirestore.instance.collection('expenses').get();
+    for (var eDoc in expensesSnap.docs) {
+      final data = eDoc.data();
+      final String orderId = data['orderId'] ?? '';
+      sheetObject.appendRow([
+        TextCellValue(eDoc.id),
+        TextCellValue(orderId.isNotEmpty ? 'Order Expense' : 'General Expense'),
+        TextCellValue(data['notes'] ?? data['title'] ?? 'Expense'),
+        TextCellValue(orderId),
+        TextCellValue(data['userId'] ?? ''),
+        DoubleCellValue( (data['amount'] ?? 0.0).toDouble()*-1),
+        TextCellValue(_formatDateTime(data['createdAt'] ?? data['date'])),
+      ]);
     }
+
+    _downloadExcelSheet(excel, 'Financial_Ledger_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}');
   }
 
-  Future<void> _generateOrdersPdfReport() async {
-    final pdf = pw.Document();
+  Future<void> _exportOrdersExcel() async {
+    var excel = Excel.createExcel();
+    Sheet sheetObject = excel['Orders_Report'];
+    excel.delete('Sheet1');
+
+    sheetObject.appendRow([
+      TextCellValue('Order ID'),
+      TextCellValue('Type'),
+      TextCellValue('Customer Name'),
+      TextCellValue('Total Price'),
+      TextCellValue('Date & Time'),
+      TextCellValue('Status'),
+    ]);
+
     final usersSnap = await FirebaseFirestore.instance.collection('users').get();
-
-    List<Map<String, dynamic>> exportOrders = [];
-
     for (var uDoc in usersSnap.docs) {
-      final userData = uDoc.data();
-      final userName = userData['name'] ?? 'Unknown';
-
       final ordersSnap = await uDoc.reference.collection('orders').get();
-
       for (var oDoc in ordersSnap.docs) {
         final data = oDoc.data();
-        final status = (data['status'] ?? 'Pending').toString();
-        Timestamp? createdAt = data['createdAt'] as Timestamp?;
-
-        if (_selectedDateRange != null && createdAt != null) {
-          DateTime oDate = createdAt.toDate();
-          if (oDate.isBefore(_selectedDateRange!.start) ||
-              oDate.isAfter(_selectedDateRange!.end.add(const Duration(days: 1)))) {
-            continue;
-          }
-        }
-
-        final stUpper = status.toUpperCase();
-        if (_selectedOrderStatusFilter == "PENDING" && stUpper != 'PENDING') continue;
-        if (_selectedOrderStatusFilter == "IN_PROGRESS" &&
-            (stUpper == 'CANCELLED' || stUpper == 'COMPLETED' || stUpper == 'DELIVERED' || stUpper == 'PENDING')) continue;
-        if (_selectedOrderStatusFilter == "COMPLETED" && (stUpper != 'COMPLETED' && stUpper != 'DELIVERED')) continue;
-        if (_selectedOrderStatusFilter == "CANCELLED" && stUpper != 'CANCELLED') continue;
-
-        exportOrders.add({
-          'id': oDoc.id.substring(0, oDoc.id.length > 8 ? 8 : oDoc.id.length),
-          'customer': userName,
-          'date': createdAt != null ? DateFormat('yyyy-MM-dd').format(createdAt.toDate()) : 'N/A',
-          'itemsCount': data['items'] is List ? (data['items'] as List).length : 0,
-          'price': (data['totalPrice'] ?? 0.0).toDouble(),
-          'status': status,
-        });
+        sheetObject.appendRow([
+          TextCellValue(oDoc.id),
+          TextCellValue('System'),
+          TextCellValue(uDoc.data()['name'] ?? 'N/A'),
+          DoubleCellValue((data['totalPrice'] ?? 0.0).toDouble()),
+          TextCellValue(_formatDateTime(data['createdAt'] ?? data['date'])),
+          TextCellValue(data['status'] ?? 'Pending'),
+        ]);
       }
     }
 
-    pdf.addPage(
-      pw.Page(
-        pageFormat: PdfPageFormat.a4,
-        build: (pw.Context context) {
-          return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Header(
-                level: 0,
-                child: pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text("Orders Detailed Report ($_selectedOrderStatusFilter)",
-                        style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
-                    pw.Text(DateFormat('yyyy-MM-dd').format(DateTime.now())),
-                  ],
-                ),
-              ),
-              pw.SizedBox(height: 12),
-              pw.Table.fromTextArray(
-                headers: ['Order ID', 'Customer', 'Date', 'Items', 'Total Price', 'Status'],
-                data: exportOrders
-                    .map((o) => [
-                  o['id'],
-                  o['customer'],
-                  o['date'],
-                  '${o['itemsCount']}',
-                  '\$${o['price'].toStringAsFixed(2)}',
-                  o['status'],
-                ])
-                    .toList(),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-
-    final pdfBytes = await pdf.save();
-
-    if (kIsWeb) {
-      await Printing.sharePdf(
-        bytes: pdfBytes,
-        filename: 'Orders_Report_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf',
-      );
-    } else {
-      await Printing.layoutPdf(
-        onLayout: (PdfPageFormat format) async => pdfBytes,
-        name: 'Orders_Report_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf',
-      );
+    final manualSnap = await FirebaseFirestore.instance.collection('manual_orders').get();
+    for (var mDoc in manualSnap.docs) {
+      final data = mDoc.data();
+      sheetObject.appendRow([
+        TextCellValue(mDoc.id),
+        TextCellValue('Manual'),
+        TextCellValue(data['customerName'] ?? 'Manual Customer'),
+        DoubleCellValue((data['totalPrice'] ?? 0.0).toDouble()),
+        TextCellValue(_formatDateTime(data['createdAt'] ?? data['date'])),
+        TextCellValue(data['status'] ?? 'Completed'),
+      ]);
     }
+
+    _downloadExcelSheet(excel, 'Orders_Report_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}');
   }
 
-  Future<void> _generateUsersPdfReport() async {
-    final pdf = pw.Document();
+  Future<void> _exportUsersExcel() async {
+    var excel = Excel.createExcel();
+    Sheet sheetObject = excel['Users_Report'];
+    excel.delete('Sheet1');
 
-    final userAuthSnap = await FirebaseFirestore.instance
-        .collection('user')
-        .where('role', isEqualTo: 'user')
-        .get();
+    sheetObject.appendRow([
+      TextCellValue('User ID'),
+      TextCellValue('Name'),
+      TextCellValue('Email'),
+      TextCellValue('Phone'),
+    ]);
 
-    final usersDetailsSnap = await FirebaseFirestore.instance.collection('users').get();
-
-    List<Map<String, dynamic>> exportData = [];
-
-    for (var authDoc in userAuthSnap.docs) {
-      final authData = authDoc.data();
-      final uid = authDoc.id;
-
-      final detailMatch = usersDetailsSnap.docs.cast<QueryDocumentSnapshot?>().firstWhere(
-            (d) => d?.id == uid,
-        orElse: () => null,
-      );
-
-      final detailsData = detailMatch != null
-          ? (detailMatch.data() as Map<String, dynamic>? ?? {})
-          : <String, dynamic>{};
-
-      final ordersSnap = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .collection('orders')
-          .get();
-
-      int totalOrders = 0;
-      double totalSpent = 0.0;
-
-      for (var oDoc in ordersSnap.docs) {
-        final oData = oDoc.data();
-        Timestamp? createdAt = oData['createdAt'] as Timestamp?;
-
-        if (_selectedDateRange != null && createdAt != null) {
-          DateTime oDate = createdAt.toDate();
-          if (oDate.isBefore(_selectedDateRange!.start) ||
-              oDate.isAfter(_selectedDateRange!.end.add(const Duration(days: 1)))) {
-            continue;
-          }
-        }
-
-        totalOrders++;
-        totalSpent += (oData['totalPrice'] ?? 0.0).toDouble();
-      }
-
-      exportData.add({
-        'name': authData['name'] ?? detailsData['name'] ?? 'N/A',
-        'email': authData['email'] ?? 'N/A',
-        'phone': detailsData['phone'] ?? 'N/A',
-        'orders': totalOrders,
-        'spent': totalSpent,
-        'status': authData['isBlocked'] == true ? "Blocked" : "Active",
-      });
+    final usersSnap = await FirebaseFirestore.instance.collection('users').get();
+    for (var doc in usersSnap.docs) {
+      final data = doc.data();
+      sheetObject.appendRow([
+        TextCellValue(doc.id),
+        TextCellValue(data['name'] ?? 'N/A'),
+        TextCellValue(data['email'] ?? 'N/A'),
+        TextCellValue(data['phone'] ?? 'N/A'),
+      ]);
     }
 
-    pdf.addPage(
-      pw.Page(
-        pageFormat: PdfPageFormat.a4,
-        build: (pw.Context context) {
-          return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Header(
-                level: 0,
-                child: pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text("Customers System Report (Role: User)",
-                        style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
-                    pw.Text(DateFormat('yyyy-MM-dd').format(DateTime.now())),
-                  ],
-                ),
-              ),
-              pw.SizedBox(height: 12),
-              pw.Table.fromTextArray(
-                headers: ['Name', 'Email', 'Phone', 'Orders', 'Total Spent', 'Status'],
-                data: exportData
-                    .map((u) => [
-                  u['name'],
-                  u['email'],
-                  u['phone'],
-                  '${u['orders']}',
-                  '\$${u['spent'].toStringAsFixed(2)}',
-                  u['status'],
-                ])
-                    .toList(),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-
-    final pdfBytes = await pdf.save();
-
-    if (kIsWeb) {
-      await Printing.sharePdf(
-        bytes: pdfBytes,
-        filename: 'Users_Report_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf',
-      );
-    } else {
-      await Printing.layoutPdf(
-        onLayout: (PdfPageFormat format) async => pdfBytes,
-        name: 'Users_Report_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf',
-      );
-    }
+    _downloadExcelSheet(excel, 'Users_Report_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}');
   }
 }

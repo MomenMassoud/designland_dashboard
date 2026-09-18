@@ -18,6 +18,8 @@ Future<List<String>>GetPermisionUser()async{
           "users",
           "about",
           "staff",
+          "banner",
+          'promo'
         ];
       }
       else{

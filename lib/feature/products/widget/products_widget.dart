@@ -10,6 +10,27 @@ import 'package:dashboard_desginland/model/product_model.dart';
 
 import '../../../Core/server/get_permision.dart';
 
+// نموذج يمثل الحقل المخصص للمنتج
+class DynamicFieldModel {
+  String name;
+  String type; // 'text', 'number', 'drive_link'
+  bool isRequired;
+
+  DynamicFieldModel({
+    required this.name,
+    this.type = 'text',
+    this.isRequired = true,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'name': name,
+      'type': type,
+      'isRequired': isRequired,
+    };
+  }
+}
+
 class ProductsWidget extends StatefulWidget {
   const ProductsWidget({super.key});
 
@@ -175,18 +196,12 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                   ? priceVal.toDouble()
                                   : 0.0;
 
-                              final discountVal =
-                              data['discountPercentage'];
-                              final int parsedDiscount =
-                              (discountVal is num)
-                                  ? discountVal.toInt()
-                                  : 0;
-
                               final product = ProductModel(
                                 doc: doc.id,
                                 title: data['title'] ?? '',
                                 price: parsedPrice,
-                                discountPercentage: data['discountPercentage']??0,
+                                discountPercentage:
+                                data['discountPercentage'] ?? 0,
                                 discountUntil:
                                 discountUntilTimestamp?.toDate(),
                                 avgRate: calculatedAvg,
@@ -576,6 +591,9 @@ class _ProductsWidgetState extends State<ProductsWidget> {
     List<Uint8List> imagesBytes = [];
     bool isSaving = false;
 
+    // قائمة الحقول المخصصة
+    List<DynamicFieldModel> customFields = [];
+
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -590,7 +608,7 @@ class _ProductsWidgetState extends State<ProductsWidget> {
               builder: (context, setPanelState) {
                 final double panelWidth =
                 MediaQuery.of(context).size.width > 600
-                    ? 480
+                    ? 540
                     : MediaQuery.of(context).size.width;
 
                 return Container(
@@ -791,6 +809,167 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                         : null,
                                   ),
                                   const SizedBox(height: 20),
+
+                                  // ==================== قسم الحقول المخصصة (Required Order Fields) ====================
+                                  Row(
+                                    mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      const Text(
+                                        "Required Order Fields",
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.textDark,
+                                        ),
+                                      ),
+                                      TextButton.icon(
+                                        onPressed: () {
+                                          setPanelState(() {
+                                            customFields.add(DynamicFieldModel(
+                                                name: ''));
+                                          });
+                                        },
+                                        icon: const Icon(Icons.add, size: 18),
+                                        label: const Text("Add Field"),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  if (customFields.isEmpty)
+                                    Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade100,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Text(
+                                        "No custom fields added. Click 'Add Field' to define required inputs for this product.",
+                                        style: TextStyle(
+                                            color: AppColors.textMuted,
+                                            fontSize: 12),
+                                      ),
+                                    )
+                                  else
+                                    ListView.builder(
+                                      shrinkWrap: true,
+                                      physics: const NeverScrollableScrollPhysics(),
+                                      itemCount: customFields.length,
+                                      itemBuilder: (context, fIndex) {
+                                        final field = customFields[fIndex];
+                                        return Container(
+                                          margin:
+                                          const EdgeInsets.only(bottom: 12),
+                                          padding: const EdgeInsets.all(12),
+                                          decoration: BoxDecoration(
+                                            color: Colors.grey.shade50,
+                                            borderRadius:
+                                            BorderRadius.circular(10),
+                                            border: Border.all(
+                                                color: Colors.grey.shade300),
+                                          ),
+                                          child: Column(
+                                            crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: TextFormField(
+                                                      initialValue: field.name,
+                                                      decoration:
+                                                      const InputDecoration(
+                                                        labelText: "Field Name / Title",
+                                                        hintText: "e.g. Project Details, Drive Link",
+                                                        isDense: true,
+                                                      ),
+                                                      onChanged: (val) =>
+                                                      field.name = val.trim(),
+                                                      validator: (v) => (v ==
+                                                          null ||
+                                                          v.trim().isEmpty)
+                                                          ? "Enter field name"
+                                                          : null,
+                                                    ),
+                                                  ),
+                                                  IconButton(
+                                                    icon: const Icon(
+                                                        Icons.delete_outline,
+                                                        color: Colors.redAccent,
+                                                        size: 20),
+                                                    onPressed: () {
+                                                      setPanelState(() {
+                                                        customFields
+                                                            .removeAt(fIndex);
+                                                      });
+                                                    },
+                                                  )
+                                                ],
+                                              ),
+                                              const SizedBox(height: 10),
+                                              Row(
+                                                children: [
+                                                  Expanded(
+                                                    child:
+                                                    DropdownButtonFormField<
+                                                        String>(
+                                                      value: field.type,
+                                                      decoration:
+                                                      const InputDecoration(
+                                                        labelText: "Field Type",
+                                                        isDense: true,
+                                                      ),
+                                                      items: const [
+                                                        DropdownMenuItem(
+                                                          value: 'text',
+                                                          child: Text("Text / كلام"),
+                                                        ),
+                                                        DropdownMenuItem(
+                                                          value: 'number',
+                                                          child: Text("Number / أرقام"),
+                                                        ),
+                                                        DropdownMenuItem(
+                                                          value: 'drive_link',
+                                                          child: Text("Google Drive Link / لينك درايف"),
+                                                        ),
+                                                      ],
+                                                      onChanged: (val) {
+                                                        if (val != null) {
+                                                          setPanelState(() {
+                                                            field.type = val;
+                                                          });
+                                                        }
+                                                      },
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 12),
+                                                  Row(
+                                                    children: [
+                                                      Checkbox(
+                                                        value: field.isRequired,
+                                                        onChanged: (val) {
+                                                          setPanelState(() {
+                                                            field.isRequired =
+                                                                val ?? true;
+                                                          });
+                                                        },
+                                                      ),
+                                                      const Text("Required",
+                                                          style: TextStyle(
+                                                              fontSize: 12)),
+                                                    ],
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  const SizedBox(height: 20),
+
+                                  // ==================== صور المنتج ====================
                                   const Text(
                                     "Product Images",
                                     style: TextStyle(
@@ -808,7 +987,8 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                     ),
                                     onPressed: () async {
                                       try {
-                                        final ImagePicker picker = ImagePicker();
+                                        final ImagePicker picker =
+                                        ImagePicker();
                                         final List<XFile> images =
                                         await picker.pickMultiImage(
                                           imageQuality: 85,
@@ -817,7 +997,8 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                         if (images.isNotEmpty) {
                                           List<Uint8List> bytesList = [];
                                           for (var img in images) {
-                                            bytesList.add(await img.readAsBytes());
+                                            bytesList
+                                                .add(await img.readAsBytes());
                                           }
                                           setPanelState(() {
                                             pickedImages = images;
@@ -828,7 +1009,8 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                         debugPrint("Error picking images: $e");
                                       }
                                     },
-                                    icon: const Icon(Icons.add_a_photo_outlined),
+                                    icon:
+                                    const Icon(Icons.add_a_photo_outlined),
                                     label: Text(
                                       "Select Images (${pickedImages.length} selected)",
                                     ),
@@ -959,10 +1141,16 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                         DateTime? discountUntilDate;
                                         if (discountVal > 0 &&
                                             discountDays > 0) {
-                                          discountUntilDate = DateTime.now()
-                                              .add(Duration(
-                                              days: discountDays));
+                                          discountUntilDate =
+                                              DateTime.now().add(Duration(
+                                                  days: discountDays));
                                         }
+
+                                        // تجهيز الحقول لإرسالها لـ Firestore
+                                        List<Map<String, dynamic>>
+                                        fieldsList = customFields
+                                            .map((f) => f.toMap())
+                                            .toList();
 
                                         await _productsRef.add({
                                           'title':
@@ -970,7 +1158,8 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                           'description':
                                           descController.text.trim(),
                                           'price': double.parse(
-                                              priceController.text.trim()),
+                                              priceController.text
+                                                  .trim()),
                                           'discountPercentage':
                                           discountVal,
                                           'discountUntil':
@@ -978,10 +1167,12 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                               ? Timestamp.fromDate(
                                               discountUntilDate)
                                               : null,
-                                          'categoryId': selectedCategoryId,
+                                          'categoryId':
+                                          selectedCategoryId,
                                           'subcategoryId':
                                           selectedSubcategoryId,
                                           'images': uploadedUrls,
+                                          'fields': fieldsList,
                                           'avgRating': 0.0,
                                           'createdAt':
                                           FieldValue.serverTimestamp(),

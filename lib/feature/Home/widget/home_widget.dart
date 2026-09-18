@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:dashboard_desginland/Core/server/get_current_user.dart';
+import 'package:dashboard_desginland/Core/widgets/error_dailog_custom.dart';
+import 'package:dashboard_desginland/model/user_model.dart';
 import 'package:flutter/material.dart';
-
 import '../../../Core/Utils/app.colors.dart';
 
 class HomeWidget extends StatefulWidget {
@@ -11,41 +13,54 @@ class HomeWidget extends StatefulWidget {
 }
 
 class _HomeWidgetState extends State<HomeWidget> {
-  // مراجع المجموعات من الفايرستور (Firestore References)
+
   final CollectionReference _usersRef =
   FirebaseFirestore.instance.collection('users');
+  final CollectionReference _discountRef=FirebaseFirestore.instance.collection('promo_codes');
+  final CollectionReference _clientsRef =
+  FirebaseFirestore.instance.collection('user');
   final CollectionReference _productsRef =
   FirebaseFirestore.instance.collection('products');
   final CollectionReference _categoriesRef =
   FirebaseFirestore.instance.collection('categories');
   final CollectionReference _subcategoriesRef =
   FirebaseFirestore.instance.collection('subcategories');
-  final CollectionReference _ordersRef =
-  FirebaseFirestore.instance.collection('orders');
   final CollectionReference _employeesRef =
   FirebaseFirestore.instance.collection('employees');
-  int _staffCount=0;
+  final CollectionReference _analyticsSessionsRef =
+  FirebaseFirestore.instance.collection('analytics_sessions');
+
+  int _clientCount=0;
+  int _staffCount = 0;
+
+  UserModel? _currentUser;
+
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
     Start();
   }
-  void Start()async{
-    try{
-      FirebaseFirestore.instance.collection('user').where('role',isEqualTo: "staff").get().then((value){
+  void Start() async {
+    try {
+      _currentUser=await GetCurrentUserData(context);
+      await FirebaseFirestore.instance
+          .collection('user')
+          .where('role', isEqualTo: "staff")
+          .get()
+          .then((value) {
         setState(() {
-          _staffCount=value.size;
+          _staffCount = value.size;
+          _currentUser;
         });
       });
-    }
-    catch(e){
-
+    } catch (e) {
+      showErrorDialog(context, "Error", e.toString());
     }
   }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return _currentUser!=null? Scaffold(
       backgroundColor: AppColors.bgLight,
       appBar: AppBar(
         backgroundColor: Colors.white,
@@ -84,11 +99,10 @@ class _HomeWidgetState extends State<HomeWidget> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ==================== WELCOME & QUICK SUMMARY HEADER ====================
+
             _buildWelcomeBanner(),
             const SizedBox(height: 24),
 
-            // ==================== PRIMARY COUNTERS GRID ====================
             const Text(
               "System Metrics & Resources",
               style: TextStyle(
@@ -101,7 +115,6 @@ class _HomeWidgetState extends State<HomeWidget> {
             _buildPrimaryStatsGrid(),
             const SizedBox(height: 24),
 
-            // ==================== ORDERS & REVENUE SECTION ====================
             const Text(
               "Financials & Orders Breakdown",
               style: TextStyle(
@@ -132,10 +145,10 @@ class _HomeWidgetState extends State<HomeWidget> {
           ],
         ),
       ),
-    );
+    ):CircularProgressIndicator();
   }
 
-  // 1. Welcome Banner (معدل ليتناسب مع الموبايل)
+  // 1. Welcome Banner
   Widget _buildWelcomeBanner() {
     return Container(
       width: double.infinity,
@@ -167,19 +180,19 @@ class _HomeWidgetState extends State<HomeWidget> {
             children: [
               Expanded(
                 flex: isMobile ? 0 : 1,
-                child: const Column(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Welcome Back, Admin! 👋",
-                      style: TextStyle(
+                      "Welcome Back, ${_currentUser!.role}! 👋",
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    SizedBox(height: 6),
-                    Text(
+                    const SizedBox(height: 6),
+                    const Text(
                       "Here is what's happening with your platform today.",
                       style: TextStyle(color: Colors.white70, fontSize: 13),
                     ),
@@ -217,8 +230,19 @@ class _HomeWidgetState extends State<HomeWidget> {
     );
   }
 
-  // 2. Grid for Users, Visitors, Products, Categories, Employees
+  // 2. Primary Stats Grid
   Widget _buildPrimaryStatsGrid() {
+    final DateTime now = DateTime.now();
+
+    // بداية ونهاية اليوم الحالي
+    final DateTime startOfToday = DateTime(now.year, now.month, now.day, 0, 0, 0);
+    final DateTime endOfToday = DateTime(now.year, now.month, now.day, 23, 59, 59, 999);
+
+    // بداية ونهاية يوم أمس
+    final DateTime yesterday = now.subtract(const Duration(days: 1));
+    final DateTime startOfYesterday = DateTime(yesterday.year, yesterday.month, yesterday.day, 0, 0, 0);
+    final DateTime endOfYesterday = DateTime(yesterday.year, yesterday.month, yesterday.day, 23, 59, 59, 999);
+
     return LayoutBuilder(
       builder: (context, constraints) {
         int crossAxisCount = constraints.maxWidth > 900
@@ -234,23 +258,45 @@ class _HomeWidgetState extends State<HomeWidget> {
             childAspectRatio: constraints.maxWidth < 400 ? 2.2 : 1.8,
           ),
           children: [
-            _buildStatCard(
-              title: "Today's Visitors",
-              valueStream: null,
-              customValue: "1,420",
-              icon: Icons.remove_red_eye_outlined,
-              color: Colors.blue,
-              subtitle: "+12.5% from yesterday",
+            // dynamic visitors stream (Today's vs Yesterday's Visitors)
+            StreamBuilder<QuerySnapshot>(
+              stream: _analyticsSessionsRef
+                  .where('isGuest', isEqualTo: true)
+                  .where('startTime', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfToday))
+                  .where('startTime', isLessThanOrEqualTo: Timestamp.fromDate(endOfToday))
+                  .snapshots(),
+              builder: (context, todaySnap) {
+                final int todayVisitors = todaySnap.data?.docs.length ?? 0;
+
+                return StreamBuilder<QuerySnapshot>(
+                  stream: _analyticsSessionsRef
+                      .where('isGuest', isEqualTo: true)
+                      .where('startTime', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfYesterday))
+                      .where('startTime', isLessThanOrEqualTo: Timestamp.fromDate(endOfYesterday))
+                      .snapshots(),
+                  builder: (context, yesterdaySnap) {
+                    final int yesterdayVisitors = yesterdaySnap.data?.docs.length ?? 0;
+
+                    return _buildStatCard(
+                      title: "Today's Visitors",
+                      customValue: "$todayVisitors",
+                      icon: Icons.remove_red_eye_outlined,
+                      color: Colors.blue,
+                      subtitle: "$yesterdayVisitors yesterday",
+                    );
+                  },
+                );
+              },
             ),
             _buildStatCard(
               title: "Total Customers",
-              valueStream: _usersRef.snapshots(),
+              valueStream: _clientsRef.where('role',isEqualTo: "user").snapshots(),
               icon: Icons.people_alt_outlined,
               color: Colors.indigo,
             ),
             _buildStatCard(
               title: "Employees & Staff",
-              valueStream: _employeesRef.snapshots(),
+              valueStream: _clientsRef.where('role',isEqualTo: "staff").snapshots(),
               icon: Icons.badge_outlined,
               color: Colors.teal,
             ),
@@ -260,6 +306,12 @@ class _HomeWidgetState extends State<HomeWidget> {
               icon: Icons.inventory_2_outlined,
               color: Colors.orange,
             ),
+            _buildStatCard(
+              title: "Total PromoCode",
+              valueStream: _discountRef.snapshots(),
+              icon: Icons.discount_outlined,
+              color: Colors.blue,
+            ),
             _buildCombinedCategoriesCard(),
           ],
         );
@@ -267,7 +319,6 @@ class _HomeWidgetState extends State<HomeWidget> {
     );
   }
 
-  // Card Stream Builder Helper
   Widget _buildStatCard({
     required String title,
     Stream<QuerySnapshot>? valueStream,
@@ -328,9 +379,8 @@ class _HomeWidgetState extends State<HomeWidget> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 );
               }
-              final count = snapshot.data?.docs.length ?? 0;
               return Text(
-                "$_staffCount",
+                "${snapshot.data!.size}",
                 style: const TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
@@ -351,7 +401,7 @@ class _HomeWidgetState extends State<HomeWidget> {
             Text(
               subtitle,
               style: const TextStyle(
-                color: Colors.green,
+                color: Colors.grey,
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
               ),
@@ -364,7 +414,6 @@ class _HomeWidgetState extends State<HomeWidget> {
     );
   }
 
-  // Combined Categories Card
   Widget _buildCombinedCategoriesCard() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -456,8 +505,7 @@ class _HomeWidgetState extends State<HomeWidget> {
     );
   }
 
-  // 3. Financials & Orders Status Breakdown (معدل للموبايل)
-  // 3. Financials & Orders Status Breakdown (الفلوس للشهر الحالي والطلبات للكل)
+  // 3. Financials (Net Monthly Income = Payments In - Expenses Out) & Orders Breakdown
   Widget _buildFinancialAndOrdersSection() {
     final DateTime now = DateTime.now();
 
@@ -471,152 +519,206 @@ class _HomeWidgetState extends State<HomeWidget> {
         final userDocs = usersSnapshot.data?.docs ?? [];
 
         return StreamBuilder<QuerySnapshot>(
-          // جلب المقبوضات المالية من كوليكشن payments
+          // 1. المقبوضات المالية
           stream: FirebaseFirestore.instance.collection('payments').snapshots(),
           builder: (context, paymentsSnapshot) {
-            num monthlyCollectedRevenue = 0;
+            return StreamBuilder<QuerySnapshot>(
+              // 2. المصروفات المالية
+              stream: FirebaseFirestore.instance.collection('expenses').snapshots(),
+              builder: (context, expensesSnapshot) {
+                num totalCollected = 0;
+                num totalSpent = 0;
 
-            if (paymentsSnapshot.hasData) {
-              for (var payDoc in paymentsSnapshot.data!.docs) {
-                final payData = payDoc.data() as Map<String, dynamic>;
+                // ------------------ حساب إجمالي المقبوضات ------------------
+                if (paymentsSnapshot.hasData) {
+                  for (var payDoc in paymentsSnapshot.data!.docs) {
+                    final payData = payDoc.data() as Map<String, dynamic>;
+                    final num amount = payData['amount'] ?? payData['price'] ?? payData['total'] ?? 0;
 
-                // فلترة المدفوعات للشهر الحالي فقط
-                if (payData['paymentDate'] is Timestamp) {
-                  final DateTime pDate = (payData['paymentDate'] as Timestamp).toDate();
-                  if (pDate.month == now.month && pDate.year == now.year) {
-                    monthlyCollectedRevenue += (payData['amount'] ?? 0);
-                  }
-                }
-              }
-            }
+                    // جلب التاريخ بأي مسمى محتمل
+                    dynamic dateVal = payData['paymentDate'] ??
+                        payData['createdAt'] ??
+                        payData['timestamp'] ??
+                        payData['date'];
 
-            // تجميع عدادات الحالات الإجمالية للطلبات من جميع المستخدمين
-            return FutureBuilder<List<QuerySnapshot>>(
-              future: Future.wait(
-                userDocs.map((uDoc) => uDoc.reference.collection('orders').get()),
-              ),
-              builder: (context, ordersSnapshots) {
-                int activeOrders = 0;
-                int completedOrders = 0;
-                int cancelledOrders = 0;
+                    bool isCurrentMonth = true;
 
-                if (ordersSnapshots.hasData) {
-                  for (var orderSnap in ordersSnapshots.data!) {
-                    for (var doc in orderSnap.docs) {
-                      final data = doc.data() as Map<String, dynamic>;
-                      final status = (data['status'] ?? 'pending').toString().toLowerCase();
-
-                      // زيادة العدادات بناءً على الحالة الإجمالية بدون شرط التاريخ
-                      if (status == 'completed' || status == 'delivered') {
-                        completedOrders++;
-                      } else if (status == 'cancelled') {
-                        cancelledOrders++;
-                      } else {
-                        activeOrders++;
+                    if (dateVal is Timestamp) {
+                      final DateTime pDate = dateVal.toDate();
+                      isCurrentMonth = (pDate.month == now.month && pDate.year == now.year);
+                    } else if (dateVal is String) {
+                      final DateTime? pDate = DateTime.tryParse(dateVal);
+                      if (pDate != null) {
+                        isCurrentMonth = (pDate.month == now.month && pDate.year == now.year);
                       }
+                    }
+
+                    if (isCurrentMonth) {
+                      totalCollected += amount;
                     }
                   }
                 }
+                // ------------------ حساب إجمالي المصروفات ------------------
+                if (expensesSnapshot.hasData) {
+                  for (var expDoc in expensesSnapshot.data!.docs) {
+                    final expData = expDoc.data() as Map<String, dynamic>;
+                    final num amount = expData['amount'] ?? expData['price'] ?? expData['cost'] ?? 0;
 
-                return LayoutBuilder(
-                  builder: (context, constraints) {
-                    bool isDesktop = constraints.maxWidth > 800;
-                    return Flex(
-                      direction: isDesktop ? Axis.horizontal : Axis.vertical,
-                      children: [
-                        // Revenue Card (إجمالي مقبوضات الشهر الحالي فقط)
-                        Container(
-                          width: isDesktop ? null : double.infinity,
-                          margin: EdgeInsets.only(
-                              bottom: isDesktop ? 0 : 12, right: isDesktop ? 12 : 0),
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.03),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  const Text("This Month's Revenue",
-                                      style: TextStyle(
-                                          color: AppColors.textMuted,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600)),
-                                  Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: Colors.green.withOpacity(0.12),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: const Icon(Icons.calendar_month,
-                                        color: Colors.green, size: 24),
+                    // جلب التاريخ بأي مسمى محتمل
+                    dynamic dateVal = expData['date'] ??
+                        expData['createdAt'] ??
+                        expData['timestamp'] ??
+                        expData['expenseDate'];
+
+                    bool isCurrentMonth = true;
+
+                    if (dateVal is Timestamp) {
+                      final DateTime eDate = dateVal.toDate();
+                      isCurrentMonth = (eDate.month == now.month && eDate.year == now.year);
+                    } else if (dateVal is String) {
+                      final DateTime? eDate = DateTime.tryParse(dateVal);
+                      if (eDate != null) {
+                        isCurrentMonth = (eDate.month == now.month && eDate.year == now.year);
+                      }
+                    }
+
+                    if (isCurrentMonth) {
+                      totalSpent += amount;
+                    }
+                  }
+                }
+                final num netMonthlyIncome = totalCollected - totalSpent;
+                print(netMonthlyIncome);
+                return FutureBuilder<List<QuerySnapshot>>(
+                  future: Future.wait(
+                    userDocs.map((uDoc) => uDoc.reference.collection('orders').get()),
+                  ),
+                  builder: (context, ordersSnapshots) {
+                    int activeOrders = 0;
+                    int completedOrders = 0;
+                    int cancelledOrders = 0;
+
+                    if (ordersSnapshots.hasData) {
+                      for (var orderSnap in ordersSnapshots.data!) {
+                        for (var doc in orderSnap.docs) {
+                          final data = doc.data() as Map<String, dynamic>;
+                          final status = (data['status'] ?? 'pending').toString().toLowerCase();
+
+                          if (status == 'completed' || status == 'delivered') {
+                            completedOrders++;
+                          } else if (status == 'cancelled') {
+                            cancelledOrders++;
+                          } else {
+                            activeOrders++;
+                          }
+                        }
+                      }
+                    }
+
+                    return LayoutBuilder(
+                      builder: (context, constraints) {
+                        bool isDesktop = constraints.maxWidth > 800;
+                        return Flex(
+                          direction: isDesktop ? Axis.horizontal : Axis.vertical,
+                          children: [
+                            // Net Monthly Income Card
+                            Container(
+                              width: isDesktop ? null : double.infinity,
+                              margin: EdgeInsets.only(
+                                  bottom: isDesktop ? 0 : 12, right: isDesktop ? 12 : 0),
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.03),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 12),
-                              Text(
-                                "\$${monthlyCollectedRevenue.toStringAsFixed(2)}",
-                                style: const TextStyle(
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.green,
-                                ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      const Text("Net Monthly Income",
+                                          style: TextStyle(
+                                              color: AppColors.textMuted,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600)),
+                                      Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: (netMonthlyIncome >= 0 ? Colors.green : Colors.red).withOpacity(0.12),
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        child: Icon(
+                                          netMonthlyIncome >= 0 ? Icons.account_balance_wallet : Icons.money_off,
+                                          color: netMonthlyIncome >= 0 ? Colors.green : Colors.red,
+                                          size: 24,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    "\$${netMonthlyIncome.toStringAsFixed(2)}",
+                                    style: TextStyle(
+                                      fontSize: 26,
+                                      fontWeight: FontWeight.bold,
+                                      color: netMonthlyIncome >= 0 ? Colors.green : Colors.red,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    "In: \$${totalCollected.toStringAsFixed(0)} | Out: \$${totalSpent.toStringAsFixed(0)}",
+                                    style: const TextStyle(
+                                        color: AppColors.textMuted, fontSize: 12),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: 6),
-                              Text(
-                                "Collected in ${now.month}/${now.year}",
-                                style: const TextStyle(
-                                    color: AppColors.textMuted, fontSize: 12),
-                              ),
-                            ],
-                          ),
-                        ),
+                            ),
 
-                        // Orders Status Cards Breakdown (جميع الطلبات المسجلة)
-                        Expanded(
-                          flex: isDesktop ? 2 : 0,
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: _buildSmallStatusCard(
-                                  title: "Active",
-                                  count: activeOrders,
-                                  color: Colors.orange,
-                                  icon: Icons.pending_actions,
-                                ),
+                            // Orders Status Breakdown
+                            Expanded(
+                              flex: isDesktop ? 2 : 0,
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildSmallStatusCard(
+                                      title: "Active",
+                                      count: activeOrders,
+                                      color: Colors.orange,
+                                      icon: Icons.pending_actions,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: _buildSmallStatusCard(
+                                      title: "Completed",
+                                      count: completedOrders,
+                                      color: Colors.green,
+                                      icon: Icons.check_circle_outline,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: _buildSmallStatusCard(
+                                      title: "Cancelled",
+                                      count: cancelledOrders,
+                                      color: Colors.redAccent,
+                                      icon: Icons.cancel_outlined,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: _buildSmallStatusCard(
-                                  title: "Completed",
-                                  count: completedOrders,
-                                  color: Colors.green,
-                                  icon: Icons.check_circle_outline,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: _buildSmallStatusCard(
-                                  title: "Cancelled",
-                                  count: cancelledOrders,
-                                  color: Colors.redAccent,
-                                  icon: Icons.cancel_outlined,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                            ),
+                          ],
+                        );
+                      },
                     );
                   },
                 );
@@ -676,20 +778,17 @@ class _HomeWidgetState extends State<HomeWidget> {
     );
   }
 
-  // 4. Growth & Business Analytics (معدل ليتناسب مع الموبايل)
-  // 4. Growth & Business Analytics (معدل ومضبوط للحسابات الشاملة)
+  // 4. Growth & Business Analytics
   Widget _buildGrowthAnalyticsSection() {
     final DateTime now = DateTime.now();
     final DateTime lastMonth = DateTime(now.year, now.month - 1);
 
     return StreamBuilder<QuerySnapshot>(
-      // 1. جلب إجمالي جلسات الزوار بدون تقييد بشهر معين
       stream: FirebaseFirestore.instance.collection('analytics_sessions').snapshots(),
       builder: (context, sessionsSnapshot) {
         final totalSessionsCount = sessionsSnapshot.data?.docs.length ?? 0;
 
         return StreamBuilder<QuerySnapshot>(
-          // 2. جلب المقبوضات لحساب النمو الشهري
           stream: FirebaseFirestore.instance.collection('payments').snapshots(),
           builder: (context, paymentsSnapshot) {
             num currentMonthRevenue = 0;
@@ -698,8 +797,10 @@ class _HomeWidgetState extends State<HomeWidget> {
             if (paymentsSnapshot.hasData) {
               for (var payDoc in paymentsSnapshot.data!.docs) {
                 final payData = payDoc.data() as Map<String, dynamic>;
-                if (payData['paymentDate'] is Timestamp) {
-                  final DateTime pDate = (payData['paymentDate'] as Timestamp).toDate();
+                dynamic dateVal = payData['createdAt'] ?? payData['timestamp'] ?? payData['paymentDate'] ?? payData['date'];
+
+                if (dateVal is Timestamp) {
+                  final DateTime pDate = dateVal.toDate();
 
                   if (pDate.month == now.month && pDate.year == now.year) {
                     currentMonthRevenue += (payData['amount'] ?? 0);
@@ -710,7 +811,6 @@ class _HomeWidgetState extends State<HomeWidget> {
               }
             }
 
-            // نسبة النمو في المبيعات بين الشهر الحالي والشهر السابق
             double monthlyGrowthPercent = 0.0;
             if (previousMonthRevenue > 0) {
               monthlyGrowthPercent = ((currentMonthRevenue - previousMonthRevenue) / previousMonthRevenue) * 100;
@@ -719,7 +819,6 @@ class _HomeWidgetState extends State<HomeWidget> {
             }
 
             return StreamBuilder<QuerySnapshot>(
-              // 3. جلب مستندات المستخدمين للوصول لجميع الطلبات
               stream: _usersRef.snapshots(),
               builder: (context, usersSnapshot) {
                 final userDocs = usersSnapshot.data?.docs ?? [];
@@ -736,20 +835,16 @@ class _HomeWidgetState extends State<HomeWidget> {
                       for (var orderSnap in ordersSnapshots.data!) {
                         for (var doc in orderSnap.docs) {
                           final data = doc.data() as Map<String, dynamic>;
-
-                          // نجمع إجمالي قيمة الطلبات (سواء كانت سارية أو جاري العمل عليها)
-                          totalOrdersAmount += (data['totalAmount'] ?? 0.0).toDouble();
+                          totalOrdersAmount += (data['totalAmount'] ?? data['totalPrice'] ?? 0.0).toDouble();
                           totalOrdersCount++;
                         }
                       }
                     }
 
-                    // متوسط قيمة الطلب (إجمالي مبالغ الأوردرات ÷ عدد الأوردرات الكلي)
                     final double avgOrderValue = totalOrdersCount > 0
                         ? totalOrdersAmount / totalOrdersCount
                         : 0.0;
 
-                    // معدل التحويل الحقيقي = (إجمالي الأوردرات ÷ إجمالي الزوار والجلسات) * 100
                     final double conversionRate = totalSessionsCount > 0
                         ? (totalOrdersCount / totalSessionsCount) * 100
                         : 0.0;
@@ -770,8 +865,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                                 subtitle: "Revenue vs last month",
                               ),
                             ),
-                            SizedBox(
-                                width: isMobile ? 0 : 12, height: isMobile ? 12 : 0),
+                            SizedBox(width: isMobile ? 0 : 12, height: isMobile ? 12 : 0),
                             Expanded(
                               flex: isMobile ? 0 : 1,
                               child: _buildAnalyticsMetricCard(
@@ -782,8 +876,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                                 subtitle: "Across $totalOrdersCount total orders",
                               ),
                             ),
-                            SizedBox(
-                                width: isMobile ? 0 : 12, height: isMobile ? 12 : 0),
+                            SizedBox(width: isMobile ? 0 : 12, height: isMobile ? 12 : 0),
                             Expanded(
                               flex: isMobile ? 0 : 1,
                               child: _buildAnalyticsMetricCard(
@@ -873,8 +966,7 @@ class _HomeWidgetState extends State<HomeWidget> {
     );
   }
 
-  // 5. Recent Orders Stream Card Preview
-  // 5. Active Recent Orders (محدث بحقل totalPrice الصحيح)
+  // 5. Active Recent Orders
   Widget _buildRecentOrdersCard() {
     return Container(
       width: double.infinity,
@@ -934,7 +1026,6 @@ class _HomeWidgetState extends State<HomeWidget> {
                         final data = doc.data() as Map<String, dynamic>;
                         final status = (data['status'] ?? '').toString().toLowerCase();
 
-                        // الفلترة: استبعاد الملغي والمكتمل/المسلم
                         if (status != 'cancelled' &&
                             status != 'completed' &&
                             status != 'delivered') {
@@ -957,7 +1048,6 @@ class _HomeWidgetState extends State<HomeWidget> {
                     );
                   }
 
-                  // ترتيب الأوردرات النشطة من الأحدث للأقدم
                   activeOrders.sort((a, b) {
                     Timestamp? tA = a['createdAt'] as Timestamp?;
                     Timestamp? tB = b['createdAt'] as Timestamp?;
@@ -966,7 +1056,6 @@ class _HomeWidgetState extends State<HomeWidget> {
                     return tB.compareTo(tA);
                   });
 
-                  // أخذ أحدث 4 طلبات نشطة
                   final recentActive = activeOrders.take(4).toList();
 
                   return ListView.separated(
@@ -979,7 +1068,6 @@ class _HomeWidgetState extends State<HomeWidget> {
                       final orderId = data['id'] ?? '';
                       final status = data['status'] ?? 'In Progress';
 
-                      // قراءة السعر المباشر من totalPrice أو حسابه من عناصر items
                       double price = (data['totalPrice'] ?? 0.0).toDouble();
                       if (price == 0.0 && data['items'] is List) {
                         for (var item in (data['items'] as List)) {
@@ -1027,7 +1115,6 @@ class _HomeWidgetState extends State<HomeWidget> {
     );
   }
 
-  // Color helper for Order Statuses
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'completed':

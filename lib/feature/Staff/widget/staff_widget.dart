@@ -1,8 +1,10 @@
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dashboard_desginland/feature/Access%20Defind/view/access_defind_view.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 import '../../../Core/server/get_permision.dart';
 
@@ -18,19 +20,22 @@ class _StaffWidgetState extends State<StaffWidget> {
 
   // شاشة الانتهاء أو نموذج الإضافة/التعديل
   bool _isFormOpen = false;
+
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
     Start();
   }
-  List<String> _permision=[];
-  void Start()async{
-    _permision=await GetPermisionUser();
+
+  List<String> _permision = [];
+
+  void Start() async {
+    _permision = await GetPermisionUser();
     setState(() {
       _permision;
     });
   }
+
   // بيانات النموذج الحالية
   String? _editingDocId;
   final _formKey = GlobalKey<FormState>();
@@ -49,6 +54,8 @@ class _StaffWidgetState extends State<StaffWidget> {
     'products',
     'users',
     'about',
+    'banner',
+    'promo',
   ];
 
   void _openForm({
@@ -80,7 +87,8 @@ class _StaffWidgetState extends State<StaffWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return _permision.contains("staff")? Scaffold(
+    return _permision.contains("staff")
+        ? Scaffold(
       backgroundColor: Colors.grey.shade100,
       appBar: AppBar(
         title: Text(
@@ -117,7 +125,8 @@ class _StaffWidgetState extends State<StaffWidget> {
         switchOutCurve: Curves.easeIn,
         child: _isFormOpen ? _buildStaffForm() : _buildStaffList(),
       ),
-    ):AccessDefindView();
+    )
+        :  AccessDefindView();
   }
 
   // --- 1. قائمة الموظفين ---
@@ -234,7 +243,7 @@ class _StaffWidgetState extends State<StaffWidget> {
                         currentPermissions: List<String>.from(permissions),
                       );
                     } else if (value == 'delete') {
-                      _deleteStaff(doc.id);
+                      _deleteStaff(doc.id, name);
                     }
                   },
                   itemBuilder: (context) => [
@@ -437,7 +446,7 @@ class _StaffWidgetState extends State<StaffWidget> {
     try {
       if (_editingDocId != null) {
         // تحديث الموظف
-        await _firestore.collection('users').doc(_editingDocId).update({
+        await _firestore.collection('user').doc(_editingDocId).update({
           'name': _nameController.text.trim(),
           'permissions': _selectedPermissions,
         });
@@ -479,33 +488,92 @@ class _StaffWidgetState extends State<StaffWidget> {
     }
   }
 
-  // --- 4. حذف الموظف ---
-  Future<void> _deleteStaff(String docId) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('تأكيد الحذف'),
-        content: const Text('هل أنت تأكد من رغبتك في حذف هذا الموظف؟'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('إلغاء'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('حذف'),
-          ),
-        ],
-      ),
-    );
+  // --- 4. حذف الموظف عبر Backend API ---
+  Future<void> _deleteStaff(String docId, String name) async {
+    bool isDeleting = false;
 
-    if (confirm == true) {
-      await _firestore.collection('user').doc(docId).delete();
-    }
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: const Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
+                  SizedBox(width: 8),
+                  Text('تأكيد الحذف'),
+                ],
+              ),
+              content: Text(
+                'هل أنت متاكد من رغبتك في حذف الموظف "$name" نهائياً؟ سيتم حذفه من Firebase Auth و Firestore.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isDeleting ? null : () => Navigator.pop(ctx),
+                  child: const Text('إلغاء'),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onPressed: isDeleting
+                      ? null
+                      : () async {
+                    setDialogState(() => isDeleting = true);
+
+                    try {
+                      final url = Uri.parse('https://designland-backend.vercel.app/api/delete-account');
+
+                      final response = await http.post(
+                        url,
+                        headers: {'Content-Type': 'application/json'},
+                        body: jsonEncode({'uid': docId}),
+                      );
+
+                      final data = jsonDecode(response.body);
+
+                      if (response.statusCode == 200 && data['success'] == true) {
+                        if (ctx.mounted) Navigator.pop(ctx);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('تم حذف الموظف بنجاح من النظام والـ Auth'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        }
+                      } else {
+                        throw Exception(data['error'] ?? 'فشل في حذف الموظف');
+                      }
+                    } catch (e) {
+                      setDialogState(() => isDeleting = false);
+                      if (ctx.mounted) Navigator.pop(ctx);
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('حدث خطأ أثناء الحذف: $e'),
+                            backgroundColor: Colors.redAccent,
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  child: isDeleting
+                      ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                  )
+                      : const Text('حذف نهائي', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 }

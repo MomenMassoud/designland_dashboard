@@ -1,18 +1,24 @@
 import 'package:dashboard_desginland/Core/Utils/app.images.dart';
+import 'package:dashboard_desginland/Core/server/check_promo_code.dart';
 import 'package:dashboard_desginland/feature/About/view/about_view.dart';
 import 'package:dashboard_desginland/feature/Access%20Defind/view/access_defind_view.dart';
+import 'package:dashboard_desginland/feature/Banners/view/banners_view.dart';
 import 'package:dashboard_desginland/feature/Home/view/home_view.dart';
 import 'package:dashboard_desginland/feature/Login/function/auth_function.dart';
 import 'package:dashboard_desginland/feature/Orders/view/orders_view.dart';
 import 'package:dashboard_desginland/feature/Profile/view/profile_view.dart';
+import 'package:dashboard_desginland/feature/PromoCode/view/promo_code_view.dart';
 import 'package:dashboard_desginland/feature/Staff/view/staff_view.dart';
 import 'package:dashboard_desginland/feature/Users/view/users_view.dart';
 import 'package:dashboard_desginland/feature/analytics/view/analytics_view.dart';
 import 'package:dashboard_desginland/feature/products/view/products_view.dart';
 import 'package:dashboard_desginland/model/user_model.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:dashboard_desginland/feature/Category/view/category_view.dart';
 import '../../../Core/Utils/app.colors.dart';
+import '../../../Core/server/saveDeviceTokenToFirestore.dart';
+import '../../../main.dart';
 import '../../Reports/view/report_view.dart';
 
 class MainScreenWidget extends StatefulWidget {
@@ -37,6 +43,8 @@ class _MainScreenWidgetState extends State<MainScreenWidget> {
     UsersView(),
     AnalyticsView(),
     AboutView(),
+    BannersView(),
+    PromoCodeView(),
   ];
 
   @override
@@ -45,9 +53,16 @@ class _MainScreenWidgetState extends State<MainScreenWidget> {
     _startProgram();
   }
 
+
   void _startProgram() async {
     _userModel = await GetCurrentUserData(context);
-    setState(() {});
+    if (!kIsWeb) {
+      await setupAndroidNotifications();
+    }
+    await saveDeviceTokenToFirestore();
+    await cleanAndFetchValidPromoCodes();
+
+     setState(() {});
   }
 
   @override
@@ -77,7 +92,6 @@ class _MainScreenWidgetState extends State<MainScreenWidget> {
         return Scaffold(
           key: _scaffoldKey,
           backgroundColor: AppColors.bgLight,
-          // إظهار Drawer فقط في الموبايل
           drawer: isMobile ? Drawer(child: _buildSidebarContent()) : null,
           body: Row(
             children: [
@@ -152,6 +166,8 @@ class _MainScreenWidgetState extends State<MainScreenWidget> {
               _buildNavItem(6, Icons.people_alt_outlined, "Users"),
               _buildNavItem(7, Icons.analytics, "Analytics"),
               _buildNavItem(8, Icons.info_outline, "About"),
+              _buildNavItem(9, Icons.imagesearch_roller, "Banners"),
+              _buildNavItem(10, Icons.discount, "PromoCode"),
             ],
           ),
         ),

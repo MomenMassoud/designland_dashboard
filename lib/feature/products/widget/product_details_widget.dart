@@ -1,9 +1,39 @@
+import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dashboard_desginland/model/product_model.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../Core/Utils/app.colors.dart';
 import '../../../Core/server/cloudinara_server.dart';
+
+// نموذج يمثل الحقل المخصص للمنتج
+class DynamicFieldModel {
+  String name;
+  String type; // 'text', 'number', 'drive_link'
+  bool isRequired;
+
+  DynamicFieldModel({
+    required this.name,
+    this.type = 'text',
+    this.isRequired = true,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'name': name,
+      'type': type,
+      'isRequired': isRequired,
+    };
+  }
+
+  factory DynamicFieldModel.fromMap(Map<String, dynamic> map) {
+    return DynamicFieldModel(
+      name: map['name'] ?? '',
+      type: map['type'] ?? 'text',
+      isRequired: map['isRequired'] ?? true,
+    );
+  }
+}
 
 class ProductDetailsWidget extends StatefulWidget {
   final ProductModel product;
@@ -38,7 +68,6 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
     super.dispose();
   }
 
-  // Open Full-Screen Image Viewer
   void _openFullScreenImage(int initialIndex) {
     Navigator.push(
       context,
@@ -51,7 +80,6 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
     );
   }
 
-  // Remove discount from Firestore
   Future<void> _removeDiscount() async {
     try {
       await _productsRef.doc(_currentProduct.doc).update({
@@ -87,7 +115,6 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
     }
   }
 
-  // Show dialog to add/edit discount
   void _showDiscountDialog(BuildContext parentContext) {
     final discountController = TextEditingController(
       text: _currentProduct.discountPercentage > 0
@@ -295,7 +322,7 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // ==================== GALLERY SECTION ====================
+            // معرض الصور
             Container(
               color: Colors.white,
               child: Column(
@@ -375,8 +402,6 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                     ),
                   ),
                   const SizedBox(height: 16),
-
-                  // Thumbnails Horizontal View
                   if (_currentProduct.images.length > 1) ...[
                     SizedBox(
                       height: 60,
@@ -425,7 +450,7 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
               ),
             ),
 
-            // ==================== DETAILS & DISCOUNT CARD ====================
+            // تفاصيل المنتج والخصومات
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -497,8 +522,6 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                           ],
                         ),
                         const SizedBox(height: 12),
-
-                        // Active Discount Banner
                         if (_currentProduct.hasActiveDiscount) ...[
                           Container(
                             padding: const EdgeInsets.all(12),
@@ -532,8 +555,6 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                           ),
                           const SizedBox(height: 12),
                         ],
-
-                        // Add/Edit Discount Button
                         SizedBox(
                           width: double.infinity,
                           child: OutlinedButton.icon(
@@ -556,9 +577,7 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                             ),
                           ),
                         ),
-
                         const Divider(height: 24),
-
                         Row(
                           children: [
                             Container(
@@ -599,7 +618,7 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
 
                   const SizedBox(height: 16),
 
-                  // Description Card
+                  // الوصف
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(20),
@@ -642,7 +661,7 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
 
                   const SizedBox(height: 20),
 
-                  // Reviews Stream Section
+                  // تقييمات العملاء
                   const Text(
                     "Customer Reviews",
                     style: TextStyle(
@@ -786,8 +805,8 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
     );
   }
 
-  // Edit Product Dialog
-  void _showEditProductDialog(BuildContext parentContext) {
+  // ==================== نافذة تعديل المنتج بالكامل ====================
+  void _showEditProductDialog(BuildContext parentContext) async {
     final formKey = GlobalKey<FormState>();
     final titleController =
     TextEditingController(text: _currentProduct.title);
@@ -799,9 +818,30 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
     String? selectedCategoryId = _currentProduct.categoryDoc;
     String? selectedSubcategoryId = _currentProduct.SubCategoryDoc;
 
-    List<XFile> pickedImages = [];
     List<String> existingImages = List<String>.from(_currentProduct.images);
+    List<XFile> newlyPickedImages = [];
+    List<Uint8List> newImagesBytes = [];
+
+    // جلب الحقول المخصصة الحالية من Firestore
+    List<DynamicFieldModel> customFields = [];
+    try {
+      final docSnap = await _productsRef.doc(_currentProduct.doc).get();
+      if (docSnap.exists) {
+        final data = docSnap.data() as Map<String, dynamic>;
+        if (data['fields'] != null) {
+          final fieldsData = data['fields'] as List<dynamic>;
+          customFields = fieldsData
+              .map((f) => DynamicFieldModel.fromMap(f as Map<String, dynamic>))
+              .toList();
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching existing fields: $e");
+    }
+
     bool isSaving = false;
+
+    if (!parentContext.mounted) return;
 
     showDialog(
       context: parentContext,
@@ -812,16 +852,18 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
             return AlertDialog(
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16)),
-              title: const Text("Edit Product",
+              title: const Text("Edit Product Details",
                   style: TextStyle(fontWeight: FontWeight.bold)),
               content: SizedBox(
-                width: 500,
+                width: 600,
                 child: Form(
                   key: formKey,
                   child: SingleChildScrollView(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // التصنيف الرئيسي
                         StreamBuilder<QuerySnapshot>(
                           stream: _categoriesRef.snapshots(),
                           builder: (context, snapshot) {
@@ -854,6 +896,8 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                           },
                         ),
                         const SizedBox(height: 12),
+
+                        // التصنيف الفرعي
                         if (selectedCategoryId != null)
                           StreamBuilder<QuerySnapshot>(
                             stream: _subcategoriesRef
@@ -886,33 +930,322 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                             },
                           ),
                         const SizedBox(height: 12),
+
+                        // اسم المنتج
                         TextFormField(
                           controller: titleController,
                           decoration:
-                          const InputDecoration(labelText: "Title"),
+                          const InputDecoration(labelText: "Product Title"),
                           validator: (val) => val == null || val.isEmpty
                               ? "Required field"
                               : null,
                         ),
                         const SizedBox(height: 12),
+
+                        // السعر
                         TextFormField(
                           controller: priceController,
                           keyboardType: const TextInputType.numberWithOptions(
                               decimal: true),
                           decoration:
-                          const InputDecoration(labelText: "Price"),
+                          const InputDecoration(labelText: "Price (\$)" ),
                           validator: (val) =>
                           double.tryParse(val ?? '') == null
                               ? "Enter valid price"
                               : null,
                         ),
                         const SizedBox(height: 12),
+
+                        // الوصف
                         TextFormField(
                           controller: descController,
                           maxLines: 3,
                           decoration:
                           const InputDecoration(labelText: "Description"),
                         ),
+                        const SizedBox(height: 20),
+
+                        // ==================== تعديل صور المنتج ====================
+                        const Text(
+                          "Product Images",
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 15),
+                        ),
+                        const SizedBox(height: 8),
+
+                        // الصور الحالية المرفوعة
+                        if (existingImages.isNotEmpty) ...[
+                          const Text("Current Images:",
+                              style: TextStyle(
+                                  fontSize: 12, color: Colors.grey)),
+                          const SizedBox(height: 6),
+                          SizedBox(
+                            height: 70,
+                            child: ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: existingImages.length,
+                              itemBuilder: (context, index) {
+                                return Stack(
+                                  children: [
+                                    Container(
+                                      margin: const EdgeInsets.only(
+                                          right: 8, top: 4),
+                                      width: 60,
+                                      height: 60,
+                                      decoration: BoxDecoration(
+                                        borderRadius:
+                                        BorderRadius.circular(8),
+                                        image: DecorationImage(
+                                          image: NetworkImage(
+                                              existingImages[index]),
+                                          fit: BoxFit.cover,
+                                        ),
+                                      ),
+                                    ),
+                                    Positioned(
+                                      top: 0,
+                                      right: 4,
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          setDialogState(() {
+                                            existingImages.removeAt(index);
+                                          });
+                                        },
+                                        child: const CircleAvatar(
+                                          radius: 10,
+                                          backgroundColor: Colors.red,
+                                          child: Icon(Icons.close,
+                                              size: 12, color: Colors.white),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 8),
+
+                        // زر إضافة صور جديدة
+                        OutlinedButton.icon(
+                          onPressed: () async {
+                            try {
+                              final ImagePicker picker = ImagePicker();
+                              final List<XFile> images =
+                              await picker.pickMultiImage(imageQuality: 85);
+                              if (images.isNotEmpty) {
+                                List<Uint8List> bytesList = [];
+                                for (var img in images) {
+                                  bytesList.add(await img.readAsBytes());
+                                }
+                                setDialogState(() {
+                                  newlyPickedImages.addAll(images);
+                                  newImagesBytes.addAll(bytesList);
+                                });
+                              }
+                            } catch (e) {
+                              debugPrint("Error picking images: $e");
+                            }
+                          },
+                          icon: const Icon(Icons.add_a_photo_outlined, size: 18),
+                          label: Text("Add More Images (${newlyPickedImages.length} selected)"),
+                        ),
+
+                        if (newImagesBytes.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            height: 70,
+                            child: ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: newImagesBytes.length,
+                              itemBuilder: (context, index) {
+                                return Stack(
+                                  children: [
+                                    Container(
+                                      margin: const EdgeInsets.only(
+                                          right: 8, top: 4),
+                                      width: 60,
+                                      height: 60,
+                                      decoration: BoxDecoration(
+                                        borderRadius:
+                                        BorderRadius.circular(8),
+                                        image: DecorationImage(
+                                          image: MemoryImage(
+                                              newImagesBytes[index]),
+                                          fit: BoxFit.cover,
+                                        ),
+                                      ),
+                                    ),
+                                    Positioned(
+                                      top: 0,
+                                      right: 4,
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          setDialogState(() {
+                                            newlyPickedImages.removeAt(index);
+                                            newImagesBytes.removeAt(index);
+                                          });
+                                        },
+                                        child: const CircleAvatar(
+                                          radius: 10,
+                                          backgroundColor: Colors.red,
+                                          child: Icon(Icons.close,
+                                              size: 12, color: Colors.white),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 20),
+
+                        // ==================== تعديل الحقول المخصصة ====================
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              "Required Order Fields",
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 15),
+                            ),
+                            TextButton.icon(
+                              onPressed: () {
+                                setDialogState(() {
+                                  customFields
+                                      .add(DynamicFieldModel(name: ''));
+                                });
+                              },
+                              icon: const Icon(Icons.add, size: 18),
+                              label: const Text("Add Field"),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        if (customFields.isEmpty)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Text(
+                              "No custom fields required.",
+                              style: TextStyle(
+                                  color: AppColors.textMuted, fontSize: 12),
+                            ),
+                          )
+                        else
+                          ListView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: customFields.length,
+                            itemBuilder: (context, fIndex) {
+                              final field = customFields[fIndex];
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade50,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border:
+                                  Border.all(color: Colors.grey.shade300),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: TextFormField(
+                                            initialValue: field.name,
+                                            decoration: const InputDecoration(
+                                              labelText: "Field Name / Title",
+                                              isDense: true,
+                                            ),
+                                            onChanged: (val) =>
+                                            field.name = val.trim(),
+                                            validator: (v) =>
+                                            (v == null || v.trim().isEmpty)
+                                                ? "Enter field name"
+                                                : null,
+                                          ),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(
+                                              Icons.delete_outline,
+                                              color: Colors.redAccent,
+                                              size: 20),
+                                          onPressed: () {
+                                            setDialogState(() {
+                                              customFields.removeAt(fIndex);
+                                            });
+                                          },
+                                        )
+                                      ],
+                                    ),
+                                    const SizedBox(height: 10),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: DropdownButtonFormField<
+                                              String>(
+                                            value: field.type,
+                                            decoration: const InputDecoration(
+                                              labelText: "Field Type",
+                                              isDense: true,
+                                            ),
+                                            items: const [
+                                              DropdownMenuItem(
+                                                value: 'text',
+                                                child: Text("Text / كلام"),
+                                              ),
+                                              DropdownMenuItem(
+                                                value: 'number',
+                                                child: Text("Number / أرقام"),
+                                              ),
+                                              DropdownMenuItem(
+                                                value: 'drive_link',
+                                                child: Text("Google Drive Link / لينك درايف"),
+                                              ),
+                                            ],
+                                            onChanged: (val) {
+                                              if (val != null) {
+                                                setDialogState(() {
+                                                  field.type = val;
+                                                });
+                                              }
+                                            },
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Row(
+                                          children: [
+                                            Checkbox(
+                                              value: field.isRequired,
+                                              onChanged: (val) {
+                                                setDialogState(() {
+                                                  field.isRequired =
+                                                      val ?? true;
+                                                });
+                                              },
+                                            ),
+                                            const Text("Required",
+                                                style: TextStyle(
+                                                    fontSize: 12)),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
                       ],
                     ),
                   ),
@@ -930,20 +1263,37 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                       ? null
                       : () async {
                     if (formKey.currentState!.validate()) {
+                      if (existingImages.isEmpty &&
+                          newlyPickedImages.isEmpty) {
+                        ScaffoldMessenger.of(parentContext).showSnackBar(
+                          const SnackBar(
+                              content: Text(
+                                  "Product must have at least one image!")),
+                        );
+                        return;
+                      }
+
                       setDialogState(() => isSaving = true);
 
                       try {
+                        // رفع الصور الجديدة إلى Cloudinary
                         List<String> uploadedUrls = [];
-                        for (var img in pickedImages) {
+                        for (var img in newlyPickedImages) {
                           final url =
                           await CloudinaryService.uploadImage(img);
                           if (url != null) uploadedUrls.add(url);
                         }
 
-                        final finalImages = [
+                        final List<String> finalImages = [
                           ...existingImages,
-                          ...uploadedUrls
+                          ...uploadedUrls,
                         ];
+
+                        // تجهيز قائمة الحقول
+                        List<Map<String, dynamic>> fieldsList =
+                        customFields
+                            .map((f) => f.toMap())
+                            .toList();
 
                         final updatedData = {
                           'title': titleController.text.trim(),
@@ -953,6 +1303,7 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                           'categoryId': selectedCategoryId,
                           'subcategoryId': selectedSubcategoryId,
                           'images': finalImages,
+                          'fields': fieldsList,
                         };
 
                         await _productsRef
@@ -998,7 +1349,7 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                       height: 18,
                       child: CircularProgressIndicator(
                           color: Colors.white, strokeWidth: 2))
-                      : const Text("Save",
+                      : const Text("Save Changes",
                       style: TextStyle(color: Colors.white)),
                 ),
               ],
@@ -1009,7 +1360,6 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
     );
   }
 
-  // Delete Product Confirmation Dialog
   void _confirmDelete(BuildContext parentContext) {
     showDialog(
       context: parentContext,
@@ -1050,7 +1400,6 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
   }
 }
 
-// ==================== FULL SCREEN IMAGE VIEWER WIDGET ====================
 class FullScreenImageViewer extends StatefulWidget {
   final List<String> images;
   final int initialIndex;

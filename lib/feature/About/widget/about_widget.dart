@@ -19,6 +19,8 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _whatsappController = TextEditingController();
+  final _facebookController = TextEditingController();
+  final _instagramController = TextEditingController();
 
   bool _isLoadingInfo = true;
   bool _isSavingInfo = false;
@@ -27,13 +29,15 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
   void initState() {
     super.initState();
     Start();
+
     _tabController = TabController(length: 2, vsync: this);
     _loadAppInfo();
   }
-  List<String>_permision=[];
 
-  void Start()async{
-    _permision=await GetPermisionUser();
+  List<String> _permision = [];
+
+  void Start() async {
+    _permision = await GetPermisionUser();
     setState(() {
       _permision;
     });
@@ -54,6 +58,8 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
         _emailController.text = data?['email'] ?? '';
         _phoneController.text = data?['phone'] ?? '';
         _whatsappController.text = data?['whatsapp'] ?? '';
+        _facebookController.text = data?['facebook'] ?? '';
+        _instagramController.text = data?['instagram'] ?? '';
       }
     } catch (e) {
       _showSnackBar('حدث خطأ أثناء تحميل البيانات: $e');
@@ -76,6 +82,8 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
         'email': _emailController.text.trim(),
         'phone': _phoneController.text.trim(),
         'whatsapp': _whatsappController.text.trim(),
+        'facebook': _facebookController.text.trim(),
+        'instagram': _instagramController.text.trim(),
       }, SetOptions(merge: true));
 
       _showSnackBar('تم حفظ البيانات بنجاح!');
@@ -94,7 +102,8 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
-    return _permision.contains("about")?  Scaffold(
+    return _permision.contains("about")
+        ? Scaffold(
       backgroundColor: Colors.grey.shade100,
       appBar: AppBar(
         title: const Text('إدارة "من نحن" والأسئلة الشائعة'),
@@ -117,7 +126,8 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
           _buildFaqTab(),
         ],
       ),
-    ):AccessDefindView();
+    )
+        : AccessDefindView();
   }
 
   // --- 1. تبويب المعلومات الأساسية والتواصل ---
@@ -183,7 +193,7 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'بيانات التواصل',
+                  'بيانات التواصل والتواصل الاجتماعي',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
                 const SizedBox(height: 12),
@@ -210,6 +220,24 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
                   decoration: InputDecoration(
                     labelText: 'البريد الإلكتروني',
                     prefixIcon: const Icon(Icons.email),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _facebookController,
+                  decoration: InputDecoration(
+                    labelText: 'رابط فيسبوك (Facebook)',
+                    prefixIcon: const Icon(Icons.facebook, color: Color(0xFF1877F2)),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _instagramController,
+                  decoration: InputDecoration(
+                    labelText: 'رابط إنستجرام (Instagram)',
+                    prefixIcon: const Icon(Icons.camera_alt, color: Color(0xFFE4405F)),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
@@ -403,6 +431,8 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
     _emailController.dispose();
     _phoneController.dispose();
     _whatsappController.dispose();
+    _facebookController.dispose();
+    _instagramController.dispose();
     super.dispose();
   }
 }
