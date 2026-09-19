@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:dashboard_desginland/feature/Users/widget/user_favourite_product.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import '../../../Core/Utils/app.colors.dart';
 import 'user_product_details_widget.dart';
 
@@ -125,6 +127,19 @@ class UserDetailView extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Card(
+                color: Colors.white,
+                child: ListTile(
+                  title: Text("Favourite Product"),
+                  subtitle: Text("Click To Show Favourite Product"),
+                  leading: Icon(Icons.favorite,color: Colors.red,),
+                  trailing: Icon(Icons.arrow_forward_ios),
+                  onTap: (){
+                    Get.to(UserFavouriteProduct(UserId: userId));
+                  },
+                ),
+              ),
+              const Divider(height: 24),
               Row(
                 children: [
                   const Icon(Icons.phone, size: 18, color: AppColors.primaryPurple),

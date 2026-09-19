@@ -3,6 +3,7 @@ import 'package:dashboard_desginland/Core/server/get_current_user.dart';
 import 'package:dashboard_desginland/Core/widgets/error_dailog_custom.dart';
 import 'package:dashboard_desginland/model/user_model.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import '../../../Core/Utils/app.colors.dart';
 
 class HomeWidget extends StatefulWidget {
@@ -54,7 +55,7 @@ class _HomeWidgetState extends State<HomeWidget> {
         });
       });
     } catch (e) {
-      showErrorDialog(context, "Error", e.toString());
+      showErrorDialog(context, "Error".tr, e.toString());
     }
   }
 
@@ -65,11 +66,11 @@ class _HomeWidgetState extends State<HomeWidget> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0.5,
-        title: const Column(
+        title:  Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "System Overview Dashboard",
+              "System Overview Dashboard".tr,
               style: TextStyle(
                 color: AppColors.textDark,
                 fontWeight: FontWeight.bold,
@@ -77,7 +78,7 @@ class _HomeWidgetState extends State<HomeWidget> {
               ),
             ),
             Text(
-              "Real-time analytics and business insights",
+              "Real-time analytics and business insights".tr,
               style: TextStyle(
                 color: AppColors.textMuted,
                 fontSize: 12,
@@ -89,7 +90,7 @@ class _HomeWidgetState extends State<HomeWidget> {
           IconButton(
             icon: const Icon(Icons.refresh, color: AppColors.primaryPurple),
             onPressed: () => setState(() {}),
-            tooltip: "Refresh Data",
+            tooltip: "Refresh Data".tr,
           ),
           const SizedBox(width: 12),
         ],
@@ -103,8 +104,8 @@ class _HomeWidgetState extends State<HomeWidget> {
             _buildWelcomeBanner(),
             const SizedBox(height: 24),
 
-            const Text(
-              "System Metrics & Resources",
+             Text(
+              "System Metrics & Resources".tr,
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -115,8 +116,8 @@ class _HomeWidgetState extends State<HomeWidget> {
             _buildPrimaryStatsGrid(),
             const SizedBox(height: 24),
 
-            const Text(
-              "Financials & Orders Breakdown",
+             Text(
+              "Financials & Orders Breakdown".tr,
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -128,8 +129,8 @@ class _HomeWidgetState extends State<HomeWidget> {
             const SizedBox(height: 24),
 
             // ==================== GROWTH & PERFORMANCE ANALYTICS ====================
-            const Text(
-              "Business Growth & Conversion",
+             Text(
+              "Business Growth & Conversion".tr,
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -184,7 +185,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Welcome Back, ${_currentUser!.role}! 👋",
+                      "${"Welcome Back,".tr} ${_currentUser!.role}! 👋",
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 20,
@@ -192,8 +193,8 @@ class _HomeWidgetState extends State<HomeWidget> {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    const Text(
-                      "Here is what's happening with your platform today.",
+                     Text(
+                      "Here is what's happening with your platform today.".tr,
                       style: TextStyle(color: Colors.white70, fontSize: 13),
                     ),
                   ],
@@ -207,13 +208,13 @@ class _HomeWidgetState extends State<HomeWidget> {
                   color: Colors.white.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Row(
+                child:  Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.circle, color: Colors.greenAccent, size: 10),
                     SizedBox(width: 8),
                     Text(
-                      "System: Online",
+                      "System: Online".tr,
                       style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -278,36 +279,36 @@ class _HomeWidgetState extends State<HomeWidget> {
                     final int yesterdayVisitors = yesterdaySnap.data?.docs.length ?? 0;
 
                     return _buildStatCard(
-                      title: "Today's Visitors",
+                      title: "Today's Visitors".tr,
                       customValue: "$todayVisitors",
                       icon: Icons.remove_red_eye_outlined,
                       color: Colors.blue,
-                      subtitle: "$yesterdayVisitors yesterday",
+                      subtitle: "$yesterdayVisitors ${"yesterday".tr}",
                     );
                   },
                 );
               },
             ),
             _buildStatCard(
-              title: "Total Customers",
+              title: "Total Customers".tr,
               valueStream: _clientsRef.where('role',isEqualTo: "user").snapshots(),
               icon: Icons.people_alt_outlined,
               color: Colors.indigo,
             ),
             _buildStatCard(
-              title: "Employees & Staff",
+              title: "Employees & Staff".tr,
               valueStream: _clientsRef.where('role',isEqualTo: "staff").snapshots(),
               icon: Icons.badge_outlined,
               color: Colors.teal,
             ),
             _buildStatCard(
-              title: "Total Products",
+              title: "Total Products".tr,
               valueStream: _productsRef.snapshots(),
               icon: Icons.inventory_2_outlined,
               color: Colors.orange,
             ),
             _buildStatCard(
-              title: "Total PromoCode",
+              title: "Total PromoCode".tr,
               valueStream: _discountRef.snapshots(),
               icon: Icons.discount_outlined,
               color: Colors.blue,
@@ -435,9 +436,9 @@ class _HomeWidgetState extends State<HomeWidget> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Expanded(
+               Expanded(
                 child: Text(
-                  "Categories & Sub",
+                  "Categories & Sub".tr,
                   style: TextStyle(
                     color: AppColors.textMuted,
                     fontWeight: FontWeight.w600,
@@ -470,7 +471,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                       Text("$catCount",
                           style: const TextStyle(
                               fontSize: 18, fontWeight: FontWeight.bold)),
-                      const Text("Categories",
+                       Text("Categories".tr,
                           style: TextStyle(
                               fontSize: 11, color: AppColors.textMuted)),
                     ],
@@ -491,7 +492,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                       Text("$subCount",
                           style: const TextStyle(
                               fontSize: 18, fontWeight: FontWeight.bold)),
-                      const Text("Subcategories",
+                       Text("Subcategories".tr,
                           style: TextStyle(
                               fontSize: 11, color: AppColors.textMuted)),
                     ],
@@ -644,7 +645,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
-                                      const Text("Net Monthly Income",
+                                       Text("Net Monthly Income".tr,
                                           style: TextStyle(
                                               color: AppColors.textMuted,
                                               fontSize: 14,
@@ -674,7 +675,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                                   ),
                                   const SizedBox(height: 6),
                                   Text(
-                                    "In: \$${totalCollected.toStringAsFixed(0)} | Out: \$${totalSpent.toStringAsFixed(0)}",
+                                    "${"In:".tr} \$${totalCollected.toStringAsFixed(0)} | ${"Out:".tr} \$${totalSpent.toStringAsFixed(0)}",
                                     style: const TextStyle(
                                         color: AppColors.textMuted, fontSize: 12),
                                   ),
@@ -689,7 +690,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                                 children: [
                                   Expanded(
                                     child: _buildSmallStatusCard(
-                                      title: "Active",
+                                      title: "Active".tr,
                                       count: activeOrders,
                                       color: Colors.orange,
                                       icon: Icons.pending_actions,
@@ -698,7 +699,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: _buildSmallStatusCard(
-                                      title: "Completed",
+                                      title: "Completed".tr,
                                       count: completedOrders,
                                       color: Colors.green,
                                       icon: Icons.check_circle_outline,
@@ -707,7 +708,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: _buildSmallStatusCard(
-                                      title: "Cancelled",
+                                      title: "Cancelled".tr,
                                       count: cancelledOrders,
                                       color: Colors.redAccent,
                                       icon: Icons.cancel_outlined,
@@ -858,33 +859,33 @@ class _HomeWidgetState extends State<HomeWidget> {
                             Expanded(
                               flex: isMobile ? 0 : 1,
                               child: _buildAnalyticsMetricCard(
-                                title: "Monthly Growth",
+                                title: "Monthly Growth".tr,
                                 value: "${monthlyGrowthPercent >= 0 ? '+' : ''}${monthlyGrowthPercent.toStringAsFixed(1)}%",
                                 icon: monthlyGrowthPercent >= 0 ? Icons.trending_up : Icons.trending_down,
                                 color: monthlyGrowthPercent >= 0 ? Colors.blueAccent : Colors.redAccent,
-                                subtitle: "Revenue vs last month",
+                                subtitle: "Revenue vs last month".tr,
                               ),
                             ),
                             SizedBox(width: isMobile ? 0 : 12, height: isMobile ? 12 : 0),
                             Expanded(
                               flex: isMobile ? 0 : 1,
                               child: _buildAnalyticsMetricCard(
-                                title: "Avg Order Value",
+                                title: "Avg Order Value".tr,
                                 value: "\$${avgOrderValue.toStringAsFixed(2)}",
                                 icon: Icons.shopping_bag_outlined,
                                 color: Colors.purpleAccent,
-                                subtitle: "Across $totalOrdersCount total orders",
+                                subtitle: "${"Across".tr} $totalOrdersCount ${"total orders".tr}",
                               ),
                             ),
                             SizedBox(width: isMobile ? 0 : 12, height: isMobile ? 12 : 0),
                             Expanded(
                               flex: isMobile ? 0 : 1,
                               child: _buildAnalyticsMetricCard(
-                                title: "Conversion Rate",
+                                title: "Conversion Rate".tr,
                                 value: "${conversionRate.toStringAsFixed(2)}%",
                                 icon: Icons.pie_chart_outline,
                                 color: Colors.teal,
-                                subtitle: "$totalOrdersCount orders / $totalSessionsCount sessions",
+                                subtitle: "$totalOrdersCount ${"orders".tr} / $totalSessionsCount ${"sessions".tr}",
                               ),
                             ),
                           ],
@@ -985,11 +986,11 @@ class _HomeWidgetState extends State<HomeWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                "Active Orders In Progress",
+                "Active Orders In Progress".tr,
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -1037,11 +1038,11 @@ class _HomeWidgetState extends State<HomeWidget> {
                   }
 
                   if (activeOrders.isEmpty) {
-                    return const Center(
+                    return  Center(
                       child: Padding(
                         padding: EdgeInsets.symmetric(vertical: 20),
                         child: Text(
-                          "No active orders currently in progress.",
+                          "No active orders currently in progress.".tr,
                           style: TextStyle(color: AppColors.textMuted),
                         ),
                       ),
@@ -1086,11 +1087,11 @@ class _HomeWidgetState extends State<HomeWidget> {
                               color: _getStatusColor(status), size: 18),
                         ),
                         title: Text(
-                          "Order #${orderId.length > 6 ? orderId.substring(0, 6) : orderId}",
+                          "${"Order".tr} #${orderId.length > 6 ? orderId.substring(0, 6) : orderId}",
                           style: const TextStyle(
                               fontWeight: FontWeight.bold, fontSize: 14),
                         ),
-                        subtitle: Text("Status: $status",
+                        subtitle: Text("${"Status:".tr} $status",
                             style: TextStyle(
                                 color: _getStatusColor(status),
                                 fontSize: 12,

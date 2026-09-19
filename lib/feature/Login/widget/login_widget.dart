@@ -3,6 +3,7 @@ import 'package:dashboard_desginland/feature/Login/function/auth_function.dart';
 import 'package:dashboard_desginland/feature/Main%20Screen/view/main_screen_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get/get.dart';
 import '../../../Core/Utils/app.colors.dart';
 import '../../../Core/Utils/app.images.dart';
 
@@ -122,8 +123,8 @@ class _LoginWidgetState extends State<LoginWidget> {
             fit: BoxFit.contain,
           ),
           const SizedBox(height: 24),
-          const Text(
-            "Welcome Back!",
+           Text(
+            "Welcome Back!".tr,
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
@@ -131,8 +132,8 @@ class _LoginWidgetState extends State<LoginWidget> {
             ),
           ),
           const SizedBox(height: 12),
-          const Text(
-            "DesignLand Admin Dashboard\nManage orders, products & customized gifts",
+           Text(
+            "DesignLand Admin Dashboard\nManage orders, products & customized gifts".tr,
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14,
@@ -164,8 +165,8 @@ class _LoginWidgetState extends State<LoginWidget> {
             fit: BoxFit.contain,
           ),
           const SizedBox(height: 12),
-          const Text(
-            "DesignLand Dashboard",
+           Text(
+            "DesignLand Dashboard".tr,
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -190,7 +191,7 @@ class _LoginWidgetState extends State<LoginWidget> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "Sign In",
+              "Sign In".tr,
               style: TextStyle(
                 fontSize: isDesktop ? 26 : 22,
                 fontWeight: FontWeight.bold,
@@ -198,8 +199,8 @@ class _LoginWidgetState extends State<LoginWidget> {
               ),
             ),
             const SizedBox(height: 6),
-            const Text(
-              "Enter your credentials to access the admin panel",
+             Text(
+              "Enter your credentials to access the admin panel".tr,
               style: TextStyle(
                 fontSize: 13,
                 color: AppColors.textMuted,
@@ -212,7 +213,7 @@ class _LoginWidgetState extends State<LoginWidget> {
               controller: _emailController,
               keyboardType: TextInputType.emailAddress,
               decoration: InputDecoration(
-                labelText: "Email Address",
+                labelText: "Email Address".tr,
                 hintText: "admin@designland.eg",
                 prefixIcon: const Icon(Icons.email_outlined, size: 20),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -229,10 +230,10 @@ class _LoginWidgetState extends State<LoginWidget> {
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return "Please enter your email";
+                  return "Please enter your email".tr;
                 }
                 if (!value.contains('@')) {
-                  return "Please enter a valid email";
+                  return "Please enter a valid email".tr;
                 }
                 return null;
               },
@@ -244,7 +245,7 @@ class _LoginWidgetState extends State<LoginWidget> {
               controller: _passwordController,
               obscureText: _isPasswordObscure,
               decoration: InputDecoration(
-                labelText: "Password",
+                labelText: "Password".tr,
                 prefixIcon: const Icon(Icons.lock_outline, size: 20),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 suffixIcon: IconButton(
@@ -273,10 +274,10 @@ class _LoginWidgetState extends State<LoginWidget> {
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return "Please enter your password";
+                  return "Please enter your password".tr;
                 }
                 if (value.length < 6) {
-                  return "Password must be at least 6 characters";
+                  return "Password must be at least 6 characters".tr;
                 }
                 return null;
               },
@@ -295,8 +296,8 @@ class _LoginWidgetState extends State<LoginWidget> {
                     ),
                   );
                 },
-                child: const Text(
-                  "Forgot Password?",
+                child:  Text(
+                  "Forgot Password?".tr,
                   style: TextStyle(
                     color: AppColors.primaryPurple,
                     fontWeight: FontWeight.w600,
@@ -329,8 +330,8 @@ class _LoginWidgetState extends State<LoginWidget> {
                     strokeWidth: 2,
                   ),
                 )
-                    : const Text(
-                  "Login to Dashboard",
+                    :  Text(
+                  "Login to Dashboard".tr,
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.bold,

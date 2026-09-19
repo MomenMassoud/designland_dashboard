@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dashboard_desginland/Core/server/get_permision.dart';
 import 'package:dashboard_desginland/feature/Access%20Defind/view/access_defind_view.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 class AboutWidget extends StatefulWidget {
   const AboutWidget({Key? key}) : super(key: key);
@@ -62,7 +63,7 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
         _instagramController.text = data?['instagram'] ?? '';
       }
     } catch (e) {
-      _showSnackBar('حدث خطأ أثناء تحميل البيانات: $e');
+      _showSnackBar('${"An error occurred while loading the data:".tr}$e');
     } finally {
       if (mounted) {
         setState(() => _isLoadingInfo = false);
@@ -70,7 +71,6 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
     }
   }
 
-  // حفظ المعلومات الأساسية والتواصل
   Future<void> _saveAppInfo() async {
     setState(() => _isSavingInfo = true);
     try {
@@ -86,9 +86,9 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
         'instagram': _instagramController.text.trim(),
       }, SetOptions(merge: true));
 
-      _showSnackBar('تم حفظ البيانات بنجاح!');
+      _showSnackBar('Data saved successfully!'.tr);
     } catch (e) {
-      _showSnackBar('حدث خطأ أثناء الحفظ: $e');
+      _showSnackBar('${"An error occurred while saving:".tr}$e');
     } finally {
       if (mounted) {
         setState(() => _isSavingInfo = false);
@@ -106,16 +106,16 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
         ? Scaffold(
       backgroundColor: Colors.grey.shade100,
       appBar: AppBar(
-        title: const Text('إدارة "من نحن" والأسئلة الشائعة'),
+        title:Text('Managing "About Us" and FAQs'.tr),
         centerTitle: true,
         bottom: TabBar(
           controller: _tabController,
           labelColor: Theme.of(context).primaryColor,
           unselectedLabelColor: Colors.grey,
           indicatorColor: Theme.of(context).primaryColor,
-          tabs: const [
-            Tab(icon: Icon(Icons.info_outline), text: 'المعلومات الأساسية'),
-            Tab(icon: Icon(Icons.quiz_outlined), text: 'الأسئلة الشائعة (FAQ)'),
+          tabs:[
+            Tab(icon: Icon(Icons.info_outline), text: 'Basic Information'.tr),
+            Tab(icon: Icon(Icons.quiz_outlined), text: 'Frequently Asked Questions (FAQ)'.tr),
           ],
         ),
       ),
@@ -156,8 +156,8 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'نبذة "عن التطبيق / من نحن"',
+                Text(
+                  'About the App / Who We Are'.tr,
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
                 const SizedBox(height: 12),
@@ -165,7 +165,7 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
                   controller: _aboutController,
                   maxLines: 4,
                   decoration: InputDecoration(
-                    hintText: 'اكتب الوصف الذي يظهر للمستخدم هنا...',
+                    hintText: 'Enter the description that appears to the user here...'.tr,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -192,15 +192,15 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'بيانات التواصل والتواصل الاجتماعي',
+                 Text(
+                  'Contact and Social Media Details'.tr,
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _whatsappController,
                   decoration: InputDecoration(
-                    labelText: 'رقم الواتساب',
+                    labelText: 'WhatsApp number'.tr,
                     prefixIcon: const Icon(Icons.wechat, color: Color(0xFF25D366)),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
@@ -209,7 +209,7 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
                 TextField(
                   controller: _phoneController,
                   decoration: InputDecoration(
-                    labelText: 'رقم الاتصال',
+                    labelText: 'Contact number'.tr,
                     prefixIcon: const Icon(Icons.phone),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
@@ -218,7 +218,7 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
                 TextField(
                   controller: _emailController,
                   decoration: InputDecoration(
-                    labelText: 'البريد الإلكتروني',
+                    labelText: 'e-mail'.tr,
                     prefixIcon: const Icon(Icons.email),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
@@ -227,7 +227,7 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
                 TextField(
                   controller: _facebookController,
                   decoration: InputDecoration(
-                    labelText: 'رابط فيسبوك (Facebook)',
+                    labelText: 'Facebook link'.tr,
                     prefixIcon: const Icon(Icons.facebook, color: Color(0xFF1877F2)),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
@@ -236,7 +236,7 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
                 TextField(
                   controller: _instagramController,
                   decoration: InputDecoration(
-                    labelText: 'رابط إنستجرام (Instagram)',
+                    labelText: 'Instagram link'.tr,
                     prefixIcon: const Icon(Icons.camera_alt, color: Color(0xFFE4405F)),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
@@ -259,7 +259,7 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
                 child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
               )
                   : const Icon(Icons.save),
-              label: const Text('حفظ التعديلات', style: TextStyle(fontSize: 16)),
+              label: Text('Save changes'.tr, style: TextStyle(fontSize: 16)),
               style: ElevatedButton.styleFrom(
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
@@ -277,7 +277,7 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showFaqDialog(),
         icon: const Icon(Icons.add),
-        label: const Text('إضافة سؤال جديد'),
+        label:Text('Add a new question'.tr),
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: _db.collection('faqs').snapshots(),
@@ -289,8 +289,8 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
           final docs = snapshot.data?.docs ?? [];
 
           if (docs.isEmpty) {
-            return const Center(
-              child: Text('لا توجد أسئلة شائعة مضافة بعد.'),
+            return  Center(
+              child: Text('No frequently asked questions have been added yet.'.tr),
             );
           }
 
@@ -365,14 +365,14 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
       builder: (context) {
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text(isEdit ? 'تعديل السؤال الشائع' : 'إضافة سؤال شائع جديد'),
+          title: Text(isEdit ? 'Edit FAQ item'.tr : 'Add a new FAQ'.tr),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: qController,
-                decoration: const InputDecoration(
-                  labelText: 'السؤال',
+                decoration:  InputDecoration(
+                  labelText: 'The Question'.tr,
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -380,8 +380,8 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
               TextField(
                 controller: aController,
                 maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: 'الإجابة',
+                decoration:  InputDecoration(
+                  labelText: 'The Answer'.tr,
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -390,7 +390,7 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('إلغاء'),
+              child:  Text('cancellation'.tr),
             ),
             ElevatedButton(
               onPressed: () async {
@@ -411,7 +411,7 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
 
                 if (mounted) Navigator.pop(context);
               },
-              child: Text(isEdit ? 'تعديل' : 'إضافة'),
+              child: Text(isEdit ? 'Edit'.tr : 'Add'.tr),
             ),
           ],
         );

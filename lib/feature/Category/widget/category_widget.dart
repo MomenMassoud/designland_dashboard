@@ -5,6 +5,7 @@ import 'package:dashboard_desginland/feature/SubCategory/view/subcategory_view.d
 import 'package:dashboard_desginland/model/category_model.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../Core/Utils/app.colors.dart';
 import '../../../Core/server/cloudinara_server.dart';
@@ -68,8 +69,8 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                     stream: _categoriesRef.snapshots(),
                     builder: (context, snapshot) {
                       if (snapshot.hasError) {
-                        return const Center(
-                          child: Text("Error loading categories!"),
+                        return  Center(
+                          child: Text("Error loading categories!".tr),
                         );
                       }
                       if (snapshot.connectionState ==
@@ -99,12 +100,12 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                         return Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
-                            children: const [
+                            children:  [
                               Icon(Icons.category_outlined,
                                   size: 64, color: AppColors.textMuted),
                               SizedBox(height: 12),
                               Text(
-                                "No categories found matching your search.",
+                                "No categories found matching your search.".tr,
                                 style: TextStyle(
                                     color: AppColors.textMuted,
                                     fontSize: 16),
@@ -175,8 +176,8 @@ class _CategoryWidgetState extends State<CategoryWidget> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            "Categories Management",
+           Text(
+            "Categories Management".tr,
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
@@ -184,8 +185,8 @@ class _CategoryWidgetState extends State<CategoryWidget> {
             ),
           ),
           const SizedBox(height: 4),
-          const Text(
-            "Manage your store product categories",
+           Text(
+            "Manage your store product categories".tr,
             style: TextStyle(fontSize: 13, color: AppColors.textMuted),
           ),
           const SizedBox(height: 12),
@@ -194,8 +195,8 @@ class _CategoryWidgetState extends State<CategoryWidget> {
             child: ElevatedButton.icon(
               onPressed: () => _openCategoryFormPanel(context),
               icon: const Icon(Icons.add, color: Colors.white),
-              label: const Text(
-                "Add New Category",
+              label:  Text(
+                "Add New Category".tr,
                 style: TextStyle(
                     color: Colors.white, fontWeight: FontWeight.bold),
               ),
@@ -215,11 +216,11 @@ class _CategoryWidgetState extends State<CategoryWidget> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Column(
+         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "Categories Management",
+              "Categories Management".tr,
               style: TextStyle(
                 fontSize: 26,
                 fontWeight: FontWeight.bold,
@@ -228,7 +229,7 @@ class _CategoryWidgetState extends State<CategoryWidget> {
             ),
             SizedBox(height: 4),
             Text(
-              "Manage your store product categories",
+              "Manage your store product categories".tr,
               style: TextStyle(
                 fontSize: 14,
                 color: AppColors.textMuted,
@@ -239,8 +240,8 @@ class _CategoryWidgetState extends State<CategoryWidget> {
         ElevatedButton.icon(
           onPressed: () => _openCategoryFormPanel(context),
           icon: const Icon(Icons.add, color: Colors.white),
-          label: const Text(
-            "Add New Category",
+          label:  Text(
+            "Add New Category".tr,
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
           style: ElevatedButton.styleFrom(
@@ -276,7 +277,7 @@ class _CategoryWidgetState extends State<CategoryWidget> {
           });
         },
         decoration: InputDecoration(
-          hintText: "Search categories by Arabic or English name...",
+          hintText: "Search categories by Arabic or English name...".tr,
           prefixIcon: const Icon(Icons.search, color: AppColors.primaryPurple),
           suffixIcon: _searchQuery.isNotEmpty
               ? IconButton(
@@ -466,12 +467,12 @@ class _CategoryWidgetState extends State<CategoryWidget> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text("Delete Category"),
-        content: Text("Are you sure you want to delete '$nameEn'?"),
+        title:  Text("Delete Category".tr),
+        content: Text("${"Are you sure you want to delete".tr} '$nameEn'?"),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text("Cancel"),
+            child:  Text("Cancel".tr),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
@@ -482,7 +483,7 @@ class _CategoryWidgetState extends State<CategoryWidget> {
               await _categoriesRef.doc(docId).delete();
               if (context.mounted) Navigator.pop(ctx);
             },
-            child: const Text("Delete", style: TextStyle(color: Colors.white)),
+            child:  Text("Delete".tr, style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -550,8 +551,8 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                             children: [
                               Text(
                                 docId == null
-                                    ? "Add New Category"
-                                    : "Edit Category",
+                                    ? "Add New Category".tr
+                                    : "Edit Category".tr,
                                 style: const TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
@@ -570,8 +571,8 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text(
-                                    "Category Image",
+                                   Text(
+                                    "Category Image".tr,
                                     style: TextStyle(
                                       fontWeight: FontWeight.w600,
                                       color: AppColors.textDark,
@@ -591,7 +592,7 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                                           });
                                         }
                                       } catch (e) {
-                                        debugPrint("Error picking image: $e");
+                                        debugPrint("${"Error picking image:".tr} $e");
                                       }
                                     },
                                     child: Container(
@@ -635,7 +636,7 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                                           : Column(
                                         mainAxisAlignment:
                                         MainAxisAlignment.center,
-                                        children: const [
+                                        children:  [
                                           Icon(
                                             Icons.add_a_photo_outlined,
                                             size: 36,
@@ -644,7 +645,7 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                                           ),
                                           SizedBox(height: 8),
                                           Text(
-                                            "Click to select Category Image",
+                                            "Click to select Category Image".tr,
                                             style: TextStyle(
                                               color:
                                               AppColors.textMuted,
@@ -702,7 +703,7 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                                       borderRadius: BorderRadius.circular(10),
                                     ),
                                   ),
-                                  child: const Text("Cancel"),
+                                  child:  Text("Cancel".tr),
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -772,7 +773,7 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                                     ),
                                   )
                                       : Text(
-                                    docId == null ? "Save" : "Update",
+                                    docId == null ? "Save".tr : "Update".tr,
                                     style: const TextStyle(
                                         color: Colors.white),
                                   ),

@@ -7,6 +7,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:universal_html/html.dart' as html;
 
 class AnalyticsWidget extends StatefulWidget {
@@ -48,7 +49,7 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
     } catch (e) {
       setState(() => isLoadingRole = false);
       if (mounted) {
-        showErrorDialog(context, "Error", e.toString());
+        showErrorDialog(context, "Error".tr, e.toString());
       }
     }
   }
@@ -69,48 +70,48 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
       var excel = import_excel.Excel.createExcel();
 
       // 1. شيت الملخص العام للمؤشرات
-      import_excel.Sheet summarySheet = excel['الملخص العام'];
-      excel.setDefaultSheet('الملخص العام');
+      import_excel.Sheet summarySheet = excel['Executive Summary'];
+      excel.setDefaultSheet('Executive Summary');
 
       summarySheet.appendRow([
-        import_excel.TextCellValue('المؤشر'),
-        import_excel.TextCellValue('القيمة'),
+        import_excel.TextCellValue('The Index'),
+        import_excel.TextCellValue('Value'),
       ]);
       summarySheet.appendRow([
-        import_excel.TextCellValue('إجمالي الجلسات'),
+        import_excel.TextCellValue('Total sessions'),
         import_excel.IntCellValue(totalSessions),
       ]);
       summarySheet.appendRow([
-        import_excel.TextCellValue('جلسات الضيوف'),
+        import_excel.TextCellValue('Guest seating areas'),
         import_excel.IntCellValue(guestSessions),
       ]);
       summarySheet.appendRow([
-        import_excel.TextCellValue('جلسات المستخدمين المسجلين'),
+        import_excel.TextCellValue('Registered user sessions'),
         import_excel.IntCellValue(userSessions),
       ]);
       summarySheet.appendRow([
-        import_excel.TextCellValue('إجمالي عمليات البحث'),
+        import_excel.TextCellValue('Total searches'),
         import_excel.IntCellValue(totalSearches),
       ]);
       summarySheet.appendRow([
-        import_excel.TextCellValue('بحث الضيوف'),
+        import_excel.TextCellValue('Search Guests'),
         import_excel.IntCellValue(guestSearches),
       ]);
       summarySheet.appendRow([
-        import_excel.TextCellValue('بحث المستخدمين'),
+        import_excel.TextCellValue('User Search'),
         import_excel.IntCellValue(userSearches),
       ]);
       summarySheet.appendRow([
-        import_excel.TextCellValue('متوسط وقت البقاء (دقائق)'),
+        import_excel.TextCellValue('Average dwell time (minutes)'),
         import_excel.DoubleCellValue(
             double.parse(avgDuration.toStringAsFixed(2))),
       ]);
 
       // 2. شيت الأكثر بحثاً
-      import_excel.Sheet searchesSheet = excel['الكلمات الأكثر بحثاً'];
+      import_excel.Sheet searchesSheet = excel['Most searched wordsً'];
       searchesSheet.appendRow([
-        import_excel.TextCellValue('كلمة البحث'),
-        import_excel.TextCellValue('عدد مرات البحث'),
+        import_excel.TextCellValue('Search term'),
+        import_excel.TextCellValue('Number of searches'),
       ]);
 
       searchQueries.forEach((query, count) {
@@ -121,10 +122,10 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
       });
 
       // 3. شيت مشاهدات المنتجات
-      import_excel.Sheet productsSheet = excel['مشاهدات المنتجات'];
+      import_excel.Sheet productsSheet = excel['Product Views'];
       productsSheet.appendRow([
-        import_excel.TextCellValue('العنوان / المعرف'),
-        import_excel.TextCellValue('عدد المشاهدات'),
+        import_excel.TextCellValue('Title / Identifier'),
+        import_excel.TextCellValue('Number of views'),
       ]);
 
       for (var prod in liveProducts) {
@@ -157,13 +158,13 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('تم إنشاء وحفظ ملف Excel بنجاح: $fileName')),
+            SnackBar(content: Text('${"The Excel file has been successfully created and saved:".tr}$fileName')),
           );
         }
       }
     } catch (e) {
       if (mounted) {
-        showErrorDialog(context, "خطأ في التصدير", e.toString());
+        showErrorDialog(context, "Export error".tr, e.toString());
       }
     }
   }
@@ -192,7 +193,7 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
         if (sessionSnap.hasError) {
           return Scaffold(
             body: Center(
-                child: Text('حدث خطأ في تحميل البيانات: ${sessionSnap.error}')),
+                child: Text('${"An error occurred while loading the data:".tr}${sessionSnap.error}')),
           );
         }
 
@@ -364,8 +365,8 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
             return Scaffold(
               backgroundColor: Colors.grey.shade100,
               appBar: AppBar(
-                title: const Text(
-                  'مركز إدارة التحليلات والبزنس',
+                title: Text(
+                  'Analytics and Business Management Center'.tr,
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                 ),
                 centerTitle: true,
@@ -376,11 +377,11 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                   IconButton(
                     icon: const Icon(Icons.table_chart_outlined,
                         color: Colors.green),
-                    tooltip: 'تصدير Excel',
+                    tooltip: 'Export to Excel'.tr,
                     onPressed: () async {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('جاري إعداد وحفظ ملف Excel...')),
+                         SnackBar(
+                            content: Text('Preparing and saving the Excel file...'.tr)),
                       );
 
                       await _exportToExcel(
@@ -407,13 +408,13 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                     const SizedBox(height: 16),
 
                     if (recommendations.isNotEmpty) ...[
-                      _buildSectionHeader('توصيات وتحليلات نمو البزنس 🚀'),
+                      _buildSectionHeader('Business Growth Recommendations and Analyses 🚀'.tr),
                       const SizedBox(height: 12),
                       _buildRecommendationsSection(recommendations),
                       const SizedBox(height: 24),
                     ],
 
-                    _buildSectionHeader('مؤشرات الأداء الرئيسية (KPIs)'),
+                    _buildSectionHeader('Key Performance Indicators (KPIs)'.tr),
                     const SizedBox(height: 12),
                     GridView.count(
                       crossAxisCount:
@@ -425,32 +426,32 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                       childAspectRatio: 1.4,
                       children: [
                         _buildKpiCard(
-                          title: 'إجمالي الجلسات',
+                          title: 'Total sessions'.tr,
                           value: '$totalSessions',
                           subtitle:
-                          'ضيوف: $guestSessions | مسجلين: $userSessions',
+                          '${"guests".tr}: $guestSessions | ${"Registered".tr}: $userSessions',
                           icon: Icons.bar_chart_rounded,
                           color: Colors.blue,
                         ),
                         _buildKpiCard(
-                          title: 'إجمالي عمليات البحث',
+                          title: 'Total searches'.tr,
                           value: '$totalSearches',
-                          subtitle: 'بحث ضيوف: $guestSearches',
+                          subtitle: '${"Guest Research:".tr}$guestSearches',
                           icon: Icons.search_rounded,
                           color: Colors.orange,
                         ),
                         _buildKpiCard(
-                          title: 'متوسط وقت البقاء',
+                          title: 'Average dwell time'.tr,
                           value:
-                          '${avgSessionDuration.toStringAsFixed(1)} دقيقة',
-                          subtitle: 'معدل التفاعل',
+                          '${avgSessionDuration.toStringAsFixed(1)} ${"minute".tr}',
+                          subtitle: 'Reaction rate'.tr,
                           icon: Icons.timer_outlined,
                           color: Colors.purple,
                         ),
                         _buildKpiCard(
-                          title: 'ساعة الذروة (Peak)',
+                          title: 'Peak hour'.tr,
                           value: '$peakHour:00',
-                          subtitle: '$maxHourCount زائر في هذا الوقت',
+                          subtitle: '$maxHourCount${"Visitor at this time".tr}',
                           icon: Icons.access_time_filled_sharp,
                           color: Colors.deepOrange,
                         ),
@@ -458,39 +459,39 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                     ),
                     const SizedBox(height: 24),
 
-                    _buildSectionHeader('الكلمات والأصناف الأكثر بحثاً 🔍'),
+                    _buildSectionHeader('Most searched terms and categories 🔍'.tr),
                     const SizedBox(height: 12),
                     _buildTopSearchesCard(searchQueriesCount),
                     const SizedBox(height: 24),
 
-                    _buildSectionHeader('سجل أبحاث الزوار والمستخدمين الأخيرة'),
+                    _buildSectionHeader('Recent visitor and user search log'.tr),
                     const SizedBox(height: 12),
                     _buildRecentSearchesList(searchDocs),
                     const SizedBox(height: 24),
 
                     _buildSectionHeader(
-                        'نشاط الزوار حسب ساعات اليوم (Peak Hours)'),
+                        'Visitor activity by time of day (Peak Hours)'.tr),
                     const SizedBox(height: 12),
                     _buildHourlyActivityChart(hourlyActivity),
                     const SizedBox(height: 24),
 
-                    _buildSectionHeader('توزيع المنصات والأجهزة (Pie Chart)'),
+                    _buildSectionHeader('Distribution of Platforms and Devices (Pie Chart)'.tr),
                     const SizedBox(height: 12),
                     _buildPieChartCard(platformCount, totalSessions),
                     const SizedBox(height: 24),
 
                     _buildSectionHeader(
-                        'رسم بياني لأعلى المنتجات مشاهدة (Bar Chart)'),
+                        'Bar chart of most-viewed products'.tr),
                     const SizedBox(height: 12),
                     _buildProductBarChartCard(productViewsCount),
                     const SizedBox(height: 24),
 
-                    _buildSectionHeader('أداء المنتجات بالبيانات الحية'),
+                    _buildSectionHeader('Product performance using live data'.tr),
                     const SizedBox(height: 12),
                     _buildLiveProductsGrid(productStatsMap.values.toList()),
                     const SizedBox(height: 24),
 
-                    _buildSectionHeader('سجل الجلسات الأخيرة والتفاصيل'),
+                    _buildSectionHeader('Recent session log and details'.tr),
                     const SizedBox(height: 12),
                     _buildRecentSessionsList(sessionDocs),
                   ],
@@ -511,8 +512,8 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
         ),
-        child: const Center(
-          child: Text('لا توجد عمليات بحث مسجلة في هذه الفترة',
+        child:  Center(
+          child: Text('There are no recorded searches for this period.'.tr,
               style: TextStyle(color: Colors.grey)),
         ),
       );
@@ -569,13 +570,13 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
         itemBuilder: (context, index) {
           final data = docs[index].data() as Map<String, dynamic>;
           bool isGuest = data['gust'] ?? data['isGuest'] ?? false;
-          String query = data['query'] ?? 'بحث فارغ';
+          String query = data['query'] ?? 'Empty search'.tr;
           String userId = data['userID'] ?? data['userId'] ?? 'guest';
 
           Timestamp? createdAt = data['createdAt'] as Timestamp?;
           String timeStr = createdAt != null
               ? '${createdAt.toDate().hour.toString().padLeft(2, '0')}:${createdAt.toDate().minute.toString().padLeft(2, '0')}'
-              : 'غير محدد';
+              : 'undefined'.tr;
 
           if (isGuest || userId == 'guest') {
             return ListTile(
@@ -588,7 +589,7 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                 style:
                 const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
               ),
-              subtitle: const Text('المصدر: زائر ضيف (Guest)'),
+              subtitle:  Text('Source: Guest'.tr),
               trailing: Text(
                 timeStr,
                 style: const TextStyle(color: Colors.grey, fontSize: 12),
@@ -599,7 +600,7 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
           return FutureBuilder<DocumentSnapshot>(
             future: _firestore.collection('user').doc(userId).get(),
             builder: (context, userSnapshot) {
-              String userName = 'مستخدم ($userId)';
+              String userName = '${"User (".tr}$userId)';
               if (userSnapshot.hasData && userSnapshot.data!.exists) {
                 final userData =
                 userSnapshot.data!.data() as Map<String, dynamic>?;
@@ -619,7 +620,7 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                   style: const TextStyle(
                       fontWeight: FontWeight.bold, fontSize: 14),
                 ),
-                subtitle: Text('المستخدم: $userName'),
+                subtitle: Text('${"user:".tr}$userName'),
                 trailing: Text(
                   timeStr,
                   style: const TextStyle(color: Colors.grey, fontSize: 12),
@@ -647,9 +648,9 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
           .reduce((a, b) => a.value > b.value ? a : b);
       if (topSearch.value >= 2) {
         list.add({
-          'title': 'طلب عالي على كلمة بحث معينة 🔍',
+          'title': 'High demand for a specific search term 🔍'.tr,
           'desc':
-          'يبحث الزوار بكثرة عن "${topSearch.key}". يمكنك توفير منتجات إضافية تندرج تحت هذا الاسم أو تحسين ظهورها.',
+          '${"Visitors search frequently for".tr} "${topSearch.key}${"You can offer additional products that fall under this name or improve their visibility.".tr}',
           'icon': Icons.search_outlined,
           'color': Colors.amber.shade900,
         });
@@ -658,9 +659,9 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
 
     if (peakHour > 0) {
       list.add({
-        'title': 'الوقت المثالي لإرسال الإشعارات والعروض ⏰',
+        'title': 'The ideal time to send notifications and offers ⏰'.tr,
         'desc':
-        'أعلى فترة نشاط للزوار هي الساعة $peakHour:00. يُنصح ببرمجة العروض الخاطفة والإشعارات في هذا الوقت.',
+        '${"The peak period of visitor activity is at...".tr} $peakHour${"It is recommended to schedule flash sales and notifications for this time.".tr}',
         'icon': Icons.notifications_active_outlined,
         'color': Colors.deepOrange,
       });
@@ -671,9 +672,9 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
       productViews.entries.reduce((a, b) => a.value > b.value ? a : b);
       if (topProduct.value >= 2) {
         list.add({
-          'title': 'المنتج الأكثر طلبًا واهتمامًا 🔥',
+          'title': 'The most in-demand and sought-after product 🔥'.tr,
           'desc':
-          'المنتج "${topProduct.key}" يحظى بأعلى معدل اهتمام بـ (${topProduct.value} مشاهدة).',
+          '${"The Product".tr} "${topProduct.key}${"It receives the highest level of attention for (".tr}${topProduct.value}${"to watch).".tr}',
           'icon': Icons.local_fire_department_outlined,
           'color': Colors.redAccent,
         });
@@ -696,17 +697,17 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text(
-            'النطاق الزمني:',
+           Text(
+            'Timeframe:'.tr,
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
           ),
           Row(
             children: [
-              _buildFilterChip('اليوم', 'today'),
+              _buildFilterChip('today', 'today'),
               const SizedBox(width: 8),
-              _buildFilterChip('آخر 7 أيام', '7days'),
+              _buildFilterChip('7days', '7days'),
               const SizedBox(width: 8),
-              _buildFilterChip('الكل', 'all'),
+              _buildFilterChip('all', 'all'),
             ],
           )
         ],
@@ -804,8 +805,8 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'توزع الزيارات طوال الـ 24 ساعة',
+           Text(
+            'Visits are distributed throughout the 24-hour period.'.tr,
             style: TextStyle(fontSize: 13, color: Colors.grey),
           ),
           const SizedBox(height: 16),
@@ -877,8 +878,8 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
         ),
-        child: const Center(
-          child: Text('لا توجد منتجات تم تصفحها بعد في هذه الفترة',
+        child:  Center(
+          child: Text('No products have been viewed yet during this period.'.tr,
               style: TextStyle(color: Colors.grey)),
         ),
       );
@@ -914,7 +915,7 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
               data = productSnap.data!.data() as Map<String, dynamic>;
             }
 
-            final String title = data['title'] ?? 'منتج بدون عنوان';
+            final String title = data['title'] ?? 'Untitled Product'.tr;
             final num price = data['price'] ?? 0;
             final num avgRating = data['avgRating'] ?? 0;
 
@@ -1007,7 +1008,7 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                '$price ج.م',
+                                '$price ${"EGP".tr}',
                                 style: const TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
@@ -1091,8 +1092,8 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
         ),
-        child: const Center(
-          child: Text('لا توجد مشاهدات منتجات بعد لتوليد رسم بياني',
+        child:  Center(
+          child: Text('There are no product views yet to generate a graph.'.tr,
               style: TextStyle(color: Colors.grey)),
         ),
       );
@@ -1130,7 +1131,7 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                 getTooltipColor: (_) => Colors.blueGrey,
                 getTooltipItem: (group, groupIndex, rod, rodIndex) {
                   return BarTooltipItem(
-                    '${topProducts[groupIndex].key}\n${rod.toY.toInt()} مشاهدة',
+                    '${topProducts[groupIndex].key}\n${rod.toY.toInt()}${"Views".tr}',
                     const TextStyle(
                         color: Colors.white, fontWeight: FontWeight.bold),
                   );
@@ -1295,7 +1296,7 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        '${e.key}: ${e.value} جلسة',
+                        '${e.key}: ${e.value}${"session".tr}',
                         style: const TextStyle(
                             fontSize: 13, fontWeight: FontWeight.w500),
                       ),
@@ -1409,14 +1410,14 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                 backgroundColor: Colors.orangeAccent,
                 child: Icon(Icons.person_outline, color: Colors.white),
               ),
-              title: const Text(
-                'زائر ضيف (Guest)',
+              title:  Text(
+                'Guest Visitor (Guest)'.tr,
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
               ),
               subtitle:
-              Text('المنصة: $platform | المشاهدات: ${viewedProducts.length}'),
+              Text('${"Platform:".tr}$platform | ${"Views:".tr} ${viewedProducts.length}'),
               trailing: Text(
-                'بدأت $timeStr',
+                '${"It began".tr}$timeStr',
                 style: const TextStyle(color: Colors.grey, fontSize: 12),
               ),
             );
@@ -1425,7 +1426,7 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
           return FutureBuilder<DocumentSnapshot>(
             future: _firestore.collection('user').doc(userId).get(),
             builder: (context, userSnapshot) {
-              String displayName = 'مستخدم مسجل ($userId)';
+              String displayName = '${"Registered user (".tr}$userId)';
               String userEmail = '';
 
               if (userSnapshot.hasData && userSnapshot.data!.exists) {
@@ -1450,10 +1451,10 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                       fontWeight: FontWeight.bold, fontSize: 14),
                 ),
                 subtitle: Text(
-                  '${userEmail.isNotEmpty ? "$userEmail | " : ""}المنصة: $platform | المشاهدات: ${viewedProducts.length}',
+                  '${userEmail.isNotEmpty ? "$userEmail | " : ""}${"Platform:".tr} $platform | ${"Views".tr} ${viewedProducts.length}',
                 ),
                 trailing: Text(
-                  'بدأت $timeStr',
+                  '${"It began".tr} $timeStr',
                   style: const TextStyle(color: Colors.grey, fontSize: 12),
                 ),
               );

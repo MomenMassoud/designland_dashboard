@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dashboard_desginland/feature/Access%20Defind/view/access_defind_view.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../Core/server/cloudinara_server.dart';
 import '../../../Core/server/get_permision.dart';
@@ -51,7 +52,7 @@ class _BannersWidgetState extends State<BannersWidget> {
 
             return AlertDialog(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: Text(docId == null ? "إضافة بنار جديد" : "تعديل البنار"),
+              title: Text(docId == null ? "Adding a new Banar".tr : "Modify the banner".tr),
               content: SizedBox(
                 width: screenWidth > 600 ? 500 : screenWidth * 0.85,
                 child: SingleChildScrollView(
@@ -88,12 +89,12 @@ class _BannersWidgetState extends State<BannersWidget> {
                             borderRadius: BorderRadius.circular(12),
                             child: Image.network(currentImageUrl, fit: BoxFit.cover),
                           )
-                              : const Column(
+                              :  Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(Icons.add_a_photo_rounded, size: 40, color: Color(0xFF6C5CE7)),
                               SizedBox(height: 8),
-                              Text("اضغط لاختيار صورة البنار", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                              Text("Click to select a banner image".tr, style: TextStyle(fontSize: 12, color: Colors.grey)),
                             ],
                           ),
                         ),
@@ -103,8 +104,8 @@ class _BannersWidgetState extends State<BannersWidget> {
                       // 2. خيار التفاعل (onclick)
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
-                        title: const Text("قابل للنقر (OnClick)", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                        subtitle: const Text("عند التفعيل سيتم توجيه المستخدم للأقسام", style: TextStyle(fontSize: 11)),
+                        title:  Text("Clickable (OnClick)".tr, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                        subtitle:  Text("Upon activation, the user will be directed to the sections.".tr, style: TextStyle(fontSize: 11)),
                         value: isOnClick,
                         activeColor: const Color(0xFF6C5CE7),
                         onChanged: (val) {
@@ -126,7 +127,7 @@ class _BannersWidgetState extends State<BannersWidget> {
 
                             return DropdownButtonFormField<String>(
                               value: selectedCategoryId,
-                              hint: const Text("اختر القسم المرتبط"),
+                              hint:  Text("Select the relevant section.".tr),
                               decoration: InputDecoration(
                                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
@@ -135,7 +136,7 @@ class _BannersWidgetState extends State<BannersWidget> {
                                 final data = doc.data() as Map<String, dynamic>;
                                 return DropdownMenuItem<String>(
                                   value: doc.id,
-                                  child: Text(data['nameAr'] ?? data['nameEn'] ?? 'قسم بدون اسم'),
+                                  child: Text(data['nameAr'] ?? data['nameEn'] ?? 'Uncategorized Section'.tr),
                                 );
                               }).toList(),
                               onChanged: (val) {
@@ -151,7 +152,7 @@ class _BannersWidgetState extends State<BannersWidget> {
               actions: [
                 TextButton(
                   onPressed: isLoading ? null : () => Navigator.pop(context),
-                  child: const Text("إلغاء", style: TextStyle(color: Colors.grey)),
+                  child:  Text("cancellation".tr, style: TextStyle(color: Colors.grey)),
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
@@ -163,14 +164,14 @@ class _BannersWidgetState extends State<BannersWidget> {
                       : () async {
                     if (pickedImage == null && (currentImageUrl == null || currentImageUrl.isEmpty)) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("يرجى اختيار صورة أولاً")),
+                         SnackBar(content: Text("Please choose an image first".tr)),
                       );
                       return;
                     }
 
                     if (isOnClick && (selectedCategoryId == null || selectedCategoryId!.isEmpty)) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("يرجى اختيار قسم عند تفعيل النقر")),
+                         SnackBar(content: Text("Please select a section when enabling click functionality.".tr)),
                       );
                       return;
                     }
@@ -189,7 +190,7 @@ class _BannersWidgetState extends State<BannersWidget> {
                       } else {
                         setDialogState(() => isLoading = false);
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("فشل رفع الصورة إلى Cloudinary")),
+                           SnackBar(content: Text("Failed to upload the image to Cloudinary.".tr)),
                         );
                         return;
                       }
@@ -215,7 +216,7 @@ class _BannersWidgetState extends State<BannersWidget> {
                     width: 18,
                     child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                   )
-                      : Text(docId == null ? "إضافة" : "حفظ التعديلات", style: const TextStyle(color: Colors.white)),
+                      : Text(docId == null ? "Add".tr : "Save changes".tr, style: const TextStyle(color: Colors.white)),
                 ),
               ],
             );
@@ -229,13 +230,13 @@ class _BannersWidgetState extends State<BannersWidget> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text("تأكيد الحذف"),
-        content: const Text("هل أنت متأكد من حذف هذا البنار نهائياً؟"),
+        title:  Text("Confirm Deletion".tr),
+        content:  Text("Are you sure you want to permanently delete this banner?".tr),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("إلغاء")),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child:  Text("cancellation".tr)),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text("حذف", style: TextStyle(color: Colors.red)),
+            child:  Text("delete".tr, style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -257,7 +258,7 @@ class _BannersWidgetState extends State<BannersWidget> {
         backgroundColor: const Color(0xFF6C5CE7),
         onPressed: () => _showBannerDialog(),
         icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text("إضافة بنار", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        label:  Text("Add Banner".tr, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: _bannersRef.snapshots(),
@@ -267,8 +268,8 @@ class _BannersWidgetState extends State<BannersWidget> {
           }
 
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(
-              child: Text("لا توجد بنارات حالياً", style: TextStyle(color: Colors.grey, fontSize: 16)),
+            return  Center(
+              child: Text("There are currently no banners.".tr,style: TextStyle(color: Colors.grey, fontSize: 16)),
             );
           }
 
@@ -332,7 +333,7 @@ class _BannersWidgetState extends State<BannersWidget> {
                                       ),
                                       const SizedBox(width: 4),
                                       Text(
-                                        isOnClick ? "تفاعلي" : "عرض فقط",
+                                        isOnClick ? "Interactive".tr : "Display only".tr,
                                         style: TextStyle(
                                           fontSize: 11,
                                           fontWeight: FontWeight.bold,
@@ -357,14 +358,14 @@ class _BannersWidgetState extends State<BannersWidget> {
                                   children: [
                                     if (isOnClick) ...[
                                       Text(
-                                        "القسم: $categoryId",
+                                        "${"Department:".tr}$categoryId",
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF2D3436)),
                                       ),
                                     ] else ...[
-                                      const Text(
-                                        "صورة ثابتة للعرض",
+                                       Text(
+                                        "Static display image".tr,
                                         style: TextStyle(fontSize: 12, color: Colors.grey),
                                       ),
                                     ]

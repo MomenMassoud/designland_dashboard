@@ -1,11 +1,8 @@
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dashboard_desginland/feature/Access%20Defind/view/access_defind_view.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-
 import '../../../Core/server/get_permision.dart';
 
 class StaffWidget extends StatefulWidget {
@@ -93,8 +90,8 @@ class _StaffWidgetState extends State<StaffWidget> {
       appBar: AppBar(
         title: Text(
           _isFormOpen
-              ? (_editingDocId != null ? 'تعديل صلاحيات موظف' : 'إضافة موظف جديد')
-              : 'إدارة الموظفين (Staff)',
+              ? (_editingDocId != null ? "Modifying an employee's powers" : 'Add a new employee')
+              : 'Staff Management',
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
@@ -114,7 +111,7 @@ class _StaffWidgetState extends State<StaffWidget> {
         backgroundColor: Theme.of(context).primaryColor,
         icon: const Icon(Icons.person_add_alt_1, color: Colors.white),
         label: const Text(
-          'إضافة موظف',
+          'Add a new employee',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
       )
@@ -143,7 +140,7 @@ class _StaffWidgetState extends State<StaffWidget> {
         }
 
         if (snapshot.hasError) {
-          return Center(child: Text('حدث خطأ: ${snapshot.error}'));
+          return Center(child: Text('An error occurred:${snapshot.error}'));
         }
 
         final staffDocs = snapshot.data?.docs ?? [];
@@ -156,7 +153,7 @@ class _StaffWidgetState extends State<StaffWidget> {
                 Icon(Icons.badge_outlined, size: 70, color: Colors.grey),
                 SizedBox(height: 12),
                 Text(
-                  'لا يوجد موظفين حالياً',
+                  "There are currently no employees.",
                   style: TextStyle(fontSize: 18, color: Colors.grey),
                 ),
               ],
@@ -171,7 +168,7 @@ class _StaffWidgetState extends State<StaffWidget> {
             final doc = staffDocs[index];
             final data = doc.data() as Map<String, dynamic>;
 
-            final String name = data['name'] ?? 'بدون اسم';
+            final String name = data['name'] ?? 'Anonymous';
             final String email = data['email'] ?? '';
             final List<dynamic> permissions = data['permissions'] ?? [];
 
@@ -253,7 +250,7 @@ class _StaffWidgetState extends State<StaffWidget> {
                         children: [
                           Icon(Icons.edit, color: Colors.blue, size: 20),
                           SizedBox(width: 8),
-                          Text('تعديل الصلاحيات'),
+                          Text('Modify permissions'),
                         ],
                       ),
                     ),
@@ -263,7 +260,7 @@ class _StaffWidgetState extends State<StaffWidget> {
                         children: [
                           Icon(Icons.delete, color: Colors.red, size: 20),
                           SizedBox(width: 8),
-                          Text('حذف الموظف'),
+                          Text('Delete employee'),
                         ],
                       ),
                     ),
@@ -305,18 +302,18 @@ class _StaffWidgetState extends State<StaffWidget> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'البيانات الأساسية',
+                    'Basic Data',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _nameController,
                     decoration: InputDecoration(
-                      labelText: 'اسم الموظف',
+                      labelText: 'Employee Name',
                       prefixIcon: const Icon(Icons.person_outline),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    validator: (v) => v == null || v.isEmpty ? 'برجاء أدخال الاسم' : null,
+                    validator: (v) => v == null || v.isEmpty ? 'Please enter the name.' : null,
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
@@ -324,11 +321,11 @@ class _StaffWidgetState extends State<StaffWidget> {
                     enabled: !isEdit,
                     keyboardType: TextInputType.emailAddress,
                     decoration: InputDecoration(
-                      labelText: 'البريد الإلكتروني',
+                      labelText: 'e-mail',
                       prefixIcon: const Icon(Icons.email_outlined),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    validator: (v) => v == null || v.isEmpty ? 'برجاء أدخال البريد الإلكتروني' : null,
+                    validator: (v) => v == null || v.isEmpty ? 'Please enter your email address.' : null,
                   ),
                   if (!isEdit) ...[
                     const SizedBox(height: 16),
@@ -336,7 +333,7 @@ class _StaffWidgetState extends State<StaffWidget> {
                       controller: _passwordController,
                       obscureText: _isObscure,
                       decoration: InputDecoration(
-                        labelText: 'كلمة السر',
+                        labelText: 'password',
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
                           icon: Icon(_isObscure ? Icons.visibility_off : Icons.visibility),
@@ -345,8 +342,8 @@ class _StaffWidgetState extends State<StaffWidget> {
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       validator: (v) {
-                        if (v == null || v.isEmpty) return 'برجاء أدخال كلمة السر';
-                        if (v.length < 6) return 'يجب أن لا تقل عن 6 خانات';
+                        if (v == null || v.isEmpty) return 'Please enter the password.';
+                        if (v.length < 6) return 'It must be at least 6 characters long.';
                         return null;
                       },
                     ),
@@ -373,7 +370,7 @@ class _StaffWidgetState extends State<StaffWidget> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'صلاحيات وصول الصفحات',
+                    'Page access permissions',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 12),
@@ -426,7 +423,7 @@ class _StaffWidgetState extends State<StaffWidget> {
                 child: _isLoading
                     ? const CircularProgressIndicator(color: Colors.white)
                     : Text(
-                  isEdit ? 'تحديث الصلاحيات' : 'حفظ وإنشاء الحساب',
+                  isEdit ? 'Updating Permissions' : 'Save and create account',
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
@@ -466,7 +463,7 @@ class _StaffWidgetState extends State<StaffWidget> {
         final data = jsonDecode(response.body);
 
         if (response.statusCode != 200 || data['success'] != true) {
-          throw Exception(data['error'] ?? 'فشل في إنشاء حساب الموظف');
+          throw Exception(data['error'] ?? 'Failed to create the employee account.');
         }
       }
 
@@ -474,7 +471,7 @@ class _StaffWidgetState extends State<StaffWidget> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_editingDocId != null ? 'تم تحديث البيانات بنجاح' : 'تم إنشاء حساب الموظف بنجاح'),
+            content: Text(_editingDocId != null ? 'The data has been successfully updated.' : 'The employee account has been successfully created.'),
             backgroundColor: Colors.green,
           ),
         );
@@ -483,7 +480,7 @@ class _StaffWidgetState extends State<StaffWidget> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('حدث خطأ: $e'),
+            content: Text('An error occurred:$e'),
             backgroundColor: Colors.redAccent,
           ),
         );
@@ -507,16 +504,16 @@ class _StaffWidgetState extends State<StaffWidget> {
                 children: [
                   Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
                   SizedBox(width: 8),
-                  Text('تأكيد الحذف'),
+                  Text('Confirm Deletion'),
                 ],
               ),
               content: Text(
-                'هل أنت متاكد من رغبتك في حذف الموظف "$name" نهائياً؟ سيتم حذفه من Firebase Auth و Firestore.',
+                'Are you sure you want to delete the employee?"$name" Permanently? It will be deleted from Firebase Auth و Firestore.',
               ),
               actions: [
                 TextButton(
                   onPressed: isDeleting ? null : () => Navigator.pop(ctx),
-                  child: const Text('إلغاء'),
+                  child: const Text('Cancel'),
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
@@ -544,13 +541,13 @@ class _StaffWidgetState extends State<StaffWidget> {
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('تم حذف الموظف بنجاح من النظام والـ Auth'),
+                              content: Text('The employee was successfully removed from the system and Auth was notified.'),
                               backgroundColor: Colors.green,
                             ),
                           );
                         }
                       } else {
-                        throw Exception(data['error'] ?? 'فشل في حذف الموظف');
+                        throw Exception(data['error'] ?? 'Failed to delete the employee.');
                       }
                     } catch (e) {
                       setDialogState(() => isDeleting = false);
@@ -558,7 +555,7 @@ class _StaffWidgetState extends State<StaffWidget> {
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('حدث خطأ أثناء الحذف: $e'),
+                            content: Text('An error occurred during deletion:$e'),
                             backgroundColor: Colors.redAccent,
                           ),
                         );
@@ -571,7 +568,7 @@ class _StaffWidgetState extends State<StaffWidget> {
                     height: 16,
                     child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                   )
-                      : const Text('حذف نهائي', style: TextStyle(color: Colors.white)),
+                      : const Text('Permanent deletion', style: TextStyle(color: Colors.white)),
                 ),
               ],
             );

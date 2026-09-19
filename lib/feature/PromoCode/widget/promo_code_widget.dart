@@ -68,7 +68,7 @@ class _PromoCodeWidgetState extends State<PromoCodeWidget> {
                 children: [
                   Icon(Icons.local_offer_outlined, color: Colors.blue),
                   SizedBox(width: 8),
-                  Text('إنشاء برومو كود جديد'),
+                  Text('Create a new promo code'),
                 ],
               ),
               content: Column(
@@ -78,8 +78,8 @@ class _PromoCodeWidgetState extends State<PromoCodeWidget> {
                     controller: discountController,
                     keyboardType: TextInputType.number,
                     decoration: InputDecoration(
-                      labelText: 'نسبة الخصم (%)',
-                      hintText: 'مثال: 15',
+                      labelText: 'Discount rate (%)',
+                      hintText: 'Example: 15',
                       prefixIcon: const Icon(Icons.percent),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     ),
@@ -93,7 +93,7 @@ class _PromoCodeWidgetState extends State<PromoCodeWidget> {
                     leading: const Icon(Icons.calendar_today),
                     title: Text(
                       selectedDate == null
-                          ? 'اختر تاريخ وقت الانتهاء'
+                          ? 'Select the end date and time.'
                           : DateFormat('yyyy/MM/dd  hh:mm a').format(selectedDate!),
                       style: TextStyle(
                         fontSize: 14,
@@ -133,7 +133,7 @@ class _PromoCodeWidgetState extends State<PromoCodeWidget> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text('إلغاء'),
+                  child: const Text('cancel'),
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
@@ -145,7 +145,7 @@ class _PromoCodeWidgetState extends State<PromoCodeWidget> {
                     final discountStr = discountController.text.trim();
                     if (discountStr.isEmpty || selectedDate == null) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('يرجى تحديد نسبة الخصم وتاريخ الانتهاء')),
+                        const SnackBar(content: Text('Please specify the discount rate and the expiration date.')),
                       );
                       return;
                     }
@@ -153,7 +153,7 @@ class _PromoCodeWidgetState extends State<PromoCodeWidget> {
                     final double? discount = double.tryParse(discountStr);
                     if (discount == null || discount <= 0 || discount > 100) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('برجاء إدخال نسبة خصم صحيحة بين 1 و 100')),
+                        const SnackBar(content: Text('Please enter a valid discount percentage between 1 and 100.')),
                       );
                       return;
                     }
@@ -175,19 +175,19 @@ class _PromoCodeWidgetState extends State<PromoCodeWidget> {
 
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('تم إنشاء البرومو كود بنجاح: $generatedCode'),
+                          content: Text('The promo code has been successfully created:$generatedCode'),
                           backgroundColor: Colors.green,
                         ),
                       );
                     } catch (e) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('حدث خطأ أثناء الإنشاء: $e')),
+                        SnackBar(content: Text('An error occurred during creation:$e')),
                       );
                     } finally {
                       setState(() => _isLoading = false);
                     }
                   },
-                  child: const Text('توليد وإنشاء'),
+                  child: const Text('Generation and creation'),
                 ),
               ],
             );
@@ -202,14 +202,14 @@ class _PromoCodeWidgetState extends State<PromoCodeWidget> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('تأكيد الحذف'),
-        content: const Text('هل أنت متاكد من حذف هذا البرومو كود؟'),
+        title: const Text('Confirm Deletion'),
+        content: const Text('Are you sure you want to delete this promo code?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('حذف', style: TextStyle(color: Colors.white)),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -218,7 +218,7 @@ class _PromoCodeWidgetState extends State<PromoCodeWidget> {
     if (confirm == true) {
       await _db.collection('promo_codes').doc(docId).delete();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم حذف البرومو كود بنجاح')),
+        const SnackBar(content: Text('The promo code has been successfully deleted.')),
       );
     }
   }
@@ -229,7 +229,7 @@ class _PromoCodeWidgetState extends State<PromoCodeWidget> {
         ? Scaffold(
       backgroundColor: Colors.grey.shade100,
       appBar: AppBar(
-        title: const Text('إدارة البرومو كود والخصومات'),
+        title: const Text('Promo Code and Discount Management'),
         centerTitle: true,
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,
@@ -238,7 +238,7 @@ class _PromoCodeWidgetState extends State<PromoCodeWidget> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showCreatePromoDialog,
         icon: const Icon(Icons.add),
-        label: const Text('إنشاء برومو كود تلقائي'),
+        label: const Text('Generate an automatic promo code'),
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: _db.collection('promo_codes').orderBy('createdAt', descending: true).snapshots(),
@@ -248,7 +248,7 @@ class _PromoCodeWidgetState extends State<PromoCodeWidget> {
           }
 
           if (snapshot.hasError) {
-            return Center(child: Text('حدث خطأ: ${snapshot.error}'));
+            return Center(child: Text('An error occurred:${snapshot.error}'));
           }
 
           final docs = snapshot.data?.docs ?? [];
@@ -261,7 +261,7 @@ class _PromoCodeWidgetState extends State<PromoCodeWidget> {
                   Icon(Icons.card_giftcard, size: 70, color: Colors.grey),
                   SizedBox(height: 12),
                   Text(
-                    'لا توجد أكواد خصم متاحة حالياً',
+                    "There are currently no discount codes available.",
                     style: TextStyle(fontSize: 18, color: Colors.grey),
                   ),
                 ],
@@ -326,7 +326,7 @@ class _PromoCodeWidgetState extends State<PromoCodeWidget> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          isExpired ? 'منتهي' : 'نشط',
+                          isExpired ? 'finished' : 'active',
                           style: TextStyle(
                             fontSize: 11,
                             color: isExpired ? Colors.red.shade900 : Colors.green.shade900,
@@ -340,12 +340,12 @@ class _PromoCodeWidgetState extends State<PromoCodeWidget> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: 6),
-                      Text('نسبة الخصم: %$discount', style: const TextStyle(fontWeight: FontWeight.w600)),
+                      Text('Discount rate: %$discount', style: const TextStyle(fontWeight: FontWeight.w600)),
                       const SizedBox(height: 2),
                       Text(
                         expiresAt != null
-                            ? 'ينتهي في: ${DateFormat('yyyy/MM/dd  hh:mm a').format(expiresAt)}'
-                            : 'بدون تاريخ انتهاء',
+                            ? 'Ends on:${DateFormat('yyyy/MM/dd  hh:mm a').format(expiresAt)}'
+                            : 'No expiration date',
                         style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                       ),
                     ],

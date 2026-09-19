@@ -16,6 +16,7 @@ import 'package:dashboard_desginland/model/user_model.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:dashboard_desginland/feature/Category/view/category_view.dart';
+import 'package:get/get.dart';
 import '../../../Core/Utils/app.colors.dart';
 import '../../../Core/server/saveDeviceTokenToFirestore.dart';
 import '../../../main.dart';
@@ -157,17 +158,17 @@ class _MainScreenWidgetState extends State<MainScreenWidget> {
           child: ListView(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             children: [
-              _buildNavItem(0, Icons.grid_view_rounded, "Home"),
-              _buildNavItem(1, Icons.category_outlined, "Categories"),
-              _buildNavItem(2, Icons.shopping_bag_outlined, "Orders"),
-              _buildNavItem(3, Icons.bar_chart_rounded, "Reports"),
-              _buildNavItem(4, Icons.inventory_2_outlined, "Products"),
-              _buildNavItem(5, Icons.badge_outlined, "Staff"),
-              _buildNavItem(6, Icons.people_alt_outlined, "Users"),
-              _buildNavItem(7, Icons.analytics, "Analytics"),
-              _buildNavItem(8, Icons.info_outline, "About"),
-              _buildNavItem(9, Icons.imagesearch_roller, "Banners"),
-              _buildNavItem(10, Icons.discount, "PromoCode"),
+              _buildNavItem(0, Icons.grid_view_rounded, "Home".tr),
+              _buildNavItem(1, Icons.category_outlined, "Categories".tr),
+              _buildNavItem(2, Icons.shopping_bag_outlined, "Orders".tr),
+              _buildNavItem(3, Icons.bar_chart_rounded, "Reports".tr),
+              _buildNavItem(4, Icons.inventory_2_outlined, "Products".tr),
+              _buildNavItem(5, Icons.badge_outlined, "Staff".tr),
+              _buildNavItem(6, Icons.people_alt_outlined, "Users".tr),
+              _buildNavItem(7, Icons.analytics, "Analytics".tr),
+              _buildNavItem(8, Icons.info_outline, "About".tr),
+              _buildNavItem(9, Icons.imagesearch_roller, "Banners".tr),
+              _buildNavItem(10, Icons.discount, "PromoCode".tr),
             ],
           ),
         ),
@@ -272,9 +273,9 @@ class _MainScreenWidgetState extends State<MainScreenWidget> {
                 color: AppColors.bgLight,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const TextField(
+              child:  TextField(
                 decoration: InputDecoration(
-                  hintText: "Search...",
+                  hintText: "Search...".tr,
                   prefixIcon: Icon(
                     Icons.search,
                     color: AppColors.textMuted,
