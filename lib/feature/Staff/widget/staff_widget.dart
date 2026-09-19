@@ -436,8 +436,6 @@ class _StaffWidgetState extends State<StaffWidget> {
       ),
     );
   }
-
-  // --- 3. معالجة حفظ الموظف ---
   Future<void> _saveStaffData() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -445,49 +443,55 @@ class _StaffWidgetState extends State<StaffWidget> {
 
     try {
       if (_editingDocId != null) {
-        // تحديث الموظف
+        // تعديل بيانات وصلاحيات موظف حالي
         await _firestore.collection('user').doc(_editingDocId).update({
           'name': _nameController.text.trim(),
           'permissions': _selectedPermissions,
         });
       } else {
-        // إضافة جديد عبر SecondaryApp
-        final String email = _emailController.text.trim();
-        final String password = _passwordController.text.trim();
+        // إنشاء موظف جديد عن طريق الـ Backend API
+        final url = Uri.parse('https://designland-backend.vercel.app/api/create_staff');
 
-        FirebaseApp secondaryApp = await Firebase.initializeApp(
-          name: 'SecondaryApp',
-          options: Firebase.app().options,
+        final response = await http.post(
+          url,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'email': _emailController.text.trim(),
+            'password': _passwordController.text.trim(),
+            'name': _nameController.text.trim(),
+            'permissions': _selectedPermissions,
+          }),
         );
 
-        UserCredential userCredential = await FirebaseAuth.instanceFor(app: secondaryApp)
-            .createUserWithEmailAndPassword(
-          email: email,
-          password: password,
-        );
+        final data = jsonDecode(response.body);
 
-        final String newUid = userCredential.user!.uid;
-        await secondaryApp.delete();
-
-        await _firestore.collection('user').doc(newUid).set({
-          'name': _nameController.text.trim(),
-          'email': email,
-          'role': 'staff',
-          'permissions': _selectedPermissions,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
+        if (response.statusCode != 200 || data['success'] != true) {
+          throw Exception(data['error'] ?? 'فشل في إنشاء حساب الموظف');
+        }
       }
 
       _closeForm();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_editingDocId != null ? 'تم تحديث البيانات بنجاح' : 'تم إنشاء حساب الموظف بنجاح'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('حدث خطأ: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('حدث خطأ: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
-
   // --- 4. حذف الموظف عبر Backend API ---
   Future<void> _deleteStaff(String docId, String name) async {
     bool isDeleting = false;
