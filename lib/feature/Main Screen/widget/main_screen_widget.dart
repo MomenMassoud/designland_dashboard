@@ -19,7 +19,7 @@ import 'package:dashboard_desginland/feature/Category/view/category_view.dart';
 import 'package:get/get.dart';
 import '../../../Core/Utils/app.colors.dart';
 import '../../../Core/server/saveDeviceTokenToFirestore.dart';
-import '../../../main.dart';
+import '../../../Core/server/setup_notification.dart';
 import '../../Reports/view/report_view.dart';
 
 class MainScreenWidget extends StatefulWidget {
@@ -59,6 +59,9 @@ class _MainScreenWidgetState extends State<MainScreenWidget> {
     _userModel = await GetCurrentUserData(context);
     if (!kIsWeb) {
       await setupAndroidNotifications();
+    }
+    else{
+      await setupWeb();
     }
     await saveDeviceTokenToFirestore();
     await cleanAndFetchValidPromoCodes();

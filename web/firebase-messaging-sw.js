@@ -1,25 +1,44 @@
-importScripts('https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js');
+importScripts(
+  "https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"
+);
+
+importScripts(
+  "https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js"
+);
 
 firebase.initializeApp({
-  apiKey: "1:848711152963:web:4b4c831a8d7853c2a26bf6",
+  apiKey: "AIzaSyD727CeckI2brOtT5ycefqAZTkOrhyiwvg",
   authDomain: "desginland-5ca7a.firebaseapp.com",
   projectId: "desginland-5ca7a",
-  storageBucket: "desginland-5ca7a.appspot.com",
+  storageBucket: "desginland-5ca7a.firebasestorage.app",
   messagingSenderId: "848711152963",
   appId: "1:848711152963:web:4b4c831a8d7853c2a26bf6"
 });
 
 const messaging = firebase.messaging();
 
-// استقبال الإشعارات في الخلفية للويب
 messaging.onBackgroundMessage((payload) => {
-  console.log('[firebase-messaging-sw.js] Received background message ', payload);
-  const notificationTitle = payload.notification.title;
-  const notificationOptions = {
-    body: payload.notification.body,
-    icon: '/icons/Icon-192.png'
-  };
+  console.log(
+    '[firebase-messaging-sw.js] Background message:',
+    payload
+  );
 
-  self.registration.showNotification(notificationTitle, notificationOptions);
+  const notification = payload.notification || {};
+
+  const title =
+      notification.title ||
+      payload.data?.title ||
+      'إشعار جديد 🔔';
+
+  const body =
+      notification.body ||
+      payload.data?.body ||
+      '';
+
+  self.registration.showNotification(title, {
+    body: body,
+    icon: '/icons/Icon-192.png',
+    badge: '/icons/Icon-192.png',
+    data: payload.data || {},
+  });
 });
