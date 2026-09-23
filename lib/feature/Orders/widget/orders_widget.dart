@@ -209,7 +209,7 @@ class _OrdersWidgetState extends State<OrdersWidget> with SingleTickerProviderSt
                               Text("${items.length} Item(s)", style: const TextStyle(fontSize: 12, color: AppColors.primaryPurple, fontWeight: FontWeight.w600)),
                             ],
                           ),
-                          Text("\$$totalPrice", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green)),
+                          Text("$totalPrice EGP", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green)),
                         ],
                       ),
                     ],

@@ -68,7 +68,6 @@ class _ProductsWidgetState extends State<ProductsWidget> {
     _searchController.dispose();
     super.dispose();
   }
-
   @override
   Widget build(BuildContext context) {
     return _permision.contains("products")
@@ -403,7 +402,7 @@ class _ProductsWidgetState extends State<ProductsWidget> {
     }
 
     return Text(
-      "\$${product.price.toStringAsFixed(2)}",
+      "${product.price.toStringAsFixed(2)} EGP",
       style: const TextStyle(
         color: Colors.green,
         fontWeight: FontWeight.bold,

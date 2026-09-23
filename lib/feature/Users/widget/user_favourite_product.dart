@@ -191,7 +191,7 @@ class _UserFavouriteProduct extends State<UserFavouriteProduct> {
                             Row(
                               children: [
                                 Text(
-                                  '${finalPrice.toStringAsFixed(0)} ج.م',
+                                  '${finalPrice.toStringAsFixed(0)} EGP',
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
                                     color: Colors.blue,

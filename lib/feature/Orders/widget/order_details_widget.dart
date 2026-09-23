@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
-
 import '../../../Core/Utils/app.colors.dart';
 
 class OrderDetailView extends StatefulWidget {
@@ -166,9 +165,9 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text("${"Total Price:".tr} \$$totalPrice", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                                    Text("${"Total Price:".tr} $totalPrice EGP", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                                     if (promoCode != null)
-                                      Text("${"Promo Code:".tr} $promoCode (-\$$discountAmount)", style: const TextStyle(color: Colors.green, fontSize: 12)),
+                                      Text("${"Promo Code:".tr} $promoCode (-$discountAmount) EGP", style: const TextStyle(color: Colors.green, fontSize: 12)),
                                   ],
                                 ),
                                 Container(
@@ -178,7 +177,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
-                                    "${"Net Profit:".tr} \$$netProfit",
+                                    "${"Net Profit:".tr} $netProfit EGP",
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       color: netProfit >= 0 ? Colors.green : Colors.red,
@@ -192,9 +191,9 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceAround,
                               children: [
-                                _buildSummaryBadge("Total Paid".tr, "\$$totalPaid", Colors.green),
-                                _buildSummaryBadge("Remaining".tr, "\$$remaining", remaining > 0 ? Colors.red : Colors.green),
-                                _buildSummaryBadge("Expenses".tr, "\$$totalExpenses", Colors.orange.shade800),
+                                _buildSummaryBadge("Total Paid".tr, "$totalPaid EGP", Colors.green),
+                                _buildSummaryBadge("Remaining".tr, "$remaining EGP", remaining > 0 ? Colors.red : Colors.green),
+                                _buildSummaryBadge("Expenses".tr, "$totalExpenses EGP", Colors.orange.shade800),
                               ],
                             ),
                             const SizedBox(height: 16),
@@ -289,7 +288,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text("${map['title']} (x${map['quantity'] ?? 1})", style: const TextStyle(fontWeight: FontWeight.bold)),
-                                Text("\$${map['price'] ?? 0}", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+                                Text("${map['price'] ?? 0} EGP", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
                               ],
                             ),
                             if (notes.isNotEmpty) ...[
@@ -371,7 +370,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                                   return ListTile(
                                     dense: true,
                                     contentPadding: EdgeInsets.zero,
-                                    title: Text("\$${data['amount']}", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+                                    title: Text("${data['amount']} EGP", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
                                     subtitle: Text(data['notes'] ?? ''),
                                   );
                                 }).toList(),
@@ -408,7 +407,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                                   return ListTile(
                                     dense: true,
                                     contentPadding: EdgeInsets.zero,
-                                    title: Text("\$${data['amount']}", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange.shade800)),
+                                    title: Text("${data['amount']} EGP", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange.shade800)),
                                     subtitle: Text(data['notes'] ?? ''),
                                   );
                                 }).toList(),

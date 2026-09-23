@@ -66,6 +66,8 @@ dependencies:
   excel: ^4.0.6
   universal_html: ^2.3.0
   flutter_local_notifications_web: ^1.0.0
+  reorderables: ^0.6.0
+  image_cropper: ^8.0.0
 
 dev_dependencies:
   flutter_test:

@@ -492,7 +492,7 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                               children: [
                                 if (_currentProduct.hasActiveDiscount) ...[
                                   Text(
-                                    "\$${_currentProduct.price.toStringAsFixed(2)}",
+                                    "${_currentProduct.price.toStringAsFixed(2)} EGP",
                                     style: const TextStyle(
                                       fontSize: 14,
                                       decoration: TextDecoration.lineThrough,
@@ -500,7 +500,7 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                                     ),
                                   ),
                                   Text(
-                                    "\$${_currentProduct.discountedPrice.toStringAsFixed(2)}",
+                                    "${_currentProduct.discountedPrice.toStringAsFixed(2)} EGP",
                                     style: const TextStyle(
                                       fontSize: 22,
                                       fontWeight: FontWeight.bold,
@@ -509,7 +509,7 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                                   ),
                                 ] else ...[
                                   Text(
-                                    "\$${_currentProduct.price}",
+                                    "${_currentProduct.price} EGP",
                                     style: const TextStyle(
                                       fontSize: 22,
                                       fontWeight: FontWeight.bold,

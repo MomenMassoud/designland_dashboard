@@ -331,7 +331,7 @@ class _ReportWidgetState extends State<ReportWidget> {
                           DataCell(Text(item['orderId'].isNotEmpty ? "#${item['orderId'].toString().substring(0, item['orderId'].toString().length > 8 ? 8 : item['orderId'].toString().length)}" : "-")),
                           DataCell(Text(item['userId'].isNotEmpty ? "#${item['userId'].toString().substring(0, item['userId'].toString().length > 8 ? 8 : item['userId'].toString().length)}" : "-")),
                           DataCell(Text(
-                            "${isIncome ? '+' : '-'}\$${item['amount'].toStringAsFixed(2)}",
+                            "${isIncome ? '+' : '-'}${item['amount'].toStringAsFixed(2)} EGP",
                             style: TextStyle(fontWeight: FontWeight.bold, color: isIncome ? Colors.green : Colors.red),
                           )),
                           DataCell(Text(_formatDateTime(item['createdAt']))),
@@ -428,7 +428,7 @@ class _ReportWidgetState extends State<ReportWidget> {
                                 backgroundColor: order['type'] == 'Manual' ? Colors.purple : Colors.blue,
                               )),
                               DataCell(Text(order['userName'])),
-                              DataCell(Text("\$${(order['totalPrice'] ?? 0.0).toStringAsFixed(2)}")),
+                              DataCell(Text("${(order['totalPrice'] ?? 0.0).toStringAsFixed(2)} EGP")),
                               DataCell(Text(_formatDateTime(order['createdAt'] ?? order['date']))),
                               DataCell(Text(order['status'] ?? 'Pending')),
                             ]);
