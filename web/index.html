@@ -1,8 +1,15 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+  <link
+          rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css"
+  >
+
+  <script
+          src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"
+  ></script>
+
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
@@ -55,6 +62,7 @@
 
 <body>
 
+<!-- Firebase Cloud Messaging Service Worker -->
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function () {
@@ -78,6 +86,7 @@
   }
 </script>
 
+<!-- Flutter -->
 <script src="flutter_bootstrap.js" async></script>
 
 </body>

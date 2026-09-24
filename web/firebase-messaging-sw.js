@@ -42,3 +42,13 @@ messaging.onBackgroundMessage((payload) => {
     data: payload.data || {},
   });
 });
+
+// Activate the newest service worker immediately.
+self.addEventListener('install', () => {
+  self.skipWaiting();
+});
+
+// Take control of existing pages immediately.
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim());
+});

@@ -1,4 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:dashboard_desginland/Core/server/get_client_data.dart';
+import 'package:dashboard_desginland/Core/widgets/error_dailog_custom.dart';
+import 'package:dashboard_desginland/feature/Users/widget/user_details_widget.dart';
+import 'package:dashboard_desginland/model/user_model.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -22,7 +26,30 @@ class OrderDetailView extends StatefulWidget {
 
 class _OrderDetailViewState extends State<OrderDetailView> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  UserModel _userModel=UserModel(uid: "", email: "", Name: "", role: "");
+  Map<String, dynamic> ?data;
+  @override
+  void initState() {
+    super.initState();
+    _Start();
+  }
 
+  void _Start()async{
+    try{
+      if(widget.orderData['isManual']==null){
+        _userModel=await getClientData(context, widget.userId);
+        await _firestore.collection('user').doc(widget.userId).get().then((value){
+          data = value.data() as Map<String, dynamic>;
+        });
+        setState(() {
+          _userModel;
+        });
+      }
+    }
+    catch(e){
+      showErrorDialog(context, "Error", e.toString());
+    }
+  }
   void _showAddTransactionDialog(BuildContext context, {required bool isExpense}) {
     final amountController = TextEditingController();
     final notesController = TextEditingController();
@@ -241,10 +268,21 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                   children: [
                      Text("Customer Info".tr, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     const Divider(height: 20),
-                    SelectableText("${"Customer Name:".tr} ${order['customerName'] ?? order['userEmail'] ?? widget.userId}"),
+                    ListTile(
+                      title: Text("${"Customer Name:".tr}"
+                          " ${order['customerName'] ?? order['userEmail'] ?? _userModel.Name}"),
+                      leading: Icon(Icons.person),
+                      trailing: Icon(Icons.arrow_forward_ios),
+                      onTap: (){
+                        Get.to(UserDetailView(userId: widget.userId, userData: data!));
+                      },
+                    ),
+
                     const SizedBox(height: 4),
-                    SelectableText("${"Order Date:".tr} $formattedDate", style: const TextStyle(color: AppColors.textMuted)),
-                    if (order['selectedAddress'] != null) ...[
+                      ListTile(
+                        title:  SelectableText("${"Order Date:".tr} $formattedDate", style: const TextStyle(color: AppColors.textMuted)),
+                      ),
+                      if (order['selectedAddress'] != null) ...[
                       const SizedBox(height: 8),
                       Text("${"Address:".tr} ${order['selectedAddress']['title'] ?? ''} - ${order['selectedAddress']['details'] ?? ''}",
                           style: const TextStyle(fontWeight: FontWeight.w500)),

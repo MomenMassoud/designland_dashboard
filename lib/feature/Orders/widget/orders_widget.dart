@@ -133,7 +133,6 @@ class _OrdersWidgetState extends State<OrdersWidget> with SingleTickerProviderSt
             final num totalPrice = orderData['totalPrice'] ?? 0;
             final List items = orderData['items'] as List? ?? [];
             final bool isManual = orderData['isManual'] ?? false;
-
             String formattedDate = 'N/A';
             if (orderData['createdAt'] is Timestamp) {
               final dt = (orderData['createdAt'] as Timestamp).toDate();
@@ -199,10 +198,43 @@ class _OrdersWidgetState extends State<OrdersWidget> with SingleTickerProviderSt
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                "Customer: ${orderData['customerName'] ?? orderData['userEmail'] ?? userId}",
-                                style: const TextStyle(fontSize: 13, color: AppColors.textDark, fontWeight: FontWeight.w600),
-                              ),
+                              // إذا كان الطلب يدوياً ولديه customerName قم بعرضه فوراً، وإلا جلب الاسم من Firestore
+                              if (isManual && (orderData['customerName']?.toString().isNotEmpty ?? false)) ...[
+                                Text(
+                                  "Customer: ${orderData['customerName']}",
+                                  style: const TextStyle(fontSize: 13, color: AppColors.textDark, fontWeight: FontWeight.w600),
+                                ),
+                              ] else if (userId.isNotEmpty) ...[
+                                FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                                  future: _firestore.collection('user').doc(userId).get(),
+                                  builder: (context, userSnapshot) {
+                                    if (userSnapshot.connectionState == ConnectionState.waiting) {
+                                      return const Text(
+                                        "Customer: Loading...",
+                                        style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+                                      );
+                                    }
+
+                                    String userName = "Unknown User";
+                                    if (userSnapshot.hasData && userSnapshot.data!.exists) {
+                                      final userData = userSnapshot.data!.data();
+                                      userName = userData?['name'] ?? orderData['customerName'] ?? orderData['userEmail'] ?? userId;
+                                    } else {
+                                      userName = orderData['customerName'] ?? orderData['userEmail'] ?? userId;
+                                    }
+
+                                    return Text(
+                                      "Customer: $userName",
+                                      style: const TextStyle(fontSize: 13, color: AppColors.textDark, fontWeight: FontWeight.w600),
+                                    );
+                                  },
+                                ),
+                              ] else ...[
+                                Text(
+                                  "Customer: ${orderData['customerName'] ?? orderData['userEmail'] ?? 'Guest'}",
+                                  style: const TextStyle(fontSize: 13, color: AppColors.textDark, fontWeight: FontWeight.w600),
+                                ),
+                              ],
                               const SizedBox(height: 4),
                               Text("Date: $formattedDate", style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
                               const SizedBox(height: 4),
