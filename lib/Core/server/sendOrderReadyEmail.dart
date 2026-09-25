@@ -5,10 +5,9 @@ import 'package:flutter/foundation.dart';
 Future<void> sendOrderReadyEmail({
   required String customerEmail,
   required String orderId,
-  required double total,
-  String? deliveryNotes,
+  String? customerName,
 }) async {
-  const String apiUrl = 'https://designland-backend.vercel.app/api/order-ready';
+  const String apiUrl = 'https://designland-backend.vercel.app/api/confirm-order';
 
   try {
     final response = await http.post(
@@ -19,17 +18,16 @@ Future<void> sendOrderReadyEmail({
       body: jsonEncode({
         'customerEmail': customerEmail,
         'orderId': orderId,
-        'total': total,
-        if (deliveryNotes != null) 'deliveryNotes': deliveryNotes,
+        if (customerName != null) 'customerName': customerName,
       }),
     );
 
     if (response.statusCode == 200) {
-      debugPrint('🎉 تم إرسال إيميل أن الطلب في الطريق بنجاح!');
+      debugPrint('✨ Order confirmation email sent successfully!');
     } else {
-      debugPrint('فشل الإرسال: ${response.body}');
+      debugPrint('Failed to send email: ${response.body}');
     }
   } catch (e) {
-    debugPrint('Error: $e');
+    debugPrint('Error sending order confirmation email: $e');
   }
 }

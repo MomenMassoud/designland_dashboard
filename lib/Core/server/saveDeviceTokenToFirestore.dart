@@ -11,7 +11,6 @@ Future<void> saveDeviceTokenToFirestore() async {
     final user = FirebaseAuth.instance.currentUser;
     print(webVapidKey);
     if (user == null) {
-      debugPrint('FCM: No logged-in user.');
       return;
     }
 
@@ -30,30 +29,28 @@ Future<void> saveDeviceTokenToFirestore() async {
 
     if (settings.authorizationStatus !=
         AuthorizationStatus.authorized) {
-      debugPrint('FCM: Notification permission not authorized.');
       return;
     }
 
     String? token;
 
     if (kIsWeb) {
-      debugPrint('FCM: Getting Web token...');
+
 
       token = await messaging.getToken(
         vapidKey: webVapidKey,
       );
     } else {
-      debugPrint('FCM: Getting Mobile token...');
+
 
       token = await messaging.getToken();
     }
 
     if (token == null || token.isEmpty) {
-      debugPrint('FCM: Token is null/empty.');
+
       return;
     }
 
-    debugPrint('FCM Token received.');
 
     await FirebaseFirestore.instance
         .collection('user')
@@ -65,7 +62,6 @@ Future<void> saveDeviceTokenToFirestore() async {
       SetOptions(merge: true),
     );
 
-    debugPrint('FCM: Device token saved successfully.');
 
     // Listen for token refresh
     FirebaseMessaging.instance.onTokenRefresh.listen(
@@ -75,9 +71,7 @@ Future<void> saveDeviceTokenToFirestore() async {
               FirebaseAuth.instance.currentUser;
 
           if (currentUser == null) {
-            debugPrint(
-              'FCM refresh: No logged-in user.',
-            );
+
             return;
           }
 
@@ -91,9 +85,6 @@ Future<void> saveDeviceTokenToFirestore() async {
             SetOptions(merge: true),
           );
 
-          debugPrint(
-            'FCM: Refreshed token saved successfully.',
-          );
         } catch (e, stackTrace) {
           debugPrint(
             'FCM refresh error: $e',

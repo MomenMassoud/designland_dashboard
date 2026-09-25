@@ -1,14 +1,17 @@
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dashboard_desginland/Core/server/get_permision.dart';
 import 'package:dashboard_desginland/feature/Access%20Defind/view/access_defind_view.dart';
 import 'package:dashboard_desginland/feature/SubCategory/view/subcategory_view.dart';
 import 'package:dashboard_desginland/model/category_model.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image/image.dart' as img;
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../../Core/Utils/app.colors.dart';
 import '../../../Core/server/cloudinara_server.dart';
 
@@ -50,6 +53,20 @@ class _CategoryWidgetState extends State<CategoryWidget> {
   }
 
   // ============================================================
+  // HELPER TO CONVERT BYTES TO XFILE WITH REAL PATH ON MOBILE
+  // ============================================================
+  Future<XFile> _bytesToXFile(Uint8List bytes, String filename) async {
+    if (kIsWeb) {
+      return XFile.fromData(bytes, name: filename, mimeType: 'image/jpeg');
+    } else {
+      final tempDir = await getTemporaryDirectory();
+      final file = File('${tempDir.path}/$filename');
+      await file.writeAsBytes(bytes);
+      return XFile(file.path);
+    }
+  }
+
+  // ============================================================
   // CROP + ROTATE
   // ============================================================
   Future<Uint8List?> _cropImage({
@@ -71,6 +88,8 @@ class _CategoryWidgetState extends State<CategoryWidget> {
             toolbarWidgetColor: Colors.white,
             activeControlsWidgetColor: AppColors.primaryPurple,
             initAspectRatio: CropAspectRatioPreset.square,
+            hideBottomControls: false,
+            showCropGrid: true,
             lockAspectRatio: false,
             aspectRatioPresets: [
               CropAspectRatioPreset.original,
@@ -346,10 +365,9 @@ class _CategoryWidgetState extends State<CategoryWidget> {
 
       if (croppedBytes == null) return;
 
-      final XFile editedFile = XFile.fromData(
+      final XFile editedFile = await _bytesToXFile(
         croppedBytes,
-        name: 'category_${DateTime.now().millisecondsSinceEpoch}.jpg',
-        mimeType: 'image/jpeg',
+        'category_${DateTime.now().millisecondsSinceEpoch}.jpg',
       );
 
       onSuccess(croppedBytes, editedFile);
@@ -1071,17 +1089,17 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                                                 imageFile: pickedImage!,
                                               );
                                               if (edited != null) {
+                                                final editedXFile =
+                                                await _bytesToXFile(
+                                                  edited,
+                                                  'category_${DateTime.now().millisecondsSinceEpoch}.jpg',
+                                                );
+
                                                 setPanelState(() {
                                                   pickedImageBytes =
                                                       edited;
                                                   pickedImage =
-                                                      XFile.fromData(
-                                                        edited,
-                                                        name:
-                                                        'category_${DateTime.now().millisecondsSinceEpoch}.jpg',
-                                                        mimeType:
-                                                        'image/jpeg',
-                                                      );
+                                                      editedXFile;
                                                 });
                                               }
                                             },
@@ -1106,17 +1124,17 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                                                   context,
                                                   pickedImageBytes!);
                                               if (resized != null) {
+                                                final resizedXFile =
+                                                await _bytesToXFile(
+                                                  resized,
+                                                  'category_${DateTime.now().millisecondsSinceEpoch}.jpg',
+                                                );
+
                                                 setPanelState(() {
                                                   pickedImageBytes =
                                                       resized;
                                                   pickedImage =
-                                                      XFile.fromData(
-                                                        resized,
-                                                        name:
-                                                        'category_${DateTime.now().millisecondsSinceEpoch}.jpg',
-                                                        mimeType:
-                                                        'image/jpeg',
-                                                      );
+                                                      resizedXFile;
                                                 });
                                               }
                                             },

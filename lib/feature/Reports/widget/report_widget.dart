@@ -56,15 +56,6 @@ class _ReportWidgetState extends State<ReportWidget> {
     return MediaQuery.of(context).size.width < 700;
   }
 
-  bool _isTablet(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    return width >= 700 && width < 1100;
-  }
-
-  bool _isDesktop(BuildContext context) {
-    return MediaQuery.of(context).size.width >= 1100;
-  }
-
   double _horizontalPadding(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
 
@@ -138,23 +129,33 @@ class _ReportWidgetState extends State<ReportWidget> {
     );
   }
 
+  String _getDisplayOrderId(dynamic value, [Map<String, dynamic>? rawData]) {
+    if (rawData != null) {
+      final orderNum = rawData['orderNumber'] ??
+          rawData['order_number'] ??
+          rawData['orderNo'] ??
+          rawData['order_id'];
+      if (orderNum != null && orderNum.toString().trim().isNotEmpty) {
+        return "#${orderNum.toString()}";
+      }
+    }
+
+    final id = value?.toString() ?? "";
+    if (id.isEmpty) return "-";
+    if (id.length <= 10) return "#$id";
+    return "#${id.substring(0, 8)}";
+  }
+
   String _shortId(dynamic value) {
     final id = value?.toString() ?? "";
-
     if (id.isEmpty) return "-";
-
     if (id.length <= 8) return "#$id";
-
     return "#${id.substring(0, 8)}";
   }
 
   double _toDouble(dynamic value) {
     if (value == null) return 0;
-
-    if (value is num) {
-      return value.toDouble();
-    }
-
+    if (value is num) return value.toDouble();
     return double.tryParse(value.toString()) ?? 0;
   }
 
@@ -190,7 +191,7 @@ class _ReportWidgetState extends State<ReportWidget> {
     }
 
     if (!_permision.contains("reports")) {
-      return  AccessDefindView();
+      return AccessDefindView();
     }
 
     final mobile = _isMobile(context);
@@ -306,7 +307,7 @@ class _ReportWidgetState extends State<ReportWidget> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (mobile) ...[
-            Text(
+            const Text(
               "Report Filters",
               style: TextStyle(
                 fontSize: 15,
@@ -417,7 +418,7 @@ class _ReportWidgetState extends State<ReportWidget> {
                   SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      "Orders & Manual Orders",
+                      "Orders Report",
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -718,7 +719,7 @@ class _ReportWidgetState extends State<ReportWidget> {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: AppColors.textMuted,
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
@@ -729,7 +730,7 @@ class _ReportWidgetState extends State<ReportWidget> {
                   value,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: AppColors.textDark,
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
@@ -761,26 +762,17 @@ class _ReportWidgetState extends State<ReportWidget> {
         ),
       ),
       child: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('payments')
-            .snapshots(),
+        stream: FirebaseFirestore.instance.collection('payments').snapshots(),
         builder: (context, paymentsSnap) {
           return StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('expenses')
-                .snapshots(),
+            stream: FirebaseFirestore.instance.collection('expenses').snapshots(),
             builder: (context, expensesSnap) {
               return StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('incomes')
-                    .snapshots(),
+                stream: FirebaseFirestore.instance.collection('incomes').snapshots(),
                 builder: (context, incomesSnap) {
-                  if (paymentsSnap.connectionState ==
-                      ConnectionState.waiting ||
-                      expensesSnap.connectionState ==
-                          ConnectionState.waiting ||
-                      incomesSnap.connectionState ==
-                          ConnectionState.waiting) {
+                  if (paymentsSnap.connectionState == ConnectionState.waiting ||
+                      expensesSnap.connectionState == ConnectionState.waiting ||
+                      incomesSnap.connectionState == ConnectionState.waiting) {
                     return const Padding(
                       padding: EdgeInsets.all(50),
                       child: Center(
@@ -793,8 +785,7 @@ class _ReportWidgetState extends State<ReportWidget> {
                   final expenseDocs = expensesSnap.data?.docs ?? [];
                   final incomeDocs = incomesSnap.data?.docs ?? [];
 
-                  final combinedList =
-                  _buildFinancialList(
+                  final combinedList = _buildFinancialList(
                     paymentDocs,
                     expenseDocs,
                     incomeDocs,
@@ -805,11 +796,9 @@ class _ReportWidgetState extends State<ReportWidget> {
 
                   for (final item in combinedList) {
                     final amount = _toDouble(item['amount']);
-
                     final category = item['category'];
 
-                    if (category == 'Payment In' ||
-                        category == 'General Income') {
+                    if (category == 'Payment In' || category == 'General Income') {
                       totalIncome += amount;
                     } else {
                       totalExpense += amount;
@@ -825,7 +814,7 @@ class _ReportWidgetState extends State<ReportWidget> {
                         context: context,
                         title: "Financial Ledger",
                         subtitle:
-                        "Track payments, income and expenses in one place.",
+                        "Track payments, general income, and expenses accurately.",
                         icon: Icons.account_balance_wallet_outlined,
                         iconColor: Colors.green,
                         actions: [
@@ -847,12 +836,9 @@ class _ReportWidgetState extends State<ReportWidget> {
                             color: Colors.green,
                             onPressed: () {
                               if (!kIsWeb) {
-                                _showMessage(
-                                  "Excel export is available on Web.",
-                                );
+                                _showMessage("Excel export is available on Web.");
                                 return;
                               }
-
                               _exportFinancialExcel();
                             },
                           ),
@@ -866,16 +852,13 @@ class _ReportWidgetState extends State<ReportWidget> {
                         net,
                       ),
                       const SizedBox(height: 20),
-                      Divider(
-                        color: Colors.grey.shade200,
-                      ),
+                      Divider(color: Colors.grey.shade200),
                       const SizedBox(height: 16),
                       if (combinedList.isEmpty)
                         _buildEmptyState(
                           icon: Icons.receipt_long_outlined,
                           title: "No Financial Records",
-                          subtitle:
-                          "No records match the current filters.",
+                          subtitle: "No records match the current filters.",
                         )
                       else if (mobile)
                         _buildFinancialMobileList(combinedList)
@@ -900,24 +883,22 @@ class _ReportWidgetState extends State<ReportWidget> {
     final list = <Map<String, dynamic>>[];
 
     for (final doc in paymentDocs) {
-      final data = Map<String, dynamic>.from(
-        doc.data() as Map<String, dynamic>,
-      );
-
-      final createdAt =
-          data['createdAt'] ?? data['timestamp'] ?? data['date'];
+      final data = Map<String, dynamic>.from(doc.data() as Map<String, dynamic>);
+      final createdAt = data['createdAt'] ?? data['timestamp'] ?? data['date'];
 
       if (!_matchesDateFilter(createdAt)) continue;
 
       final notes = data['notes'] ?? 'Order Payment';
-      final orderId = data['orderId'] ?? '';
+      final rawOrderId = data['orderId'] ?? data['order_id'] ?? '';
+      final displayOrderNo = _getDisplayOrderId(rawOrderId, data);
       final userId = data['userId'] ?? '';
 
       if (!_matchesSearch([
         doc.id,
         "Payment In",
         notes.toString(),
-        orderId.toString(),
+        rawOrderId.toString(),
+        displayOrderNo,
         userId.toString(),
       ])) {
         continue;
@@ -927,7 +908,7 @@ class _ReportWidgetState extends State<ReportWidget> {
         'id': doc.id,
         'category': 'Payment In',
         'notes': notes,
-        'orderId': orderId,
+        'orderId': displayOrderNo,
         'userId': userId,
         'amount': _toDouble(data['amount']),
         'createdAt': createdAt,
@@ -935,23 +916,23 @@ class _ReportWidgetState extends State<ReportWidget> {
     }
 
     for (final doc in incomeDocs) {
-      final data = Map<String, dynamic>.from(
-        doc.data() as Map<String, dynamic>,
-      );
-
+      final data = Map<String, dynamic>.from(doc.data() as Map<String, dynamic>);
       final createdAt = data['createdAt'] ?? data['date'];
 
       if (!_matchesDateFilter(createdAt)) continue;
 
       final notes = data['notes'] ?? data['title'] ?? 'Income';
-      final orderId = data['orderId'] ?? '';
+      final rawOrderId = data['orderId'] ?? data['order_id'] ?? '';
+      final displayOrderNo =
+      rawOrderId.toString().isNotEmpty ? _getDisplayOrderId(rawOrderId, data) : '';
       final userId = data['userId'] ?? '';
 
       if (!_matchesSearch([
         doc.id,
         "General Income",
         notes.toString(),
-        orderId.toString(),
+        rawOrderId.toString(),
+        displayOrderNo,
         userId.toString(),
       ])) {
         continue;
@@ -961,7 +942,7 @@ class _ReportWidgetState extends State<ReportWidget> {
         'id': doc.id,
         'category': 'General Income',
         'notes': notes,
-        'orderId': orderId,
+        'orderId': displayOrderNo,
         'userId': userId,
         'amount': _toDouble(data['amount']),
         'createdAt': createdAt,
@@ -969,16 +950,13 @@ class _ReportWidgetState extends State<ReportWidget> {
     }
 
     for (final doc in expenseDocs) {
-      final data = Map<String, dynamic>.from(
-        doc.data() as Map<String, dynamic>,
-      );
-
+      final data = Map<String, dynamic>.from(doc.data() as Map<String, dynamic>);
       final createdAt = data['createdAt'] ?? data['date'];
-      final orderId = data['orderId'] ?? '';
+      final rawOrderId = data['orderId'] ?? data['order_id'] ?? '';
+      final displayOrderNo =
+      rawOrderId.toString().isNotEmpty ? _getDisplayOrderId(rawOrderId, data) : '';
       final category =
-      orderId.toString().isNotEmpty
-          ? 'Order Expense'
-          : 'General Expense';
+      rawOrderId.toString().isNotEmpty ? 'Order Expense' : 'General Expense';
 
       if (!_matchesDateFilter(createdAt)) continue;
 
@@ -989,7 +967,8 @@ class _ReportWidgetState extends State<ReportWidget> {
         doc.id,
         category,
         notes.toString(),
-        orderId.toString(),
+        rawOrderId.toString(),
+        displayOrderNo,
         userId.toString(),
       ])) {
         continue;
@@ -999,7 +978,7 @@ class _ReportWidgetState extends State<ReportWidget> {
         'id': doc.id,
         'category': category,
         'notes': notes,
-        'orderId': orderId,
+        'orderId': displayOrderNo,
         'userId': userId,
         'amount': _toDouble(data['amount']),
         'createdAt': createdAt,
@@ -1007,12 +986,8 @@ class _ReportWidgetState extends State<ReportWidget> {
     }
 
     list.sort((a, b) {
-      final dateA = _parseDate(a['createdAt']) ??
-          DateTime.fromMillisecondsSinceEpoch(0);
-
-      final dateB = _parseDate(b['createdAt']) ??
-          DateTime.fromMillisecondsSinceEpoch(0);
-
+      final dateA = _parseDate(a['createdAt']) ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final dateB = _parseDate(b['createdAt']) ?? DateTime.fromMillisecondsSinceEpoch(0);
       return dateB.compareTo(dateA);
     });
 
@@ -1068,16 +1043,13 @@ class _ReportWidgetState extends State<ReportWidget> {
       children: [
         for (int i = 0; i < cards.length; i++) ...[
           Expanded(child: cards[i]),
-          if (i != cards.length - 1)
-            const SizedBox(width: 10),
+          if (i != cards.length - 1) const SizedBox(width: 10),
         ],
       ],
     );
   }
 
-  Widget _buildFinancialDesktopTable(
-      List<Map<String, dynamic>> list,
-      ) {
+  Widget _buildFinancialDesktopTable(List<Map<String, dynamic>> list) {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -1089,9 +1061,7 @@ class _ReportWidgetState extends State<ReportWidget> {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: DataTable(
-          headingRowColor: MaterialStateProperty.all(
-            AppColors.bgLight,
-          ),
+          headingRowColor: WidgetStateProperty.all(AppColors.bgLight),
           columnSpacing: 28,
           columns: const [
             DataColumn(label: Text("Transaction ID")),
@@ -1104,29 +1074,21 @@ class _ReportWidgetState extends State<ReportWidget> {
           ],
           rows: list.map((item) {
             final category = item['category'].toString();
-
             final isIncome =
-                category == 'Payment In' ||
-                    category == 'General Income';
+                category == 'Payment In' || category == 'General Income';
 
             return DataRow(
               cells: [
                 DataCell(
                   Text(
                     _shortId(item['id']),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),
-                DataCell(
-                  _buildCategoryChip(category),
-                ),
+                DataCell(_buildCategoryChip(category)),
                 DataCell(
                   ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: 260,
-                    ),
+                    constraints: const BoxConstraints(maxWidth: 260),
                     child: Text(
                       item['notes'].toString(),
                       overflow: TextOverflow.ellipsis,
@@ -1134,30 +1096,24 @@ class _ReportWidgetState extends State<ReportWidget> {
                   ),
                 ),
                 DataCell(
-                  Text(
-                    _shortId(item['orderId']),
-                  ),
+                  Text(item['orderId'].toString().isEmpty
+                      ? "-"
+                      : item['orderId'].toString()),
                 ),
                 DataCell(
-                  Text(
-                    _shortId(item['userId']),
-                  ),
+                  Text(_shortId(item['userId'])),
                 ),
                 DataCell(
                   Text(
                     "${isIncome ? '+' : '-'}${_money(_toDouble(item['amount']))}",
                     style: TextStyle(
                       fontWeight: FontWeight.w800,
-                      color: isIncome
-                          ? Colors.green
-                          : Colors.red,
+                      color: isIncome ? Colors.green : Colors.red,
                     ),
                   ),
                 ),
                 DataCell(
-                  Text(
-                    _formatDateTime(item['createdAt']),
-                  ),
+                  Text(_formatDateTime(item['createdAt'])),
                 ),
               ],
             );
@@ -1167,9 +1123,7 @@ class _ReportWidgetState extends State<ReportWidget> {
     );
   }
 
-  Widget _buildFinancialMobileList(
-      List<Map<String, dynamic>> list,
-      ) {
+  Widget _buildFinancialMobileList(List<Map<String, dynamic>> list) {
     return ListView.separated(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -1181,15 +1135,9 @@ class _ReportWidgetState extends State<ReportWidget> {
     );
   }
 
-  Widget _buildFinancialCard(
-      Map<String, dynamic> item,
-      ) {
+  Widget _buildFinancialCard(Map<String, dynamic> item) {
     final category = item['category'].toString();
-
-    final isIncome =
-        category == 'Payment In' ||
-            category == 'General Income';
-
+    final isIncome = category == 'Payment In' || category == 'General Income';
     final amount = _toDouble(item['amount']);
 
     return Container(
@@ -1212,9 +1160,7 @@ class _ReportWidgetState extends State<ReportWidget> {
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w900,
-                  color: isIncome
-                      ? Colors.green
-                      : Colors.red,
+                  color: isIncome ? Colors.green : Colors.red,
                 ),
               ),
             ],
@@ -1228,7 +1174,9 @@ class _ReportWidgetState extends State<ReportWidget> {
           _mobileInfoRow(
             Icons.shopping_bag_outlined,
             "Order",
-            _shortId(item['orderId']),
+            item['orderId'].toString().isEmpty
+                ? "-"
+                : item['orderId'].toString(),
           ),
           _mobileInfoRow(
             Icons.person_outline_rounded,
@@ -1288,7 +1236,7 @@ class _ReportWidgetState extends State<ReportWidget> {
   }
 
   // ===========================================================================
-  // ORDERS REPORT
+  // ORDERS REPORT (INCLUDES USER SUB-COLLECTIONS + MANUAL ORDERS)
   // ===========================================================================
 
   Widget _buildOrdersReportSection(BuildContext context) {
@@ -1305,19 +1253,13 @@ class _ReportWidgetState extends State<ReportWidget> {
         ),
       ),
       child: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('manual_orders')
-            .snapshots(),
+        stream: FirebaseFirestore.instance.collection('orders').snapshots(),
         builder: (context, manualSnap) {
           return StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('users')
-                .snapshots(),
+            stream: FirebaseFirestore.instance.collection('users').snapshots(),
             builder: (context, usersSnap) {
-              if (manualSnap.connectionState ==
-                  ConnectionState.waiting ||
-                  usersSnap.connectionState ==
-                      ConnectionState.waiting) {
+              if (manualSnap.connectionState == ConnectionState.waiting ||
+                  usersSnap.connectionState == ConnectionState.waiting) {
                 return const Padding(
                   padding: EdgeInsets.all(50),
                   child: Center(
@@ -1329,17 +1271,10 @@ class _ReportWidgetState extends State<ReportWidget> {
               final manualDocs = manualSnap.data?.docs ?? [];
               final userDocs = usersSnap.data?.docs ?? [];
 
-              return FutureBuilder<List<QuerySnapshot>>(
-                future: Future.wait(
-                  userDocs.map(
-                        (user) => user.reference
-                        .collection('orders')
-                        .get(),
-                  ),
-                ),
-                builder: (context, ordersSnapshots) {
-                  if (ordersSnapshots.connectionState ==
-                      ConnectionState.waiting) {
+              return FutureBuilder<List<Map<String, dynamic>>>(
+                future: _fetchAllOrders(manualDocs, userDocs),
+                builder: (context, allOrdersSnap) {
+                  if (allOrdersSnap.connectionState == ConnectionState.waiting) {
                     return const Padding(
                       padding: EdgeInsets.all(50),
                       child: Center(
@@ -1348,117 +1283,11 @@ class _ReportWidgetState extends State<ReportWidget> {
                     );
                   }
 
-                  final allOrders = <Map<String, dynamic>>[];
-
-                  if (ordersSnapshots.hasData) {
-                    for (int i = 0;
-                    i < ordersSnapshots.data!.length;
-                    i++) {
-                      final userData =
-                          userDocs[i].data()
-                          as Map<String, dynamic>? ??
-                              {};
-
-                      for (final orderDoc
-                      in ordersSnapshots.data![i].docs) {
-                        final orderData =
-                        Map<String, dynamic>.from(
-                          orderDoc.data()
-                          as Map<String, dynamic>,
-                        );
-
-                        final createdAt =
-                            orderData['createdAt'] ??
-                                orderData['date'];
-
-                        if (!_matchesDateFilter(createdAt)) {
-                          continue;
-                        }
-
-                        final userName =
-                            userData['name'] ??
-                                'System User';
-
-                        final orderId = orderDoc.id;
-
-                        if (!_matchesSearch([
-                          orderId,
-                          userName.toString(),
-                          "System",
-                          orderData['status']?.toString() ??
-                              "Pending",
-                        ])) {
-                          continue;
-                        }
-
-                        orderData['orderId'] = orderId;
-                        orderData['userName'] = userName;
-                        orderData['type'] = 'System';
-
-                        allOrders.add(orderData);
-                      }
-                    }
-                  }
-
-                  for (final manualDoc in manualDocs) {
-                    final data =
-                    Map<String, dynamic>.from(
-                      manualDoc.data()
-                      as Map<String, dynamic>,
-                    );
-
-                    final createdAt =
-                        data['createdAt'] ?? data['date'];
-
-                    if (!_matchesDateFilter(createdAt)) {
-                      continue;
-                    }
-
-                    final customerName =
-                        data['customerName'] ??
-                            'Manual Customer';
-
-                    if (!_matchesSearch([
-                      manualDoc.id,
-                      customerName.toString(),
-                      "Manual",
-                      data['status']?.toString() ??
-                          "Completed",
-                    ])) {
-                      continue;
-                    }
-
-                    data['orderId'] = manualDoc.id;
-                    data['userName'] = customerName;
-                    data['type'] = 'Manual';
-
-                    allOrders.add(data);
-                  }
-
-                  allOrders.sort((a, b) {
-                    final dateA =
-                        _parseDate(a['createdAt']) ??
-                            _parseDate(a['date']) ??
-                            DateTime.fromMillisecondsSinceEpoch(
-                              0,
-                            );
-
-                    final dateB =
-                        _parseDate(b['createdAt']) ??
-                            _parseDate(b['date']) ??
-                            DateTime.fromMillisecondsSinceEpoch(
-                              0,
-                            );
-
-                    return dateB.compareTo(dateA);
-                  });
+                  final allOrders = allOrdersSnap.data ?? [];
 
                   double total = 0;
-
                   for (final order in allOrders) {
-                    total += _toDouble(
-                      order['totalPrice'],
-                    );
+                    total += _toDouble(order['calculatedTotal']);
                   }
 
                   return Column(
@@ -1467,8 +1296,7 @@ class _ReportWidgetState extends State<ReportWidget> {
                       _buildSectionHeader(
                         context: context,
                         title: "Orders Report",
-                        subtitle:
-                        "System orders and manually created orders.",
+                        subtitle: "View both customer orders and manual entries.",
                         icon: Icons.shopping_bag_outlined,
                         iconColor: Colors.orange,
                         actions: [
@@ -1478,12 +1306,9 @@ class _ReportWidgetState extends State<ReportWidget> {
                             color: Colors.green,
                             onPressed: () {
                               if (!kIsWeb) {
-                                _showMessage(
-                                  "Excel export is available on Web.",
-                                );
+                                _showMessage("Excel export is available on Web.");
                                 return;
                               }
-
                               _exportOrdersExcel();
                             },
                           ),
@@ -1496,16 +1321,13 @@ class _ReportWidgetState extends State<ReportWidget> {
                         total,
                       ),
                       const SizedBox(height: 20),
-                      Divider(
-                        color: Colors.grey.shade200,
-                      ),
+                      Divider(color: Colors.grey.shade200),
                       const SizedBox(height: 16),
                       if (allOrders.isEmpty)
                         _buildEmptyState(
                           icon: Icons.shopping_bag_outlined,
                           title: "No Orders Found",
-                          subtitle:
-                          "No orders match the current filters.",
+                          subtitle: "No orders match the current filters.",
                         )
                       else if (mobile)
                         _buildOrdersMobileList(allOrders)
@@ -1520,6 +1342,114 @@ class _ReportWidgetState extends State<ReportWidget> {
         },
       ),
     );
+  }
+
+  /// دالة تجميع كل الأوردرات المانوال والأوردرات الموجودة جوةusers/{id}/orders
+  Future<List<Map<String, dynamic>>> _fetchAllOrders(
+      List<QueryDocumentSnapshot> manualDocs,
+      List<QueryDocumentSnapshot> userDocs,
+      ) async {
+    final allOrders = <Map<String, dynamic>>[];
+
+    // 1. إضافة طلبات المانوال
+    for (final doc in manualDocs) {
+      final data = Map<String, dynamic>.from(doc.data() as Map<String, dynamic>);
+      final createdAt = data['createdAt'] ?? data['date'] ?? data['timestamp'];
+
+      if (!_matchesDateFilter(createdAt)) continue;
+
+      final customerName = data['customerName'] ??
+          data['userName'] ??
+          data['clientName'] ??
+          data['name'] ??
+          'Customer';
+
+      final displayOrderNo = _getDisplayOrderId(doc.id, data);
+      final status = data['status']?.toString() ?? "Pending";
+      final totalAmount = _toDouble(
+        data['totalPrice'] ?? data['total'] ?? data['totalAmount'] ?? data['price'],
+      );
+
+      if (!_matchesSearch([
+        doc.id,
+        displayOrderNo,
+        customerName.toString(),
+        "Manual",
+        status,
+      ])) {
+        continue;
+      }
+
+      data['orderId'] = displayOrderNo;
+      data['docId'] = doc.id;
+      data['userName'] = customerName;
+      data['type'] = 'Manual';
+      data['calculatedTotal'] = totalAmount;
+      data['createdAtFormatted'] = createdAt;
+
+      allOrders.add(data);
+    }
+
+    // 2. تجريف أوردرات العملاء من users/{userId}/orders
+    for (final userDoc in userDocs) {
+      final userData = Map<String, dynamic>.from(userDoc.data() as Map<String, dynamic>);
+      final defaultUserName = userData['name'] ?? userData['userName'] ?? 'Customer';
+
+      final userOrdersSnap = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userDoc.id)
+          .collection('orders')
+          .get();
+
+      for (final orderDoc in userOrdersSnap.docs) {
+        final data = Map<String, dynamic>.from(orderDoc.data());
+        final createdAt = data['createdAt'] ?? data['date'] ?? data['timestamp'];
+
+        if (!_matchesDateFilter(createdAt)) continue;
+
+        final customerName = data['customerName'] ??
+            data['userName'] ??
+            data['clientName'] ??
+            data['name'] ??
+            defaultUserName;
+
+        final displayOrderNo = _getDisplayOrderId(orderDoc.id, data);
+        final status = data['status']?.toString() ?? "Pending";
+        final totalAmount = _toDouble(
+          data['totalPrice'] ?? data['total'] ?? data['totalAmount'] ?? data['price'],
+        );
+
+        if (!_matchesSearch([
+          orderDoc.id,
+          displayOrderNo,
+          customerName.toString(),
+          "Customer",
+          status,
+        ])) {
+          continue;
+        }
+
+        data['orderId'] = displayOrderNo;
+        data['docId'] = orderDoc.id;
+        data['userName'] = customerName;
+        data['type'] = 'Customer';
+        data['calculatedTotal'] = totalAmount;
+        data['createdAtFormatted'] = createdAt;
+
+        allOrders.add(data);
+      }
+    }
+
+    // ترتيب التواريخ من الأحدث للأقدم
+    allOrders.sort((a, b) {
+      final dateA = _parseDate(a['createdAtFormatted']) ??
+          DateTime.fromMillisecondsSinceEpoch(0);
+      final dateB = _parseDate(b['createdAtFormatted']) ??
+          DateTime.fromMillisecondsSinceEpoch(0);
+      return dateB.compareTo(dateA);
+    });
+
+    return allOrders;
   }
 
   Widget _buildOrdersSummary(
@@ -1568,9 +1498,7 @@ class _ReportWidgetState extends State<ReportWidget> {
     );
   }
 
-  Widget _buildOrdersDesktopTable(
-      List<Map<String, dynamic>> orders,
-      ) {
+  Widget _buildOrdersDesktopTable(List<Map<String, dynamic>> orders) {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -1582,9 +1510,7 @@ class _ReportWidgetState extends State<ReportWidget> {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: DataTable(
-          headingRowColor: MaterialStateProperty.all(
-            AppColors.bgLight,
-          ),
+          headingRowColor: WidgetStateProperty.all(AppColors.bgLight),
           columnSpacing: 32,
           columns: const [
             DataColumn(label: Text("Order ID")),
@@ -1595,34 +1521,25 @@ class _ReportWidgetState extends State<ReportWidget> {
             DataColumn(label: Text("Status")),
           ],
           rows: orders.map((order) {
-            final type = order['type']?.toString() ?? "System";
+            final type = order['type']?.toString() ?? "Customer";
 
             return DataRow(
               cells: [
                 DataCell(
                   Text(
-                    _shortId(order['orderId']),
+                    order['orderId'].toString(),
                     style: const TextStyle(
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
+                DataCell(_buildOrderTypeChip(type)),
                 DataCell(
-                  _buildOrderTypeChip(type),
+                  Text(order['userName']?.toString() ?? "N/A"),
                 ),
                 DataCell(
                   Text(
-                    order['userName']?.toString() ??
-                        "N/A",
-                  ),
-                ),
-                DataCell(
-                  Text(
-                    _money(
-                      _toDouble(
-                        order['totalPrice'],
-                      ),
-                    ),
+                    _money(_toDouble(order['calculatedTotal'])),
                     style: const TextStyle(
                       fontWeight: FontWeight.w800,
                     ),
@@ -1630,16 +1547,12 @@ class _ReportWidgetState extends State<ReportWidget> {
                 ),
                 DataCell(
                   Text(
-                    _formatDateTime(
-                      order['createdAt'] ??
-                          order['date'],
-                    ),
+                    _formatDateTime(order['createdAtFormatted']),
                   ),
                 ),
                 DataCell(
                   _buildStatusChip(
-                    order['status']?.toString() ??
-                        "Pending",
+                    order['status']?.toString() ?? "Pending",
                   ),
                 ),
               ],
@@ -1650,9 +1563,7 @@ class _ReportWidgetState extends State<ReportWidget> {
     );
   }
 
-  Widget _buildOrdersMobileList(
-      List<Map<String, dynamic>> orders,
-      ) {
+  Widget _buildOrdersMobileList(List<Map<String, dynamic>> orders) {
     return ListView.separated(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -1664,10 +1575,8 @@ class _ReportWidgetState extends State<ReportWidget> {
     );
   }
 
-  Widget _buildOrderCard(
-      Map<String, dynamic> order,
-      ) {
-    final type = order['type']?.toString() ?? "System";
+  Widget _buildOrderCard(Map<String, dynamic> order) {
+    final type = order['type']?.toString() ?? "Customer";
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -1685,8 +1594,7 @@ class _ReportWidgetState extends State<ReportWidget> {
               _buildOrderTypeChip(type),
               const Spacer(),
               _buildStatusChip(
-                order['status']?.toString() ??
-                    "Pending",
+                order['status']?.toString() ?? "Pending",
               ),
             ],
           ),
@@ -1694,7 +1602,7 @@ class _ReportWidgetState extends State<ReportWidget> {
           _mobileInfoRow(
             Icons.shopping_bag_outlined,
             "Order ID",
-            _shortId(order['orderId']),
+            order['orderId'].toString(),
           ),
           _mobileInfoRow(
             Icons.person_outline_rounded,
@@ -1704,17 +1612,12 @@ class _ReportWidgetState extends State<ReportWidget> {
           _mobileInfoRow(
             Icons.payments_outlined,
             "Total",
-            _money(
-              _toDouble(order['totalPrice']),
-            ),
+            _money(_toDouble(order['calculatedTotal'])),
           ),
           _mobileInfoRow(
             Icons.access_time_rounded,
             "Date",
-            _formatDateTime(
-              order['createdAt'] ??
-                  order['date'],
-            ),
+            _formatDateTime(order['createdAtFormatted']),
           ),
         ],
       ),
@@ -1723,10 +1626,7 @@ class _ReportWidgetState extends State<ReportWidget> {
 
   Widget _buildOrderTypeChip(String type) {
     final isManual = type == 'Manual';
-
-    final color = isManual
-        ? Colors.purple
-        : Colors.blue;
+    final color = isManual ? Colors.orange : Colors.blue;
 
     return Container(
       padding: const EdgeInsets.symmetric(
@@ -1808,12 +1708,9 @@ class _ReportWidgetState extends State<ReportWidget> {
         ),
       ),
       child: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('users')
-            .snapshots(),
+        stream: FirebaseFirestore.instance.collection('users').snapshots(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState ==
-              ConnectionState.waiting) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
             return const Padding(
               padding: EdgeInsets.all(50),
               child: Center(
@@ -1823,12 +1720,10 @@ class _ReportWidgetState extends State<ReportWidget> {
           }
 
           final docs = snapshot.data?.docs ?? [];
-
           final users = <Map<String, dynamic>>[];
 
           for (final doc in docs) {
-            final data =
-            Map<String, dynamic>.from(
+            final data = Map<String, dynamic>.from(
               doc.data() as Map<String, dynamic>,
             );
 
@@ -1875,7 +1770,6 @@ class _ReportWidgetState extends State<ReportWidget> {
                         );
                         return;
                       }
-
                       _exportUsersExcel();
                     },
                   ),
@@ -1889,16 +1783,13 @@ class _ReportWidgetState extends State<ReportWidget> {
                 color: AppColors.primaryPurple,
               ),
               const SizedBox(height: 20),
-              Divider(
-                color: Colors.grey.shade200,
-              ),
+              Divider(color: Colors.grey.shade200),
               const SizedBox(height: 16),
               if (users.isEmpty)
                 _buildEmptyState(
                   icon: Icons.people_outline_rounded,
                   title: "No Users Found",
-                  subtitle:
-                  "No users match the current search.",
+                  subtitle: "No users match the current search.",
                 )
               else if (mobile)
                 _buildUsersMobileList(users)
@@ -1911,9 +1802,7 @@ class _ReportWidgetState extends State<ReportWidget> {
     );
   }
 
-  Widget _buildUsersDesktopTable(
-      List<Map<String, dynamic>> users,
-      ) {
+  Widget _buildUsersDesktopTable(List<Map<String, dynamic>> users) {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -1925,9 +1814,7 @@ class _ReportWidgetState extends State<ReportWidget> {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: DataTable(
-          headingRowColor: MaterialStateProperty.all(
-            AppColors.bgLight,
-          ),
+          headingRowColor: WidgetStateProperty.all(AppColors.bgLight),
           columnSpacing: 45,
           columns: const [
             DataColumn(label: Text("Name")),
@@ -1945,16 +1832,8 @@ class _ReportWidgetState extends State<ReportWidget> {
                     ),
                   ),
                 ),
-                DataCell(
-                  Text(
-                    user['email'].toString(),
-                  ),
-                ),
-                DataCell(
-                  Text(
-                    user['phone'].toString(),
-                  ),
-                ),
+                DataCell(Text(user['email'].toString())),
+                DataCell(Text(user['phone'].toString())),
               ],
             );
           }).toList(),
@@ -1963,9 +1842,7 @@ class _ReportWidgetState extends State<ReportWidget> {
     );
   }
 
-  Widget _buildUsersMobileList(
-      List<Map<String, dynamic>> users,
-      ) {
+  Widget _buildUsersMobileList(List<Map<String, dynamic>> users) {
     return ListView.separated(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -1991,8 +1868,7 @@ class _ReportWidgetState extends State<ReportWidget> {
                     width: 42,
                     height: 42,
                     decoration: BoxDecoration(
-                      color: AppColors.primaryPurple
-                          .withOpacity(.10),
+                      color: AppColors.primaryPurple.withOpacity(.10),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -2060,42 +1936,27 @@ class _ReportWidgetState extends State<ReportWidget> {
           backgroundColor: color,
           foregroundColor: Colors.white,
           elevation: 0,
-          padding: const EdgeInsets.symmetric(
-            horizontal: 15,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 15),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(11),
           ),
         ),
-        icon: Icon(
-          icon,
-          size: 18,
-        ),
+        icon: Icon(icon, size: 18),
         label: Text(
           label,
-          style: const TextStyle(
-            fontWeight: FontWeight.w700,
-          ),
+          style: const TextStyle(fontWeight: FontWeight.w700),
         ),
       ),
     );
   }
 
-  Widget _mobileInfoRow(
-      IconData icon,
-      String label,
-      String value,
-      ) {
+  Widget _mobileInfoRow(IconData icon, String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 9),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            icon,
-            size: 17,
-            color: Colors.grey.shade500,
-          ),
+          Icon(icon, size: 17, color: Colors.grey.shade500),
           const SizedBox(width: 9),
           SizedBox(
             width: 70,
@@ -2141,11 +2002,7 @@ class _ReportWidgetState extends State<ReportWidget> {
       ),
       child: Column(
         children: [
-          Icon(
-            icon,
-            size: 46,
-            color: Colors.grey.shade400,
-          ),
+          Icon(icon, size: 46, color: Colors.grey.shade400),
           const SizedBox(height: 12),
           Text(
             title,
@@ -2197,9 +2054,7 @@ class _ReportWidgetState extends State<ReportWidget> {
               ),
               SizedBox(width: 10),
               Expanded(
-                child: Text(
-                  "Add General Expense",
-                ),
+                child: Text("Add General Expense"),
               ),
             ],
           ),
@@ -2214,9 +2069,7 @@ class _ReportWidgetState extends State<ReportWidget> {
                   decoration: InputDecoration(
                     labelText: "Notes / Description",
                     hintText: "e.g. Servers / Shipping",
-                    prefixIcon: const Icon(
-                      Icons.description_outlined,
-                    ),
+                    prefixIcon: const Icon(Icons.description_outlined),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -2225,16 +2078,11 @@ class _ReportWidgetState extends State<ReportWidget> {
                 const SizedBox(height: 14),
                 TextField(
                   controller: amountController,
-                  keyboardType:
-                  const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   decoration: InputDecoration(
                     labelText: "Amount",
                     suffixText: "EGP",
-                    prefixIcon: const Icon(
-                      Icons.payments_outlined,
-                    ),
+                    prefixIcon: const Icon(Icons.payments_outlined),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -2243,12 +2091,7 @@ class _ReportWidgetState extends State<ReportWidget> {
               ],
             ),
           ),
-          actionsPadding: const EdgeInsets.fromLTRB(
-            20,
-            0,
-            20,
-            16,
-          ),
+          actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
@@ -2256,33 +2099,21 @@ class _ReportWidgetState extends State<ReportWidget> {
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor:
-                AppColors.primaryPurple,
+                backgroundColor: AppColors.primaryPurple,
                 foregroundColor: Colors.white,
               ),
               onPressed: () async {
-                if (notesController.text
-                    .trim()
-                    .isEmpty ||
-                    amountController.text
-                        .trim()
-                        .isEmpty) {
+                if (notesController.text.trim().isEmpty ||
+                    amountController.text.trim().isEmpty) {
                   return;
                 }
 
-                final amount =
-                    double.tryParse(
-                      amountController.text.trim(),
-                    ) ??
-                        0;
+                final amount = double.tryParse(amountController.text.trim()) ?? 0;
 
-                await FirebaseFirestore.instance
-                    .collection('expenses')
-                    .add({
+                await FirebaseFirestore.instance.collection('expenses').add({
                   'amount': amount,
                   'notes': notesController.text.trim(),
-                  'createdAt':
-                  FieldValue.serverTimestamp(),
+                  'createdAt': FieldValue.serverTimestamp(),
                   'orderId': null,
                   'userId': null,
                 });
@@ -2328,9 +2159,7 @@ class _ReportWidgetState extends State<ReportWidget> {
               ),
               SizedBox(width: 10),
               Expanded(
-                child: Text(
-                  "Add General Income",
-                ),
+                child: Text("Add General Income"),
               ),
             ],
           ),
@@ -2344,11 +2173,8 @@ class _ReportWidgetState extends State<ReportWidget> {
                   textInputAction: TextInputAction.next,
                   decoration: InputDecoration(
                     labelText: "Notes / Description",
-                    hintText:
-                    "e.g. Investment / Additional Capital",
-                    prefixIcon: const Icon(
-                      Icons.description_outlined,
-                    ),
+                    hintText: "e.g. Investment / Additional Capital",
+                    prefixIcon: const Icon(Icons.description_outlined),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -2357,16 +2183,11 @@ class _ReportWidgetState extends State<ReportWidget> {
                 const SizedBox(height: 14),
                 TextField(
                   controller: amountController,
-                  keyboardType:
-                  const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   decoration: InputDecoration(
                     labelText: "Amount",
                     suffixText: "EGP",
-                    prefixIcon: const Icon(
-                      Icons.payments_outlined,
-                    ),
+                    prefixIcon: const Icon(Icons.payments_outlined),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -2375,12 +2196,7 @@ class _ReportWidgetState extends State<ReportWidget> {
               ],
             ),
           ),
-          actionsPadding: const EdgeInsets.fromLTRB(
-            20,
-            0,
-            20,
-            16,
-          ),
+          actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
@@ -2392,28 +2208,17 @@ class _ReportWidgetState extends State<ReportWidget> {
                 foregroundColor: Colors.white,
               ),
               onPressed: () async {
-                if (notesController.text
-                    .trim()
-                    .isEmpty ||
-                    amountController.text
-                        .trim()
-                        .isEmpty) {
+                if (notesController.text.trim().isEmpty ||
+                    amountController.text.trim().isEmpty) {
                   return;
                 }
 
-                final amount =
-                    double.tryParse(
-                      amountController.text.trim(),
-                    ) ??
-                        0;
+                final amount = double.tryParse(amountController.text.trim()) ?? 0;
 
-                await FirebaseFirestore.instance
-                    .collection('incomes')
-                    .add({
+                await FirebaseFirestore.instance.collection('incomes').add({
                   'amount': amount,
                   'notes': notesController.text.trim(),
-                  'createdAt':
-                  FieldValue.serverTimestamp(),
+                  'createdAt': FieldValue.serverTimestamp(),
                   'orderId': null,
                   'userId': null,
                 });
@@ -2434,30 +2239,19 @@ class _ReportWidgetState extends State<ReportWidget> {
   // EXCEL DOWNLOAD
   // ===========================================================================
 
-  void _downloadExcelSheet(
-      Excel excel,
-      String fileName,
-      ) {
+  void _downloadExcelSheet(Excel excel, String fileName) {
     final fileBytes = excel.save();
 
     if (fileBytes != null && kIsWeb) {
       final blob = html.Blob(
-        [
-          fileBytes,
-        ],
+        [fileBytes],
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       );
 
-      final url =
-      html.Url.createObjectUrlFromBlob(blob);
+      final url = html.Url.createObjectUrlFromBlob(blob);
 
-      final anchor = html.AnchorElement(
-        href: url,
-      )
-        ..setAttribute(
-          "download",
-          "$fileName.xlsx",
-        )
+      final anchor = html.AnchorElement(href: url)
+        ..setAttribute("download", "$fileName.xlsx")
         ..click();
 
       html.Url.revokeObjectUrl(url);
@@ -2470,10 +2264,7 @@ class _ReportWidgetState extends State<ReportWidget> {
 
   Future<void> _exportFinancialExcel() async {
     var excel = Excel.createExcel();
-
-    final sheetObject =
-    excel['Financial_Ledger'];
-
+    final sheetObject = excel['Financial_Ledger'];
     excel.delete('Sheet1');
 
     sheetObject.appendRow([
@@ -2487,110 +2278,72 @@ class _ReportWidgetState extends State<ReportWidget> {
     ]);
 
     final paymentsSnap =
-    await FirebaseFirestore.instance
-        .collection('payments')
-        .get();
+    await FirebaseFirestore.instance.collection('payments').get();
 
     for (final doc in paymentsSnap.docs) {
       final data = doc.data();
+      final rawOrderId = data['orderId'] ?? data['order_id'] ?? '';
+      final displayOrderNo = _getDisplayOrderId(rawOrderId, data);
 
       sheetObject.appendRow([
         TextCellValue(doc.id),
         TextCellValue('Payment In'),
-        TextCellValue(
-          data['notes'] ??
-              'Order Payment',
-        ),
-        TextCellValue(
-          data['orderId'] ?? '',
-        ),
-        TextCellValue(
-          data['userId'] ?? '',
-        ),
-        DoubleCellValue(
-          _toDouble(data['amount']),
-        ),
+        TextCellValue(data['notes'] ?? 'Order Payment'),
+        TextCellValue(data['ordernumber']),
+        TextCellValue(data['userId'] ?? ''),
+        DoubleCellValue(_toDouble(data['amount'])),
         TextCellValue(
           _formatDateTime(
-            data['createdAt'] ??
-                data['timestamp'] ??
-                data['date'],
+            data['createdAt'] ?? data['timestamp'] ?? data['date'],
           ),
         ),
       ]);
     }
 
     final incomesSnap =
-    await FirebaseFirestore.instance
-        .collection('incomes')
-        .get();
+    await FirebaseFirestore.instance.collection('incomes').get();
 
     for (final doc in incomesSnap.docs) {
       final data = doc.data();
+      final rawOrderId = data['orderId'] ?? data['order_id'] ?? '';
+      final displayOrderNo = rawOrderId.toString().isNotEmpty
+          ? _getDisplayOrderId(rawOrderId, data)
+          : '';
 
       sheetObject.appendRow([
         TextCellValue(doc.id),
         TextCellValue('General Income'),
+        TextCellValue(data['notes'] ?? data['title'] ?? 'Income'),
+        TextCellValue(displayOrderNo),
+        TextCellValue(data['userId'] ?? ''),
+        DoubleCellValue(_toDouble(data['amount'])),
         TextCellValue(
-          data['notes'] ??
-              data['title'] ??
-              'Income',
-        ),
-        TextCellValue(
-          data['orderId'] ?? '',
-        ),
-        TextCellValue(
-          data['userId'] ?? '',
-        ),
-        DoubleCellValue(
-          _toDouble(data['amount']),
-        ),
-        TextCellValue(
-          _formatDateTime(
-            data['createdAt'] ??
-                data['date'],
-          ),
+          _formatDateTime(data['createdAt'] ?? data['date']),
         ),
       ]);
     }
 
     final expensesSnap =
-    await FirebaseFirestore.instance
-        .collection('expenses')
-        .get();
+    await FirebaseFirestore.instance.collection('expenses').get();
 
     for (final doc in expensesSnap.docs) {
       final data = doc.data();
-
-      final orderId =
-          data['orderId'] ?? '';
+      final rawOrderId = data['orderId'] ?? data['order_id'] ?? '';
+      final displayOrderNo = rawOrderId.toString().isNotEmpty
+          ? _getDisplayOrderId(rawOrderId, data)
+          : '';
 
       sheetObject.appendRow([
         TextCellValue(doc.id),
         TextCellValue(
-          orderId.toString().isNotEmpty
-              ? 'Order Expense'
-              : 'General Expense',
+          rawOrderId.toString().isNotEmpty ? 'Order Expense' : 'General Expense',
         ),
+        TextCellValue(data['notes'] ?? data['title'] ?? 'Expense'),
+        TextCellValue(displayOrderNo),
+        TextCellValue(data['userId'] ?? ''),
+        DoubleCellValue(_toDouble(data['amount']) * -1),
         TextCellValue(
-          data['notes'] ??
-              data['title'] ??
-              'Expense',
-        ),
-        TextCellValue(
-          orderId.toString(),
-        ),
-        TextCellValue(
-          data['userId'] ?? '',
-        ),
-        DoubleCellValue(
-          _toDouble(data['amount']) * -1,
-        ),
-        TextCellValue(
-          _formatDateTime(
-            data['createdAt'] ??
-                data['date'],
-          ),
+          _formatDateTime(data['createdAt'] ?? data['date']),
         ),
       ]);
     }
@@ -2602,15 +2355,12 @@ class _ReportWidgetState extends State<ReportWidget> {
   }
 
   // ===========================================================================
-  // ORDERS EXCEL
+  // ORDERS EXCEL (FETCHES USER SUB-COLLECTIONS TOO)
   // ===========================================================================
 
   Future<void> _exportOrdersExcel() async {
     var excel = Excel.createExcel();
-
-    final sheetObject =
-    excel['Orders_Report'];
-
+    final sheetObject = excel['Orders_Report'];
     excel.delete('Sheet1');
 
     sheetObject.appendRow([
@@ -2622,76 +2372,21 @@ class _ReportWidgetState extends State<ReportWidget> {
       TextCellValue('Status'),
     ]);
 
-    final usersSnap =
-    await FirebaseFirestore.instance
-        .collection('users')
-        .get();
+    final manualSnap = await FirebaseFirestore.instance.collection('orders').get();
+    final userSnap = await FirebaseFirestore.instance.collection('users').get();
 
-    for (final userDoc in usersSnap.docs) {
-      final ordersSnap =
-      await userDoc.reference
-          .collection('orders')
-          .get();
+    final allOrders = await _fetchAllOrders(manualSnap.docs, userSnap.docs);
 
-      for (final orderDoc in ordersSnap.docs) {
-        final data = orderDoc.data();
-
-        sheetObject.appendRow([
-          TextCellValue(orderDoc.id),
-          TextCellValue('System'),
-          TextCellValue(
-            userDoc.data()['name'] ??
-                'N/A',
-          ),
-          DoubleCellValue(
-            _toDouble(
-              data['totalPrice'],
-            ),
-          ),
-          TextCellValue(
-            _formatDateTime(
-              data['createdAt'] ??
-                  data['date'],
-            ),
-          ),
-          TextCellValue(
-            data['status'] ??
-                'Pending',
-          ),
-        ]);
-      }
-    }
-
-    final manualSnap =
-    await FirebaseFirestore.instance
-        .collection('manual_orders')
-        .get();
-
-    for (final doc in manualSnap.docs) {
-      final data = doc.data();
-
+    for (final order in allOrders) {
       sheetObject.appendRow([
-        TextCellValue(doc.id),
-        TextCellValue('Manual'),
+        TextCellValue(order['orderId'].toString()),
+        TextCellValue(order['type'].toString()),
+        TextCellValue(order['userName'].toString()),
+        DoubleCellValue(_toDouble(order['calculatedTotal'])),
         TextCellValue(
-          data['customerName'] ??
-              'Manual Customer',
+          _formatDateTime(order['createdAtFormatted']),
         ),
-        DoubleCellValue(
-          _toDouble(
-            data['totalPrice'],
-          ),
-        ),
-        TextCellValue(
-          _formatDateTime(
-            data['createdAt'] ??
-                data['date'],
-          ),
-        ),
-        TextCellValue(
-          data['status'] ??
-              'Completed',
-        ),
+        TextCellValue(order['status']?.toString() ?? 'Pending'),
       ]);
     }
 
@@ -2707,10 +2402,7 @@ class _ReportWidgetState extends State<ReportWidget> {
 
   Future<void> _exportUsersExcel() async {
     var excel = Excel.createExcel();
-
-    final sheetObject =
-    excel['Users_Report'];
-
+    final sheetObject = excel['Users_Report'];
     excel.delete('Sheet1');
 
     sheetObject.appendRow([
@@ -2720,25 +2412,16 @@ class _ReportWidgetState extends State<ReportWidget> {
       TextCellValue('Phone'),
     ]);
 
-    final usersSnap =
-    await FirebaseFirestore.instance
-        .collection('users')
-        .get();
+    final usersSnap = await FirebaseFirestore.instance.collection('users').get();
 
     for (final doc in usersSnap.docs) {
       final data = doc.data();
 
       sheetObject.appendRow([
         TextCellValue(doc.id),
-        TextCellValue(
-          data['name'] ?? 'N/A',
-        ),
-        TextCellValue(
-          data['email'] ?? 'N/A',
-        ),
-        TextCellValue(
-          data['phone'] ?? 'N/A',
-        ),
+        TextCellValue(data['name'] ?? 'N/A'),
+        TextCellValue(data['email'] ?? 'N/A'),
+        TextCellValue(data['phone'] ?? 'N/A'),
       ]);
     }
 

@@ -2,13 +2,12 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 
-Future<void> sendOrderConfirmationEmail({
+Future<void> sendOrderShippingEmail({
   required String customerEmail,
   required String orderId,
-  required double total,
-  String? estimatedTime,
+  String? customerName,
 }) async {
-  const String apiUrl = 'https://designland-backend.vercel.app/api/confirm-order';
+  const String apiUrl = 'https://designland-backend.vercel.app/api/order-ready';
 
   try {
     final response = await http.post(
@@ -19,17 +18,16 @@ Future<void> sendOrderConfirmationEmail({
       body: jsonEncode({
         'customerEmail': customerEmail,
         'orderId': orderId,
-        'total': total,
-        if (estimatedTime != null) 'estimatedTime': estimatedTime,
+        if (customerName != null) 'customerName': customerName,
       }),
     );
 
     if (response.statusCode == 200) {
-      debugPrint('🎉 تم إرسال إيميل تأكيد الطلب وبدء العمل بنجاح!');
+      debugPrint('📦 Shipping notification email sent successfully!');
     } else {
-      debugPrint('فشل الإرسال: ${response.body}');
+      debugPrint('Failed to send shipping email: ${response.body}');
     }
   } catch (e) {
-    debugPrint('Error: $e');
+    debugPrint('Error sending shipping email: $e');
   }
 }

@@ -24,7 +24,6 @@ Future<String?> getDeviceToken() async {
       token = await messaging.getToken();
     }
 
-    print("FCM Token: $token");
     return token;
   } else {
     print("المستخدم رفض إذن الإشعارات");

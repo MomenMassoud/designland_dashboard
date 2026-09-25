@@ -9,20 +9,23 @@ import '../../../Core/server/cloudinara_server.dart';
 // نموذج يمثل الحقل المخصص للمنتج
 class DynamicFieldModel {
   String name;
-  String type; // 'text', 'number', 'drive_link'
+  String type; // 'text', 'number', 'drive_link', 'dropdown'
   bool isRequired;
+  List<String> options; // الخيارات الخاصة بالقائمة المنسدلة
 
   DynamicFieldModel({
     required this.name,
     this.type = 'text',
     this.isRequired = true,
-  });
+    List<String>? options,
+  }) : options = options ?? [];
 
   Map<String, dynamic> toMap() {
     return {
       'name': name,
       'type': type,
       'isRequired': isRequired,
+      'options': options,
     };
   }
 
@@ -31,6 +34,7 @@ class DynamicFieldModel {
       name: map['name'] ?? '',
       type: map['type'] ?? 'text',
       isRequired: map['isRequired'] ?? true,
+      options: map['options'] != null ? List<String>.from(map['options']) : [],
     );
   }
 }
@@ -56,10 +60,39 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
   final PageController _pageController = PageController();
   int _selectedImageIndex = 0;
 
+  List<DynamicFieldModel> _productFields = [];
+  bool _isLoadingFields = true;
+
   @override
   void initState() {
     super.initState();
     _currentProduct = widget.product;
+    _fetchProductFields();
+  }
+
+  Future<void> _fetchProductFields() async {
+    try {
+      final docSnap = await _productsRef.doc(_currentProduct.doc).get();
+      if (docSnap.exists) {
+        final data = docSnap.data() as Map<String, dynamic>;
+        if (data['fields'] != null) {
+          final fieldsData = data['fields'] as List<dynamic>;
+          setState(() {
+            _productFields = fieldsData
+                .map((f) => DynamicFieldModel.fromMap(f as Map<String, dynamic>))
+                .toList();
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching fields: $e");
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingFields = false;
+        });
+      }
+    }
   }
 
   @override
@@ -659,6 +692,126 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                     ),
                   ),
 
+                  const SizedBox(height: 16),
+
+                  // عرض الحقول المخصصة لطلب المنتج
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.03),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "Required Order Fields",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textDark,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        if (_isLoadingFields)
+                          const Center(child: CircularProgressIndicator())
+                        else if (_productFields.isEmpty)
+                          const Text(
+                            "No custom fields required for ordering this product.",
+                            style: TextStyle(
+                              color: AppColors.textMuted,
+                              fontSize: 14,
+                            ),
+                          )
+                        else
+                          ListView.separated(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: _productFields.length,
+                            separatorBuilder: (context, index) => const Divider(height: 16),
+                            itemBuilder: (context, index) {
+                              final field = _productFields[index];
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            field.type == 'drive_link'
+                                                ? Icons.add_to_drive
+                                                : field.type == 'number'
+                                                ? Icons.pin
+                                                : field.type == 'dropdown'
+                                                ? Icons.arrow_drop_down_circle_outlined
+                                                : Icons.short_text,
+                                            size: 18,
+                                            color: AppColors.primaryPurple,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            field.name,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              color: AppColors.textDark,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: field.isRequired
+                                              ? Colors.red.shade50
+                                              : Colors.grey.shade100,
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          field.isRequired ? "Required" : "Optional",
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            color: field.isRequired
+                                                ? Colors.red.shade700
+                                                : Colors.grey.shade700,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  if (field.type == 'dropdown' && field.options.isNotEmpty) ...[
+                                    const SizedBox(height: 6),
+                                    Wrap(
+                                      spacing: 6,
+                                      runSpacing: 4,
+                                      children: field.options.map((opt) {
+                                        return Chip(
+                                          label: Text(opt, style: const TextStyle(fontSize: 11)),
+                                          backgroundColor: Colors.purple.shade50,
+                                          visualDensity: VisualDensity.compact,
+                                          padding: EdgeInsets.zero,
+                                        );
+                                      }).toList(),
+                                    ),
+                                  ]
+                                ],
+                              );
+                            },
+                          ),
+                      ],
+                    ),
+                  ),
+
                   const SizedBox(height: 20),
 
                   // تقييمات العملاء
@@ -822,22 +975,15 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
     List<XFile> newlyPickedImages = [];
     List<Uint8List> newImagesBytes = [];
 
-    // جلب الحقول المخصصة الحالية من Firestore
-    List<DynamicFieldModel> customFields = [];
-    try {
-      final docSnap = await _productsRef.doc(_currentProduct.doc).get();
-      if (docSnap.exists) {
-        final data = docSnap.data() as Map<String, dynamic>;
-        if (data['fields'] != null) {
-          final fieldsData = data['fields'] as List<dynamic>;
-          customFields = fieldsData
-              .map((f) => DynamicFieldModel.fromMap(f as Map<String, dynamic>))
-              .toList();
-        }
-      }
-    } catch (e) {
-      debugPrint("Error fetching existing fields: $e");
-    }
+    // إعداد نسخة عميقة لـ customFields لمنع اختلال البيانات أثناء التعديل
+    List<DynamicFieldModel> customFields = _productFields
+        .map((f) => DynamicFieldModel(
+      name: f.name,
+      type: f.type,
+      isRequired: f.isRequired,
+      options: List<String>.from(f.options),
+    ))
+        .toList();
 
     bool isSaving = false;
 
@@ -948,7 +1094,7 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                           keyboardType: const TextInputType.numberWithOptions(
                               decimal: true),
                           decoration:
-                          const InputDecoration(labelText: "Price (\$)" ),
+                          const InputDecoration(labelText: "Price (\$)"),
                           validator: (val) =>
                           double.tryParse(val ?? '') == null
                               ? "Enter valid price"
@@ -1212,11 +1358,18 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                                                 value: 'drive_link',
                                                 child: Text("Google Drive Link / لينك درايف"),
                                               ),
+                                              DropdownMenuItem(
+                                                value: 'dropdown',
+                                                child: Text("Dropdown Options / قائمة خيارات"),
+                                              ),
                                             ],
                                             onChanged: (val) {
                                               if (val != null) {
                                                 setDialogState(() {
                                                   field.type = val;
+                                                  if (val == 'dropdown' && field.options.isEmpty) {
+                                                    field.options = [''];
+                                                  }
                                                 });
                                               }
                                             },
@@ -1241,6 +1394,66 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                                         ),
                                       ],
                                     ),
+
+                                    // إعدادات الخيارات الخاصة بالـ Dropdown
+                                    if (field.type == 'dropdown') ...[
+                                      const SizedBox(height: 12),
+                                      const Text(
+                                        "Dropdown Options:",
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.bold, fontSize: 13),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      ListView.builder(
+                                        shrinkWrap: true,
+                                        physics: const NeverScrollableScrollPhysics(),
+                                        itemCount: field.options.length,
+                                        itemBuilder: (context, optIndex) {
+                                          return Padding(
+                                            padding: const EdgeInsets.only(bottom: 6),
+                                            child: Row(
+                                              children: [
+                                                Expanded(
+                                                  child: TextFormField(
+                                                    initialValue: field.options[optIndex],
+                                                    decoration: InputDecoration(
+                                                      labelText: "Option ${optIndex + 1}",
+                                                      isDense: true,
+                                                    ),
+                                                    onChanged: (val) => field.options[optIndex] = val.trim(),
+                                                    validator: (v) {
+                                                      if (field.type == 'dropdown' && (v == null || v.trim().isEmpty)) {
+                                                        return "Enter option name";
+                                                      }
+                                                      return null;
+                                                    },
+                                                  ),
+                                                ),
+                                                IconButton(
+                                                  icon: const Icon(Icons.remove_circle_outline, color: Colors.red, size: 18),
+                                                  onPressed: field.options.length > 1
+                                                      ? () {
+                                                    setDialogState(() {
+                                                      field.options.removeAt(optIndex);
+                                                    });
+                                                  }
+                                                      : null,
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                      TextButton.icon(
+                                        onPressed: () {
+                                          setDialogState(() {
+                                            field.options.add('');
+                                          });
+                                        },
+                                        icon: const Icon(Icons.add_circle_outline, size: 16),
+                                        label: const Text("Add Option", style: TextStyle(fontSize: 12)),
+                                      ),
+                                    ],
                                   ],
                                 ),
                               );
@@ -1312,6 +1525,7 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
 
                         if (!mounted) return;
 
+                        // تحديث بيانات المنتج والحقول المخصصة فوراً في الـ UI
                         setState(() {
                           _currentProduct = ProductModel(
                             doc: _currentProduct.doc,
@@ -1327,6 +1541,7 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                             _currentProduct.discountPercentage,
                             discountUntil: _currentProduct.discountUntil,
                           );
+                          _productFields = customFields;
                         });
 
                         if (ctx.mounted) Navigator.pop(ctx);

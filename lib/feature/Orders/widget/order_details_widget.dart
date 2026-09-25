@@ -26,30 +26,31 @@ class OrderDetailView extends StatefulWidget {
 
 class _OrderDetailViewState extends State<OrderDetailView> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  UserModel _userModel=UserModel(uid: "", email: "", Name: "", role: "");
-  Map<String, dynamic> ?data;
+  UserModel _userModel = UserModel(uid: "", email: "", Name: "", role: "");
+  Map<String, dynamic>? data;
+
   @override
   void initState() {
     super.initState();
     _Start();
   }
 
-  void _Start()async{
-    try{
-      if(widget.orderData['isManual']==null){
-        _userModel=await getClientData(context, widget.userId);
-        await _firestore.collection('user').doc(widget.userId).get().then((value){
+  void _Start() async {
+    try {
+      if (widget.orderData['isManual'] == null) {
+        _userModel = await getClientData(context, widget.userId);
+        await _firestore.collection('user').doc(widget.userId).get().then((value) {
           data = value.data() as Map<String, dynamic>;
         });
         setState(() {
           _userModel;
         });
       }
-    }
-    catch(e){
+    } catch (e) {
       showErrorDialog(context, "Error", e.toString());
     }
   }
+
   void _showAddTransactionDialog(BuildContext context, {required bool isExpense}) {
     final amountController = TextEditingController();
     final notesController = TextEditingController();
@@ -85,7 +86,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx),
-            child:  Text("Cancel".tr),
+            child: Text("Cancel".tr),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -103,6 +104,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                       ? (isExpense ? 'Expense' : 'Deposit')
                       : notesController.text,
                   'createdAt': FieldValue.serverTimestamp(),
+                  'ordernumber':widget.orderData['orderNumber'].toString()
                 });
 
                 if (mounted) {
@@ -118,7 +120,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                 }
               }
             },
-            child:  Text("Save Transaction".tr, style: TextStyle(color: Colors.white)),
+            child: Text("Save Transaction".tr, style: const TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -142,7 +144,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
     return Scaffold(
       backgroundColor: AppColors.bgLight,
       appBar: AppBar(
-        title: Text("${"Order".tr} #${widget.orderId.length > 8 ? widget.orderId.substring(0, 8) : widget.orderId}"),
+        title: Text("${"Order".tr} #${order['orderNumber']}"),
         backgroundColor: Colors.white,
         foregroundColor: AppColors.textDark,
         elevation: 0.5,
@@ -184,7 +186,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                             Text("Financial Summary".tr, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                            Text("Financial Summary".tr, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                             const Divider(height: 20),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -230,7 +232,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                                   child: ElevatedButton.icon(
                                     style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
                                     icon: const Icon(Icons.add, size: 16, color: Colors.white),
-                                    label:  Text("Add Payment".tr, style: TextStyle(color: Colors.white)),
+                                    label: Text("Add Payment".tr, style: const TextStyle(color: Colors.white)),
                                     onPressed: () => _showAddTransactionDialog(context, isExpense: false),
                                   ),
                                 ),
@@ -239,7 +241,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                                   child: ElevatedButton.icon(
                                     style: ElevatedButton.styleFrom(backgroundColor: Colors.orange.shade800),
                                     icon: const Icon(Icons.remove_circle_outline, size: 16, color: Colors.white),
-                                    label:  Text("Add Expense".tr, style: TextStyle(color: Colors.white)),
+                                    label: Text("Add Expense".tr, style: const TextStyle(color: Colors.white)),
                                     onPressed: () => _showAddTransactionDialog(context, isExpense: true),
                                   ),
                                 ),
@@ -256,7 +258,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
 
             const SizedBox(height: 16),
 
-            // 2. تفاصيل العميل
+            // 2. تفاصيل العميل والعنوان المعدل
             Card(
               elevation: 0,
               color: Colors.white,
@@ -266,27 +268,44 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                     Text("Customer Info".tr, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    Text("Customer Info".tr, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     const Divider(height: 20),
                     ListTile(
-                      title: Text("${"Customer Name:".tr}"
-                          " ${order['customerName'] ?? order['userEmail'] ?? _userModel.Name}"),
-                      leading: Icon(Icons.person),
-                      trailing: Icon(Icons.arrow_forward_ios),
-                      onTap: (){
-                        Get.to(UserDetailView(userId: widget.userId, userData: data!));
+                      contentPadding: EdgeInsets.zero,
+                      title: Text("${"Customer Name:".tr} ${order['customerName'] ?? order['userEmail'] ?? _userModel.Name}"),
+                      leading: const Icon(Icons.person, color: AppColors.primaryPurple),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: () {
+                        if (data != null) {
+                          Get.to(UserDetailView(userId: widget.userId, userData: data!));
+                        }
                       },
                     ),
-
                     const SizedBox(height: 4),
-                      ListTile(
-                        title:  SelectableText("${"Order Date:".tr} $formattedDate", style: const TextStyle(color: AppColors.textMuted)),
+                    SelectableText("${"Order Date:".tr} $formattedDate", style: const TextStyle(color: AppColors.textMuted, fontSize: 13)),
+
+                    // --- عرض العنوان بالشكل الجديد ---
+                    if (order['selectedAddress'] != null) ...[
+                      const Divider(height: 24),
+                      Row(
+                        children: [
+                          const Icon(Icons.location_on_outlined, color: AppColors.primaryPurple, size: 20),
+                          const SizedBox(width: 8),
+                          Text("Delivery Address".tr, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                        ],
                       ),
-                      if (order['selectedAddress'] != null) ...[
-                      const SizedBox(height: 8),
-                      Text("${"Address:".tr} ${order['selectedAddress']['title'] ?? ''} - ${order['selectedAddress']['details'] ?? ''}",
-                          style: const TextStyle(fontWeight: FontWeight.w500)),
-                    ]
+                      const SizedBox(height: 10),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.bgLight,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: _buildAddressDetailsWidget(order['selectedAddress']),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -304,7 +323,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                     Text("Order Items & Details".tr, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    Text("Order Items & Details".tr, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     const Divider(height: 20),
                     ...items.map((item) {
                       final map = item is Map<String, dynamic> ? item : {};
@@ -335,7 +354,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                             ],
                             if (customFields.isNotEmpty) ...[
                               const SizedBox(height: 8),
-                               Text("Admin Dynamic Specifications:".tr, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.primaryPurple)),
+                              Text("Admin Dynamic Specifications:".tr, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.primaryPurple)),
                               const SizedBox(height: 4),
                               ...customFields.entries.map((entry) {
                                 final isLink = entry.value.toString().startsWith('http');
@@ -394,13 +413,13 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                           Text("Payments History".tr, style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+                          Text("Payments History".tr, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
                           const Divider(),
                           StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                             stream: _firestore.collection('payments').where('orderId', isEqualTo: widget.orderId).snapshots(),
                             builder: (context, snap) {
                               final docs = snap.data?.docs ?? [];
-                              if (docs.isEmpty) return  Text("No payments yet.".tr, style: TextStyle(color: Colors.grey, fontSize: 12));
+                              if (docs.isEmpty) return Text("No payments yet.".tr, style: const TextStyle(color: Colors.grey, fontSize: 12));
 
                               return Column(
                                 children: docs.map((d) {
@@ -437,7 +456,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                             stream: _firestore.collection('expenses').where('orderId', isEqualTo: widget.orderId).snapshots(),
                             builder: (context, snap) {
                               final docs = snap.data?.docs ?? [];
-                              if (docs.isEmpty) return  Text("No expenses yet.".tr, style: TextStyle(color: Colors.grey, fontSize: 12));
+                              if (docs.isEmpty) return Text("No expenses yet.".tr, style: const TextStyle(color: Colors.grey, fontSize: 12));
 
                               return Column(
                                 children: docs.map((d) {
@@ -462,6 +481,93 @@ class _OrderDetailViewState extends State<OrderDetailView> {
           ],
         ),
       ),
+    );
+  }
+
+  // --- دالة مساعدة لتنسيق وعرض تفاصيل العنوان بالشكل الجديد ---
+  Widget _buildAddressDetailsWidget(dynamic addressData) {
+    if (addressData is! Map) {
+      return Text(addressData.toString(), style: const TextStyle(fontSize: 13));
+    }
+
+    final addr = Map<String, dynamic>.from(addressData);
+
+    final String title = addr['title'] ?? addr['name'] ?? '';
+    final String recipientName = addr['name'] ?? addr['fullName'] ?? '';
+    final String phone = addr['phone'] ?? addr['phoneNumber'] ?? '';
+    final String additionalPhone = addr['additionalPhone'] ?? '';
+
+    final String details = addr['addressDetails'] ?? addr['details'] ?? addr['street'] ?? '';
+    final String building = addr['building'] ?? addr['buildingNumber'] ?? '';
+    final String floor = addr['floor'] ?? addr['floorNumber'] ?? '';
+    final String apartment = addr['apartment'] ?? addr['apartmentNumber'] ?? '';
+    final String landmark = addr['landmark'] ?? '';
+    final String city = addr['city'] ?? '';
+    final String state = addr['state'] ?? addr['governorate'] ?? '';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (title.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryPurple.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    title,
+                    style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primaryPurple, fontSize: 12),
+                  ),
+                ),
+                if (recipientName.isNotEmpty && recipientName != title) ...[
+                  const SizedBox(width: 8),
+                  Text("($recipientName)", style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                ],
+              ],
+            ),
+          ),
+        if (details.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            child: SelectableText("العنوان: $details", style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+          ),
+        if (building.isNotEmpty || floor.isNotEmpty || apartment.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            child: SelectableText(
+              "المبنى: ${building.isEmpty ? '-' : building} | الدور: ${floor.isEmpty ? '-' : floor} | الشقة: ${apartment.isEmpty ? '-' : apartment}",
+              style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+            ),
+          ),
+        if (landmark.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            child: SelectableText("علامة مميزة: $landmark", style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+          ),
+        if (city.isNotEmpty || state.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            child: SelectableText("المدينة / المحافظة: $city ${state.isNotEmpty ? '($state)' : ''}", style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+          ),
+        if (phone.isNotEmpty || additionalPhone.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              const Icon(Icons.phone_outlined, size: 14, color: Colors.grey),
+              const SizedBox(width: 4),
+              SelectableText(
+                "رقم الهاتف: $phone ${additionalPhone.isNotEmpty ? ' | آخر: $additionalPhone' : ''}",
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blueGrey),
+              ),
+            ],
+          ),
+        ],
+      ],
     );
   }
 

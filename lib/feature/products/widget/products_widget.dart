@@ -13,20 +13,23 @@ import '../../../Core/server/get_permision.dart';
 // نموذج يمثل الحقل المخصص للمنتج
 class DynamicFieldModel {
   String name;
-  String type; // 'text', 'number', 'drive_link'
+  String type; // 'text', 'number', 'drive_link', 'dropdown'
   bool isRequired;
+  List<String> options; // قائمة الخيارات في حال كان النوع dropdown
 
   DynamicFieldModel({
     required this.name,
     this.type = 'text',
     this.isRequired = true,
-  });
+    List<String>? options,
+  }) : options = options ?? [];
 
   Map<String, dynamic> toMap() {
     return {
       'name': name,
       'type': type,
       'isRequired': isRequired,
+      'options': options,
     };
   }
 }
@@ -68,6 +71,7 @@ class _ProductsWidgetState extends State<ProductsWidget> {
     _searchController.dispose();
     super.dispose();
   }
+
   @override
   Widget build(BuildContext context) {
     return _permision.contains("products")
@@ -169,7 +173,8 @@ class _ProductsWidgetState extends State<ProductsWidget> {
 
                               if (reviewSnapshot.hasData &&
                                   reviewSnapshot.data!.docs.isNotEmpty) {
-                                final reviews = reviewSnapshot.data!.docs;
+                                final reviews =
+                                    reviewSnapshot.data!.docs;
                                 final totalRating = reviews.fold<double>(
                                   0.0,
                                       (sum, rDoc) {
@@ -177,7 +182,9 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                     as Map<String, dynamic>;
                                     final ratingVal = rData['rating'];
                                     final num ratingNum =
-                                    (ratingVal is num) ? ratingVal : 0;
+                                    (ratingVal is num)
+                                        ? ratingVal
+                                        : 0;
                                     return sum + ratingNum.toDouble();
                                   },
                                 );
@@ -825,8 +832,8 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                       TextButton.icon(
                                         onPressed: () {
                                           setPanelState(() {
-                                            customFields.add(DynamicFieldModel(
-                                                name: ''));
+                                            customFields.add(
+                                                DynamicFieldModel(name: ''));
                                           });
                                         },
                                         icon: const Icon(Icons.add, size: 18),
@@ -853,10 +860,14 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                   else
                                     ListView.builder(
                                       shrinkWrap: true,
-                                      physics: const NeverScrollableScrollPhysics(),
+                                      physics:
+                                      const NeverScrollableScrollPhysics(),
                                       itemCount: customFields.length,
                                       itemBuilder: (context, fIndex) {
                                         final field = customFields[fIndex];
+                                        final optionController =
+                                        TextEditingController();
+
                                         return Container(
                                           margin:
                                           const EdgeInsets.only(bottom: 12),
@@ -879,12 +890,15 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                                       initialValue: field.name,
                                                       decoration:
                                                       const InputDecoration(
-                                                        labelText: "Field Name / Title",
-                                                        hintText: "e.g. Project Details, Drive Link",
+                                                        labelText:
+                                                        "Field Name / Title",
+                                                        hintText:
+                                                        "e.g. Select Size, Color, Drive Link",
                                                         isDense: true,
                                                       ),
                                                       onChanged: (val) =>
-                                                      field.name = val.trim(),
+                                                      field.name =
+                                                          val.trim(),
                                                       validator: (v) => (v ==
                                                           null ||
                                                           v.trim().isEmpty)
@@ -922,15 +936,23 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                                       items: const [
                                                         DropdownMenuItem(
                                                           value: 'text',
-                                                          child: Text("Text / كلام"),
+                                                          child:
+                                                          Text("Text / كلام"),
                                                         ),
                                                         DropdownMenuItem(
                                                           value: 'number',
-                                                          child: Text("Number / أرقام"),
+                                                          child: Text(
+                                                              "Number / أرقام"),
                                                         ),
                                                         DropdownMenuItem(
                                                           value: 'drive_link',
-                                                          child: Text("Google Drive Link / لينك درايف"),
+                                                          child: Text(
+                                                              "Google Drive Link / لينك درايف"),
+                                                        ),
+                                                        DropdownMenuItem(
+                                                          value: 'dropdown',
+                                                          child: Text(
+                                                              "Dropdown / قائمة اختيارات"),
                                                         ),
                                                       ],
                                                       onChanged: (val) {
@@ -961,6 +983,116 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                                   ),
                                                 ],
                                               ),
+
+                                              // ==================== خيارات الـ Dropdown (في حال اختيار dropdown) ====================
+                                              if (field.type == 'dropdown') ...[
+                                                const SizedBox(height: 12),
+                                                const Text(
+                                                  "Dropdown Options:",
+                                                  style: TextStyle(
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: AppColors.textDark,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 6),
+                                                Row(
+                                                  children: [
+                                                    Expanded(
+                                                      child: TextField(
+                                                        controller:
+                                                        optionController,
+                                                        decoration:
+                                                        const InputDecoration(
+                                                          hintText:
+                                                          "Add option (e.g. Red, XL)",
+                                                          isDense: true,
+                                                          contentPadding:
+                                                          EdgeInsets.symmetric(
+                                                              horizontal:
+                                                              10,
+                                                              vertical: 8),
+                                                          border:
+                                                          OutlineInputBorder(),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    ElevatedButton(
+                                                      style:
+                                                      ElevatedButton.styleFrom(
+                                                        backgroundColor:
+                                                        AppColors
+                                                            .primaryPurple,
+                                                        padding: const EdgeInsets
+                                                            .symmetric(
+                                                            horizontal: 12),
+                                                      ),
+                                                      onPressed: () {
+                                                        final text =
+                                                        optionController.text
+                                                            .trim();
+                                                        if (text.isNotEmpty) {
+                                                          setPanelState(() {
+                                                            field.options
+                                                                .add(text);
+                                                            optionController
+                                                                .clear();
+                                                          });
+                                                        }
+                                                      },
+                                                      child: const Text("Add",
+                                                          style: TextStyle(
+                                                              color: Colors
+                                                                  .white)),
+                                                    ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 8),
+                                                if (field.options.isEmpty)
+                                                  const Text(
+                                                    "Please add at least one option for this dropdown.",
+                                                    style: TextStyle(
+                                                        color: Colors.redAccent,
+                                                        fontSize: 11),
+                                                  )
+                                                else
+                                                  Wrap(
+                                                    spacing: 6,
+                                                    runSpacing: 4,
+                                                    children: field.options
+                                                        .asMap()
+                                                        .entries
+                                                        .map((entry) {
+                                                      final optIndex =
+                                                          entry.key;
+                                                      final optValue =
+                                                          entry.value;
+                                                      return Chip(
+                                                        label: Text(optValue,
+                                                            style:
+                                                            const TextStyle(
+                                                                fontSize:
+                                                                12)),
+                                                        deleteIcon: const Icon(
+                                                            Icons.close,
+                                                            size: 14),
+                                                        onDeleted: () {
+                                                          setPanelState(() {
+                                                            field.options
+                                                                .removeAt(
+                                                                optIndex);
+                                                          });
+                                                        },
+                                                        backgroundColor:
+                                                        AppColors
+                                                            .primaryPurple
+                                                            .withOpacity(
+                                                            0.1),
+                                                      );
+                                                    }).toList(),
+                                                  ),
+                                              ],
                                             ],
                                           ),
                                         );
@@ -1092,6 +1224,22 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                         return;
                                       }
 
+                                      // تحقق من صحة خيارات Dropdown
+                                      for (var f in customFields) {
+                                        if (f.type == 'dropdown' &&
+                                            f.options.isEmpty) {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                  "Please add at least one option for dropdown field '${f.name}'"),
+                                              backgroundColor: Colors.red,
+                                            ),
+                                          );
+                                          return;
+                                        }
+                                      }
+
                                       setPanelState(
                                               () => isSaving = true);
 
@@ -1140,9 +1288,9 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                         DateTime? discountUntilDate;
                                         if (discountVal > 0 &&
                                             discountDays > 0) {
-                                          discountUntilDate =
-                                              DateTime.now().add(Duration(
-                                                  days: discountDays));
+                                          discountUntilDate = DateTime.now()
+                                              .add(Duration(
+                                              days: discountDays));
                                         }
 
                                         // تجهيز الحقول لإرسالها لـ Firestore

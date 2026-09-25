@@ -1,33 +1,28 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
-
 Future<void> sendInvoiceEmail({
   required String customerEmail,
+  required String customerName,
+  required int orderNumber,
   required String orderId,
   required double total,
+  required List<Map<String, dynamic>> items,
 }) async {
-  const String apiUrl = 'https://designland-backend.vercel.app/api/send-email';
-
   try {
     final response = await http.post(
-      Uri.parse(apiUrl),
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      Uri.parse('https://designland-backend.vercel.app/api/send-email'), // استبدل بالرابط الخاص بك
+      headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'customerEmail': customerEmail,
+        'customerName': customerName,
+        'orderNumber': orderNumber,
         'orderId': orderId,
         'total': total,
+        'items': items,
       }),
     );
-
-    if (response.statusCode == 200) {
-      debugPrint('🎉 تم إرسال الفاتورة بنجاح باستخدام http!');
-    } else {
-      debugPrint('فشل الإرسال: ${response.body}');
-    }
   } catch (e) {
-    debugPrint('Error: $e');
+    print("Error sending email: $e");
   }
 }
