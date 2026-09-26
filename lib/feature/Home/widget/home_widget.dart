@@ -1610,7 +1610,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                           ),
                         ),
                         title: Text(
-                          "${"Order".tr} #${orderId.length > 6 ? orderId.substring(0, 6) : orderId}",
+                          "${"Order".tr} #${data['orderNumber'].toString()}",
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
@@ -1625,7 +1625,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                           ),
                         ),
                         trailing: Text(
-                          "\$${price.toStringAsFixed(2)}",
+                          "${price.toStringAsFixed(2)} EGP",
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 14,

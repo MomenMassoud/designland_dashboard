@@ -1,4 +1,6 @@
 import 'package:dashboard_desginland/feature/Login/view/login_view.dart';
+import 'package:dashboard_desginland/feature/Main%20Screen/view/main_screen_view.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../Core/Utils/app.images.dart';
@@ -71,11 +73,17 @@ class _SplashViewBodyState extends State<SplashViewBody>
 
     _animationController.forward();
   }
-
+  final FirebaseAuth _auth=FirebaseAuth.instance;
   void _navigateToNextScreen() {
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted) {
-        Navigator.pushReplacementNamed(context, LoginView.id);
+        if(_auth.currentUser!=null){
+          Navigator.pushReplacementNamed(context, MainScreenView.id);
+        }
+        else{
+          Navigator.pushReplacementNamed(context, LoginView.id);
+        }
+
       }
     });
   }

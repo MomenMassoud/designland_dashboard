@@ -52,9 +52,6 @@ class _CategoryWidgetState extends State<CategoryWidget> {
     }
   }
 
-  // ============================================================
-  // HELPER TO CONVERT BYTES TO XFILE WITH REAL PATH ON MOBILE
-  // ============================================================
   Future<XFile> _bytesToXFile(Uint8List bytes, String filename) async {
     if (kIsWeb) {
       return XFile.fromData(bytes, name: filename, mimeType: 'image/jpeg');

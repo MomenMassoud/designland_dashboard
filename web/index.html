@@ -1,14 +1,16 @@
 <!DOCTYPE html>
 <html>
 <head>
+
+  <!-- Cropper.js -->
   <link
           rel="stylesheet"
           href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css"
   >
 
   <script
-          src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"
-  ></script>
+          src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js">
+  </script>
 
   <base href="$FLUTTER_BASE_HREF">
 
@@ -20,7 +22,29 @@
           content="DesignLand"
   >
 
+  <!--
+    IMPORTANT:
+    Do NOT use no-store here.
+    Firebase Auth stores its session separately from the
+    browser cache of index.html.
+  -->
+  <meta
+          http-equiv="Cache-Control"
+          content="no-cache, must-revalidate"
+  >
+
+  <meta
+          http-equiv="Pragma"
+          content="no-cache"
+  >
+
+  <meta
+          http-equiv="Expires"
+          content="0"
+  >
+
   <!-- iOS meta tags & icons -->
+
   <meta
           name="mobile-web-app-capable"
           content="yes"
@@ -42,6 +66,7 @@
   >
 
   <!-- Favicon -->
+
   <link
           rel="icon"
           type="image/png"
@@ -49,8 +74,12 @@
   >
 
   <!-- Firebase JS SDK -->
-  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-messaging-compat.js"></script>
+
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js">
+  </script>
+
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-messaging-compat.js">
+  </script>
 
   <title>DesignLand</title>
 
@@ -58,36 +87,65 @@
           rel="manifest"
           href="manifest.json"
   >
+
 </head>
 
 <body>
 
-<!-- Firebase Cloud Messaging Service Worker -->
+<!--
+  Firebase Cloud Messaging Service Worker
+
+  Keep this service worker.
+  It is responsible for Firebase Messaging and is NOT related
+  to Firebase Authentication persistence.
+-->
+
 <script>
+
   if ('serviceWorker' in navigator) {
+
     window.addEventListener('load', function () {
+
       navigator.serviceWorker
-        .register('firebase-messaging-sw.js', {
-          scope: '/firebase-cloud-messaging-push-scope',
-        })
+        .register(
+          'firebase-messaging-sw.js',
+          {
+            scope: '/firebase-cloud-messaging-push-scope',
+          }
+        )
         .then(function (registration) {
+
           console.log(
             'Firebase Messaging Service Worker registered:',
             registration
           );
+
         })
         .catch(function (error) {
+
           console.error(
             'Firebase Messaging Service Worker registration failed:',
             error
           );
+
         });
+
     });
+
   }
+
 </script>
 
-<!-- Flutter -->
+
+<!--
+  Flutter
+  IMPORTANT:
+  Do NOT unregister Flutter service workers here.
+  Do NOT manually set serviceWorkerVersion to null.
+-->
+
 <script src="flutter_bootstrap.js" async></script>
 
 </body>
+
 </html>

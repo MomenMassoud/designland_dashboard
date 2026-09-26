@@ -19,7 +19,8 @@ Future<List<String>>GetPermisionUser()async{
           "about",
           "staff",
           "banner",
-          'promo'
+          'promo',
+          'country'
         ];
       }
       else{

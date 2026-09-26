@@ -81,6 +81,7 @@ Future<UserModel> GetCurrentUserData(BuildContext context)async{
   }
   catch(e){
     showErrorDialog(context, "Failed to retrieve user data.".tr, e.toString());
+    LogoutMethod(context);
     return userModel;
   }
 }

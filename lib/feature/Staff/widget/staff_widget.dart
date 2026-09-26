@@ -53,6 +53,7 @@ class _StaffWidgetState extends State<StaffWidget> {
     'about',
     'banner',
     'promo',
+    'country'
   ];
 
   void _openForm({

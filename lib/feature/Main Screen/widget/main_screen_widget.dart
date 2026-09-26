@@ -3,6 +3,7 @@ import 'package:dashboard_desginland/Core/server/check_promo_code.dart';
 import 'package:dashboard_desginland/feature/About/view/about_view.dart';
 import 'package:dashboard_desginland/feature/Access%20Defind/view/access_defind_view.dart';
 import 'package:dashboard_desginland/feature/Banners/view/banners_view.dart';
+import 'package:dashboard_desginland/feature/Country/view/country_view.dart';
 import 'package:dashboard_desginland/feature/Home/view/home_view.dart';
 import 'package:dashboard_desginland/feature/Login/function/auth_function.dart';
 import 'package:dashboard_desginland/feature/Orders/view/orders_view.dart';
@@ -46,6 +47,7 @@ class _MainScreenWidgetState extends State<MainScreenWidget> {
     AboutView(),
     BannersView(),
     PromoCodeView(),
+    CountryView(),
   ];
 
   @override
@@ -97,28 +99,31 @@ class _MainScreenWidgetState extends State<MainScreenWidget> {
           key: _scaffoldKey,
           backgroundColor: AppColors.bgLight,
           drawer: isMobile ? Drawer(child: _buildSidebarContent()) : null,
-          body: Row(
-            children: [
-              // إظهار الـ Sidebar الدائم فقط في الشاشات الكبيرة
-              if (!isMobile) _buildSidebar(context),
+          body: Padding(
+            padding: const EdgeInsets.only(top: 15.0),
+            child: Row(
+              children: [
+                // إظهار الـ Sidebar الدائم فقط في الشاشات الكبيرة
+                if (!isMobile) _buildSidebar(context),
 
-              // منطقة المحتوى الرئيسي والهيدر العلوي
-              Expanded(
-                child: Column(
-                  children: [
-                    _buildTopHeader(isMobile),
+                // منطقة المحتوى الرئيسي والهيدر العلوي
+                Expanded(
+                  child: Column(
+                    children: [
+                      _buildTopHeader(isMobile),
 
-                    // Dynamic Body View
-                    Expanded(
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 300),
-                        child: _screens[_selectedIndex],
+                      // Dynamic Body View
+                      Expanded(
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 300),
+                          child: _screens[_selectedIndex],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },
@@ -172,6 +177,7 @@ class _MainScreenWidgetState extends State<MainScreenWidget> {
               _buildNavItem(8, Icons.info_outline, "About".tr),
               _buildNavItem(9, Icons.imagesearch_roller, "Banners".tr),
               _buildNavItem(10, Icons.discount, "PromoCode".tr),
+              _buildNavItem(11, Icons.language, "Country".tr),
             ],
           ),
         ),

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dashboard_desginland/feature/Users/widget/user_favourite_product.dart';
+import 'package:dashboard_desginland/feature/Users/widget/user_orders_deatils.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../Core/Utils/app.colors.dart';
@@ -103,6 +104,7 @@ class UserDetailView extends StatelessWidget {
   }
 
   // قسم العناوين ورقم التواصل
+  // قسم العناوين ورقم التواصل
   Widget _buildAddressesSection() {
     return FutureBuilder<DocumentSnapshot>(
       future: FirebaseFirestore.instance.collection('users').doc(userId).get(),
@@ -127,18 +129,46 @@ class UserDetailView extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // كارت المنتجات المفضلة
               Card(
                 color: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  side: BorderSide(color: Colors.grey.shade200),
+                ),
                 child: ListTile(
-                  title: Text("Favourite Product"),
-                  subtitle: Text("Click To Show Favourite Product"),
-                  leading: Icon(Icons.favorite,color: Colors.red,),
-                  trailing: Icon(Icons.arrow_forward_ios),
-                  onTap: (){
-                    Get.to(UserFavouriteProduct(UserId: userId));
+                  title: const Text("Favourite Products"),
+                  subtitle: const Text("Click to show user favourite products"),
+                  leading: const Icon(Icons.favorite, color: Colors.red),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  onTap: () {
+                    Get.to(() => UserFavouriteProduct(UserId: userId));
                   },
                 ),
               ),
+              const SizedBox(height: 8),
+
+              // كارت طلبات المستخدم الجديد
+              Card(
+                color: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  side: BorderSide(color: Colors.grey.shade200),
+                ),
+                child: ListTile(
+                  title: const Text("User Orders"),
+                  subtitle: const Text("Click to view all orders for this user"),
+                  leading: const Icon(Icons.shopping_cart, color: AppColors.primaryPurple),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  onTap: () {
+                    // استبدل UserOrdersView باسم صفحة الطلبات لديك
+                    Get.to(() => UserOrdersDeatils(UserID: userId));
+                  },
+                ),
+              ),
+
               const Divider(height: 24),
               Row(
                 children: [
@@ -158,31 +188,67 @@ class UserDetailView extends StatelessWidget {
               else
                 Column(
                   children: addresses.map((addr) {
-                    final map = addr as Map<String, dynamic>;
+                    final map = addr as Map<String, dynamic>? ?? {};
+
+                    // استخراج تفاصيل العنوان بمرونة
+                    final String fullName = map['fullName'] ?? map['name'] ?? '';
+                    final String street = map['street'] ?? '';
+                    final String building = map['building'] ?? '';
+                    final String floor = map['floor'] ?? '';
+                    final String apartment = map['apartment'] ?? '';
+                    final String city = map['city'] ?? '';
+                    final String governorate = map['governorate'] ?? '';
+                    final String landmark = map['landmark'] ?? '';
+                    final String addressPhone = map['phone'] ?? '';
+
+                    // تجميع سطر العنوان كامل
+                    List<String> detailsParts = [];
+                    if (building.isNotEmpty) detailsParts.add("Building $building");
+                    if (street.isNotEmpty) detailsParts.add("Street $street");
+                    if (floor.isNotEmpty) detailsParts.add("Floor $floor");
+                    if (apartment.isNotEmpty) detailsParts.add("Apt $apartment");
+                    if (landmark.isNotEmpty) detailsParts.add("Near $landmark");
+                    if (city.isNotEmpty) detailsParts.add(city);
+                    if (governorate.isNotEmpty) detailsParts.add(governorate);
+
+                    String addressDetailsStr = detailsParts.join(', ');
+
                     return Container(
                       margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.all(10),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: Colors.grey.shade50,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: Colors.grey.shade200),
                       ),
                       child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.location_on_outlined, color: Colors.redAccent),
+                          const Icon(Icons.location_on_outlined, color: Colors.redAccent, size: 22),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  map['title'] ?? 'Address',
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
-                                ),
-                                Text(
-                                  map['details'] ?? '',
-                                  style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
-                                ),
+                                if (fullName.isNotEmpty)
+                                  Text(
+                                    fullName,
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                  ),
+                                if (addressDetailsStr.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    addressDetailsStr,
+                                    style: const TextStyle(color: AppColors.textDark, fontSize: 13),
+                                  ),
+                                ],
+                                if (addressPhone.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    "Phone: $addressPhone",
+                                    style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                                  ),
+                                ],
                               ],
                             ),
                           ),
