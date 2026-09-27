@@ -2,18 +2,24 @@ import 'package:flutter/material.dart';
 import '../../../Core/Utils/app.colors.dart';
 
 Widget summaryCard({
+  required BuildContext context,
   required String title,
   required String value,
   required IconData icon,
   required Color color,
 }) {
+  final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+  final titleColor = isDarkMode ? Colors.grey.shade400 : AppColors.textMuted;
+  final valueColor = isDarkMode ? Colors.white : AppColors.textDark;
+
   return Container(
     padding: const EdgeInsets.all(15),
     decoration: BoxDecoration(
-      color: color.withOpacity(.055),
+      color: color.withOpacity(isDarkMode ? 0.15 : 0.055),
       borderRadius: BorderRadius.circular(15),
-      border: BoxBorder.all(
-        color: color.withOpacity(.10),
+      border: Border.all(
+        color: color.withOpacity(isDarkMode ? 0.30 : 0.10),
       ),
     ),
     child: Row(
@@ -22,7 +28,7 @@ Widget summaryCard({
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: color.withOpacity(.12),
+            color: color.withOpacity(isDarkMode ? 0.25 : 0.12),
             borderRadius: BorderRadius.circular(11),
           ),
           child: Icon(
@@ -40,8 +46,8 @@ Widget summaryCard({
                 title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.textMuted,
+                style: TextStyle(
+                  color: titleColor,
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                 ),
@@ -51,8 +57,8 @@ Widget summaryCard({
                 value,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style:  TextStyle(
-                  color: AppColors.textDark,
+                style: TextStyle(
+                  color: valueColor,
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
                 ),

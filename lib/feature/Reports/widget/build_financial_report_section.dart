@@ -24,15 +24,20 @@ class FinancialReportSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final mobile = isMobile(context);
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+
+    final cardBackgroundColor = isDarkMode ? theme.cardColor : Colors.white;
+    final borderColor = isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200;
 
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(mobile ? 14 : 22),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardBackgroundColor,
         borderRadius: BorderRadius.circular(20),
         border: BoxBorder.all(
-          color: Colors.grey.shade200,
+          color: borderColor,
         ),
       ),
       child: StreamBuilder<QuerySnapshot>(
@@ -44,7 +49,6 @@ class FinancialReportSection extends StatelessWidget {
               return StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance.collection('incomes').snapshots(),
                 builder: (context, incomesSnap) {
-                  // جلب كافة المجموعات المسماة orders سواء المباشرة أو الفرعية users/{userId}/orders
                   return StreamBuilder<QuerySnapshot>(
                     stream: FirebaseFirestore.instance.collectionGroup('orders').snapshots(),
                     builder: (context, ordersSnap) {
@@ -70,7 +74,6 @@ class FinancialReportSection extends StatelessWidget {
                           final orderDocs = ordersSnap.data?.docs ?? [];
                           final userDocs = usersSnap.data?.docs ?? [];
 
-                          // 1. خريطة للمستخدمين من كوليكشن users
                           final Map<String, String> usersMap = {};
                           for (var doc in userDocs) {
                             final uData = doc.data() as Map<String, dynamic>;
@@ -81,36 +84,28 @@ class FinancialReportSection extends StatelessWidget {
                             }
                           }
 
-                          // 2. خريطة الأوردرات استناداً إلى CollectionGroup
                           final Map<String, Map<String, dynamic>> ordersInfoMap = {};
                           for (var doc in orderDocs) {
                             final oData = doc.data() as Map<String, dynamic>;
                             final orderNo = oData['orderNumber'] != null ? "#${oData['orderNumber']}" : '';
 
-                            // استخراج userId بأمان لتجنب استدعاء .parent في Flutter Web
                             String userId = (oData['userId'] ?? '').toString();
                             if (userId.isEmpty) {
                               final pathSegments = doc.reference.path.split('/');
-                              // المسار: users / {userId} / orders / {orderId}
                               if (pathSegments.length >= 4 && pathSegments[0] == 'users' && pathSegments[2] == 'orders') {
                                 userId = pathSegments[1];
                               }
                             }
 
-                            // تحديد اسم العميل
                             String customerName = '';
 
-                            // أ) إذا كان الأوردر مانوال أو يحتوي على customerName صريح
                             if (oData['customerName'] != null && oData['customerName'].toString().isNotEmpty) {
                               customerName = oData['customerName'].toString();
-                            }
-                            // ب) أو البحث داخل selectedAddress
-                            else if (oData['selectedAddress'] != null && oData['selectedAddress'] is Map) {
+                            } else if (oData['selectedAddress'] != null && oData['selectedAddress'] is Map) {
                               final addr = oData['selectedAddress'] as Map<String, dynamic>;
                               customerName = (addr['fullName'] ?? addr['name'] ?? '').toString();
                             }
 
-                            // جـ) إذا لم يجد اسماً في الأوردر، يبحث في خريطة usersMap بواسطة userId
                             if (customerName.isEmpty && userId.isNotEmpty) {
                               customerName = usersMap[userId] ?? '';
                             }
@@ -158,18 +153,21 @@ class FinancialReportSection extends StatelessWidget {
                                 iconColor: Colors.green,
                                 actions: [
                                   buildActionButton(
+                                    context: context,
                                     label: "Add Income",
                                     icon: Icons.add_card_rounded,
                                     color: Colors.teal,
                                     onPressed: () => _showAddIncomeDialog(context),
                                   ),
                                   buildActionButton(
+                                    context: context,
                                     label: "Add Expense",
                                     icon: Icons.add_rounded,
                                     color: AppColors.primaryPurple,
                                     onPressed: () => _showAddExpenseDialog(context),
                                   ),
                                   buildActionButton(
+                                    context: context,
                                     label: "Export Excel",
                                     icon: Icons.table_chart_rounded,
                                     color: Colors.green,
@@ -191,18 +189,19 @@ class FinancialReportSection extends StatelessWidget {
                                 net,
                               ),
                               const SizedBox(height: 20),
-                              Divider(color: Colors.grey.shade200),
+                              Divider(color: borderColor),
                               const SizedBox(height: 16),
                               if (combinedList.isEmpty)
                                 buildEmptyState(
+                                  context: context,
                                   icon: Icons.receipt_long_outlined,
                                   title: "No Financial Records",
                                   subtitle: "No records match the current filters.",
                                 )
                               else if (mobile)
-                                _buildFinancialMobileList(combinedList)
+                                _buildFinancialMobileList(context, combinedList)
                               else
-                                _buildFinancialDesktopTable(combinedList),
+                                _buildFinancialDesktopTable(context, combinedList),
                             ],
                           );
                         },
@@ -386,18 +385,21 @@ class FinancialReportSection extends StatelessWidget {
 
     final cards = [
       summaryCard(
+        context: context,
         title: "Total Income",
         value: money(income),
         icon: Icons.trending_up_rounded,
         color: Colors.green,
       ),
       summaryCard(
+        context: context,
         title: "Total Expenses",
         value: money(expense),
         icon: Icons.trending_down_rounded,
         color: Colors.red,
       ),
       summaryCard(
+        context: context,
         title: "Net Balance",
         value: money(net),
         icon: Icons.account_balance_rounded,
@@ -431,28 +433,36 @@ class FinancialReportSection extends StatelessWidget {
     );
   }
 
-  Widget _buildFinancialDesktopTable(List<Map<String, dynamic>> list) {
+  Widget _buildFinancialDesktopTable(
+      BuildContext context, List<Map<String, dynamic>> list) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+
+    final tableHeaderBg = isDarkMode ? Colors.grey.shade900 : AppColors.bgLight;
+    final borderColor = isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200;
+    final textColor = isDarkMode ? Colors.white : Colors.black87;
+
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
         border: BoxBorder.all(
-          color: Colors.grey.shade200,
+          color: borderColor,
         ),
       ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: DataTable(
-          headingRowColor: WidgetStateProperty.all(AppColors.bgLight),
+          headingRowColor: WidgetStateProperty.all(tableHeaderBg),
           columnSpacing: 28,
-          columns: const [
-            DataColumn(label: Text("Transaction ID")),
-            DataColumn(label: Text("Type")),
-            DataColumn(label: Text("Description")),
-            DataColumn(label: Text("Order Number")),
-            DataColumn(label: Text("Customer Name")),
-            DataColumn(label: Text("Amount")),
-            DataColumn(label: Text("Date")),
+          columns: [
+            DataColumn(label: Text("Transaction ID", style: TextStyle(color: textColor, fontWeight: FontWeight.bold))),
+            DataColumn(label: Text("Type", style: TextStyle(color: textColor, fontWeight: FontWeight.bold))),
+            DataColumn(label: Text("Description", style: TextStyle(color: textColor, fontWeight: FontWeight.bold))),
+            DataColumn(label: Text("Order Number", style: TextStyle(color: textColor, fontWeight: FontWeight.bold))),
+            DataColumn(label: Text("Customer Name", style: TextStyle(color: textColor, fontWeight: FontWeight.bold))),
+            DataColumn(label: Text("Amount", style: TextStyle(color: textColor, fontWeight: FontWeight.bold))),
+            DataColumn(label: Text("Date", style: TextStyle(color: textColor, fontWeight: FontWeight.bold))),
           ],
           rows: list.map((item) {
             final category = item['category'].toString();
@@ -464,28 +474,32 @@ class FinancialReportSection extends StatelessWidget {
                 DataCell(
                   Text(
                     shortId(item['id']),
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+                    style: TextStyle(fontWeight: FontWeight.w600, color: textColor),
                   ),
                 ),
-                DataCell(_buildCategoryChip(category)),
+                DataCell(_buildCategoryChip(context, category)),
                 DataCell(
                   ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 260),
                     child: Text(
                       item['notes'].toString(),
                       overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: textColor),
                     ),
                   ),
                 ),
                 DataCell(
-                  Text(item['orderId'].toString().isEmpty
-                      ? "-"
-                      : item['orderId'].toString()),
+                  Text(
+                    item['orderId'].toString().isEmpty
+                        ? "-"
+                        : item['orderId'].toString(),
+                    style: TextStyle(color: textColor),
+                  ),
                 ),
                 DataCell(
                   Text(
                     item['userName'].toString(),
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+                    style: TextStyle(fontWeight: FontWeight.w600, color: textColor),
                   ),
                 ),
                 DataCell(
@@ -493,12 +507,17 @@ class FinancialReportSection extends StatelessWidget {
                     "${isIncome ? '+' : '-'}${money(toDouble(item['amount']))}",
                     style: TextStyle(
                       fontWeight: FontWeight.w800,
-                      color: isIncome ? Colors.green : Colors.red,
+                      color: isIncome
+                          ? (isDarkMode ? Colors.greenAccent : Colors.green)
+                          : (isDarkMode ? Colors.redAccent : Colors.red),
                     ),
                   ),
                 ),
                 DataCell(
-                  Text(formatDateTime(item['createdAt'])),
+                  Text(
+                    formatDateTime(item['createdAt']),
+                    style: TextStyle(color: textColor),
+                  ),
                 ),
               ],
             );
@@ -508,55 +527,66 @@ class FinancialReportSection extends StatelessWidget {
     );
   }
 
-  Widget _buildFinancialMobileList(List<Map<String, dynamic>> list) {
+  Widget _buildFinancialMobileList(
+      BuildContext context, List<Map<String, dynamic>> list) {
     return ListView.separated(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: list.length,
       separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
-        return _buildFinancialCard(list[index]);
+        return _buildFinancialCard(context, list[index]);
       },
     );
   }
 
-  Widget _buildFinancialCard(Map<String, dynamic> item) {
+  Widget _buildFinancialCard(BuildContext context, Map<String, dynamic> item) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+
     final category = item['category'].toString();
     final isIncome = category == 'Payment In' || category == 'General Income';
     final amount = toDouble(item['amount']);
 
+    final cardBg = isDarkMode ? theme.cardColor : Colors.white;
+    final borderColor = isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200;
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardBg,
         borderRadius: BorderRadius.circular(15),
         border: BoxBorder.all(
-          color: Colors.grey.shade200,
+          color: borderColor,
         ),
       ),
       child: Column(
         children: [
           Row(
             children: [
-              _buildCategoryChip(category),
+              _buildCategoryChip(context, category),
               const Spacer(),
               Text(
                 "${isIncome ? '+' : '-'}${money(amount)}",
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w900,
-                  color: isIncome ? Colors.green : Colors.red,
+                  color: isIncome
+                      ? (isDarkMode ? Colors.greenAccent : Colors.green)
+                      : (isDarkMode ? Colors.redAccent : Colors.red),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
           mobileInfoRow(
+            context,
             Icons.description_outlined,
             "Description",
             item['notes'].toString(),
           ),
           mobileInfoRow(
+            context,
             Icons.shopping_bag_outlined,
             "Order Number",
             item['orderId'].toString().isEmpty
@@ -564,11 +594,13 @@ class FinancialReportSection extends StatelessWidget {
                 : item['orderId'].toString(),
           ),
           mobileInfoRow(
+            context,
             Icons.person_outline_rounded,
             "Customer Name",
             item['userName'].toString(),
           ),
           mobileInfoRow(
+            context,
             Icons.access_time_rounded,
             "Date",
             formatDateTime(item['createdAt']),
@@ -580,7 +612,7 @@ class FinancialReportSection extends StatelessWidget {
               "ID: ${shortId(item['id'])}",
               style: TextStyle(
                 fontSize: 10,
-                color: Colors.grey.shade500,
+                color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade500,
               ),
             ),
           ),
@@ -589,7 +621,9 @@ class FinancialReportSection extends StatelessWidget {
     );
   }
 
-  Widget _buildCategoryChip(String category) {
+  Widget _buildCategoryChip(BuildContext context, String category) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     Color color = Colors.green;
 
     if (category == 'General Income') {
@@ -600,19 +634,27 @@ class FinancialReportSection extends StatelessWidget {
       color = Colors.red;
     }
 
+    final effectiveColor = isDarkMode
+        ? (color == Colors.green
+        ? Colors.greenAccent
+        : color == Colors.red
+        ? Colors.redAccent
+        : color)
+        : color;
+
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: 9,
         vertical: 6,
       ),
       decoration: BoxDecoration(
-        color: color.withOpacity(.10),
+        color: effectiveColor.withOpacity(isDarkMode ? 0.20 : 0.10),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
         category,
         style: TextStyle(
-          color: color,
+          color: effectiveColor,
           fontSize: 10,
           fontWeight: FontWeight.w800,
         ),
@@ -624,98 +666,175 @@ class FinancialReportSection extends StatelessWidget {
     final notesController = TextEditingController();
     final amountController = TextEditingController();
 
+    final List<String> categories = [
+      'Products & Raw Materials',
+      'Packaging',
+      'Production',
+      'Delivery & Logistics',
+      'Marketing & Advertising',
+      'Website & Technology',
+      'Salaries & Freelancers',
+      'Administrative Expenses',
+      'Refunds & Replacements',
+      'Equipment & Maintenance',
+      'Bank & Payment Fees',
+      'Other Expenses',
+    ];
+
+    String selectedCategory = categories.first;
+
     showDialog(
       context: context,
       builder: (ctx) {
         final width = MediaQuery.of(ctx).size.width;
+        final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+        final theme = Theme.of(context);
 
-        return AlertDialog(
-          insetPadding: EdgeInsets.symmetric(
-            horizontal: width < 500 ? 14 : 40,
-            vertical: 24,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: const Row(
-            children: [
-              Icon(
-                Icons.remove_circle_outline_rounded,
-                color: AppColors.primaryPurple,
+        final dialogBg = isDarkMode ? theme.cardColor : Colors.white;
+        final titleTextColor = isDarkMode ? Colors.white : Colors.black87;
+
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: dialogBg,
+              insetPadding: EdgeInsets.symmetric(
+                horizontal: width < 500 ? 14 : 40,
+                vertical: 24,
               ),
-              SizedBox(width: 10),
-              Expanded(
-                child: Text("Add General Expense"),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
               ),
-            ],
-          ),
-          content: SizedBox(
-            width: width < 600 ? width - 50 : 450,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: notesController,
-                  textInputAction: TextInputAction.next,
-                  decoration: InputDecoration(
-                    labelText: "Notes / Description",
-                    hintText: "e.g. Servers / Shipping",
-                    prefixIcon: const Icon(Icons.description_outlined),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+              title: Row(
+                children: [
+                  const Icon(
+                    Icons.remove_circle_outline_rounded,
+                    color: AppColors.primaryPurple,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      "Add General Expense",
+                      style: TextStyle(color: titleTextColor),
                     ),
+                  ),
+                ],
+              ),
+              content: SizedBox(
+                width: width < 600 ? width - 50 : 450,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DropdownButtonFormField<String>(
+                      value: selectedCategory,
+                      dropdownColor: dialogBg,
+                      style: TextStyle(color: titleTextColor),
+                      decoration: InputDecoration(
+                        labelText: "Category",
+                        labelStyle: TextStyle(
+                            color: isDarkMode
+                                ? Colors.grey.shade400
+                                : Colors.grey.shade700),
+                        prefixIcon: const Icon(Icons.category_outlined),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                              color: isDarkMode
+                                  ? Colors.grey.shade700
+                                  : Colors.grey.shade400),
+                        ),
+                      ),
+                      items: categories.map((String category) {
+                        return DropdownMenuItem<String>(
+                          value: category,
+                          child: Text(
+                            category,
+                            style: TextStyle(
+                                fontSize: 14, color: titleTextColor),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) {
+                        if (newValue != null) {
+                          setState(() {
+                            selectedCategory = newValue;
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 14),
+                    TextField(
+                      controller: amountController,
+                      style: TextStyle(color: titleTextColor),
+                      keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true),
+                      decoration: InputDecoration(
+                        labelText: "Amount",
+                        labelStyle: TextStyle(
+                            color: isDarkMode
+                                ? Colors.grey.shade400
+                                : Colors.grey.shade700),
+                        suffixText: "EGP",
+                        prefixIcon: const Icon(Icons.payments_outlined),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                              color: isDarkMode
+                                  ? Colors.grey.shade700
+                                  : Colors.grey.shade400),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text(
+                    "Cancel",
+                    style: TextStyle(
+                        color: isDarkMode ? Colors.grey.shade400 : null),
                   ),
                 ),
-                const SizedBox(height: 14),
-                TextField(
-                  controller: amountController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: InputDecoration(
-                    labelText: "Amount",
-                    suffixText: "EGP",
-                    prefixIcon: const Icon(Icons.payments_outlined),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryPurple,
+                    foregroundColor: Colors.white,
                   ),
+                  onPressed: () async {
+                    if (amountController.text.trim().isEmpty) {
+                      return;
+                    }
+
+                    final amount =
+                        double.tryParse(amountController.text.trim()) ?? 0;
+                    final formattedNotes = "$selectedCategory";
+
+                    await FirebaseFirestore.instance.collection('expenses').add({
+                      'amount': amount,
+                      'notes': formattedNotes,
+                      'createdAt': FieldValue.serverTimestamp(),
+                      'orderId': null,
+                      'userId': null,
+                    });
+
+                    if (ctx.mounted) {
+                      Navigator.pop(ctx);
+                    }
+                  },
+                  child: const Text("Save Expense"),
                 ),
               ],
-            ),
-          ),
-          actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text("Cancel"),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryPurple,
-                foregroundColor: Colors.white,
-              ),
-              onPressed: () async {
-                if (notesController.text.trim().isEmpty ||
-                    amountController.text.trim().isEmpty) {
-                  return;
-                }
-
-                final amount = double.tryParse(amountController.text.trim()) ?? 0;
-
-                await FirebaseFirestore.instance.collection('expenses').add({
-                  'amount': amount,
-                  'notes': notesController.text.trim(),
-                  'createdAt': FieldValue.serverTimestamp(),
-                  'orderId': null,
-                  'userId': null,
-                });
-
-                if (ctx.mounted) {
-                  Navigator.pop(ctx);
-                }
-              },
-              child: const Text("Save Expense"),
-            ),
-          ],
+            );
+          },
         );
       },
     );
@@ -729,8 +848,14 @@ class FinancialReportSection extends StatelessWidget {
       context: context,
       builder: (ctx) {
         final width = MediaQuery.of(ctx).size.width;
+        final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+        final theme = Theme.of(context);
+
+        final dialogBg = isDarkMode ? theme.cardColor : Colors.white;
+        final titleTextColor = isDarkMode ? Colors.white : Colors.black87;
 
         return AlertDialog(
+          backgroundColor: dialogBg,
           insetPadding: EdgeInsets.symmetric(
             horizontal: width < 500 ? 14 : 40,
             vertical: 24,
@@ -738,15 +863,18 @@ class FinancialReportSection extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          title: const Row(
+          title: Row(
             children: [
-              Icon(
+              const Icon(
                 Icons.add_circle_outline_rounded,
                 color: Colors.teal,
               ),
-              SizedBox(width: 10),
+              const SizedBox(width: 10),
               Expanded(
-                child: Text("Add General Income"),
+                child: Text(
+                  "Add General Income",
+                  style: TextStyle(color: titleTextColor),
+                ),
               ),
             ],
           ),
@@ -756,27 +884,27 @@ class FinancialReportSection extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
-                  controller: notesController,
-                  textInputAction: TextInputAction.next,
-                  decoration: InputDecoration(
-                    labelText: "Notes / Description",
-                    hintText: "e.g. Investment / Additional Capital",
-                    prefixIcon: const Icon(Icons.description_outlined),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                TextField(
                   controller: amountController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  style: TextStyle(color: titleTextColor),
+                  keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
                   decoration: InputDecoration(
                     labelText: "Amount",
+                    labelStyle: TextStyle(
+                        color: isDarkMode
+                            ? Colors.grey.shade400
+                            : Colors.grey.shade700),
                     suffixText: "EGP",
                     prefixIcon: const Icon(Icons.payments_outlined),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                          color: isDarkMode
+                              ? Colors.grey.shade700
+                              : Colors.grey.shade400),
                     ),
                   ),
                 ),
@@ -787,7 +915,11 @@ class FinancialReportSection extends StatelessWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text("Cancel"),
+              child: Text(
+                "Cancel",
+                style: TextStyle(
+                    color: isDarkMode ? Colors.grey.shade400 : null),
+              ),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -795,16 +927,16 @@ class FinancialReportSection extends StatelessWidget {
                 foregroundColor: Colors.white,
               ),
               onPressed: () async {
-                if (notesController.text.trim().isEmpty ||
-                    amountController.text.trim().isEmpty) {
+                if (amountController.text.trim().isEmpty) {
                   return;
                 }
 
-                final amount = double.tryParse(amountController.text.trim()) ?? 0;
+                final amount =
+                    double.tryParse(amountController.text.trim()) ?? 0;
 
                 await FirebaseFirestore.instance.collection('incomes').add({
                   'amount': amount,
-                  'notes': notesController.text.trim(),
+                  'notes': "order",
                   'createdAt': FieldValue.serverTimestamp(),
                   'orderId': null,
                   'userId': null,

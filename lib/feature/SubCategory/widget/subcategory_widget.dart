@@ -162,20 +162,25 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
     bool keepRatio = true;
     final double ratio = originalWidth / originalHeight;
 
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = isDarkMode ? Theme.of(context).cardColor : Colors.white;
+    final textColor = isDarkMode ? Colors.white : AppColors.textDark;
+
     return await showDialog<Uint8List?>(
       context: context,
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
+              backgroundColor: cardBg,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16)),
-              title: const Row(
+              title: Row(
                 children: [
-                  Icon(Icons.photo_size_select_large,
+                  const Icon(Icons.photo_size_select_large,
                       color: AppColors.primaryPurple),
-                  SizedBox(width: 10),
-                  Text("Resize Image"),
+                  const SizedBox(width: 10),
+                  Text("Resize Image", style: TextStyle(color: textColor)),
                 ],
               ),
               content: SizedBox(
@@ -187,7 +192,7 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: AppColors.primaryPurple.withOpacity(0.08),
+                        color: AppColors.primaryPurple.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Row(
@@ -198,8 +203,10 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
                           Expanded(
                             child: Text(
                               "Original size: $originalWidth × $originalHeight px",
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w600, fontSize: 13),
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                  color: textColor),
                             ),
                           ),
                         ],
@@ -209,8 +216,11 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
                     TextField(
                       controller: widthController,
                       keyboardType: TextInputType.number,
+                      style: TextStyle(color: textColor),
                       decoration: InputDecoration(
                         labelText: "Width",
+                        labelStyle: TextStyle(
+                            color: isDarkMode ? Colors.grey.shade400 : null),
                         suffixText: "px",
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10)),
@@ -226,9 +236,11 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
                     const SizedBox(height: 12),
                     Row(
                       children: [
-                        const Expanded(
+                        Expanded(
                           child: Text("Keep aspect ratio",
-                              style: TextStyle(fontWeight: FontWeight.w600)),
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: textColor)),
                         ),
                         Switch(
                           value: keepRatio,
@@ -241,8 +253,11 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
                     TextField(
                       controller: heightController,
                       keyboardType: TextInputType.number,
+                      style: TextStyle(color: textColor),
                       decoration: InputDecoration(
                         labelText: "Height",
+                        labelStyle: TextStyle(
+                            color: isDarkMode ? Colors.grey.shade400 : null),
                         suffixText: "px",
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10)),
@@ -345,28 +360,35 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+
+    final scaffoldBg = isDarkMode ? theme.scaffoldBackgroundColor : const Color(0xFFF8FAFC);
+    final appBarBg = isDarkMode ? theme.cardColor : Colors.white;
+    final textColor = isDarkMode ? Colors.white : AppColors.textDark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: scaffoldBg,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: appBarBg,
         elevation: 0,
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1.0),
           child: Container(
-            color: Colors.white,
+            color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200,
             height: 1.0,
           ),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textDark),
+          icon: Icon(Icons.arrow_back_rounded, color: textColor),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           "Subcategories: ${widget.categoryModel.NameEn}",
-          style: const TextStyle(
-            color: AppColors.textDark,
+          style: TextStyle(
+            color: textColor,
             fontWeight: FontWeight.bold,
             fontSize: 18,
           ),
@@ -432,7 +454,7 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
                                 padding: const EdgeInsets.all(20),
                                 decoration: BoxDecoration(
                                   color:
-                                  AppColors.primaryPurple.withOpacity(0.05),
+                                  AppColors.primaryPurple.withOpacity(0.12),
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(
@@ -442,10 +464,10 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
                                 ),
                               ),
                               const SizedBox(height: 16),
-                              const Text(
+                              Text(
                                 "No subcategories found matching your search.",
                                 style: TextStyle(
-                                  color: AppColors.textMuted,
+                                  color: isDarkMode ? Colors.grey.shade400 : AppColors.textMuted,
                                   fontSize: 15,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -512,22 +534,26 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
 
   // Header Section
   Widget _buildHeader(BuildContext context, bool isMobile) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDarkMode ? Colors.white : AppColors.textDark;
+    final subtitleColor = isDarkMode ? Colors.grey.shade400 : AppColors.textMuted;
+
     if (isMobile) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             "Manage Subcategories for '${widget.categoryModel.NameEn}'",
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: AppColors.textDark,
+              color: textColor,
             ),
           ),
           const SizedBox(height: 2),
-          const Text(
+          Text(
             "Add or update sub-items linked to this category",
-            style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+            style: TextStyle(fontSize: 12, color: subtitleColor),
           ),
           const SizedBox(height: 12),
           SizedBox(
@@ -566,19 +592,19 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
           children: [
             Text(
               "Manage Subcategories for '${widget.categoryModel.NameEn}'",
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
-                color: AppColors.textDark,
+                color: textColor,
                 letterSpacing: -0.5,
               ),
             ),
             const SizedBox(height: 4),
-            const Text(
+            Text(
               "Add or update sub-items linked to this category",
               style: TextStyle(
                 fontSize: 14,
-                color: AppColors.textMuted,
+                color: subtitleColor,
               ),
             ),
           ],
@@ -609,14 +635,20 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
 
   // Modern Search Bar
   Widget _buildSearchBar() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+
+    final bgCard = isDarkMode ? theme.cardColor : Colors.white;
+    final textColor = isDarkMode ? Colors.white : AppColors.textDark;
+
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: bgCard,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white),
+        border: Border.all(color: isDarkMode ? Colors.grey.shade800 : Colors.white),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: isDarkMode ? Colors.black.withOpacity(0.3) : Colors.black.withOpacity(0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -629,10 +661,10 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
             _searchQuery = value.trim().toLowerCase();
           });
         },
-        style: const TextStyle(fontSize: 14, color: AppColors.textDark),
+        style: TextStyle(fontSize: 14, color: textColor),
         decoration: InputDecoration(
           hintText: "Search subcategories by Arabic or English name...",
-          hintStyle: const TextStyle(fontSize: 13, color: AppColors.textMuted),
+          hintStyle: TextStyle(fontSize: 13, color: isDarkMode ? Colors.grey.shade400 : AppColors.textMuted),
           prefixIcon: const Icon(Icons.search_rounded,
               color: AppColors.primaryPurple, size: 22),
           suffixIcon: _searchQuery.isNotEmpty
@@ -663,14 +695,22 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
         required String nameEn,
         required String imageUrl,
       }) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+
+    final bgCard = isDarkMode ? theme.cardColor : Colors.white;
+    final titleColor = isDarkMode ? Colors.white : AppColors.textDark;
+    final subtitleColor = isDarkMode ? Colors.grey.shade400 : AppColors.textMuted;
+    final borderColor = isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200;
+
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: bgCard,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: borderColor),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: isDarkMode ? Colors.black.withOpacity(0.3) : Colors.black.withOpacity(0.03),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -689,10 +729,10 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
                 children: [
                   Container(
                     width: double.infinity,
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       borderRadius:
-                      BorderRadius.vertical(top: Radius.circular(16)),
-                      color: Color(0xFFF1F5F9),
+                      const BorderRadius.vertical(top: Radius.circular(16)),
+                      color: isDarkMode ? Colors.grey.shade900 : const Color(0xFFF1F5F9),
                     ),
                     child: ClipRRect(
                       borderRadius: const BorderRadius.vertical(
@@ -723,7 +763,7 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 4, vertical: 2),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.9),
+                        color: isDarkMode ? theme.cardColor.withOpacity(0.9) : Colors.white.withOpacity(0.9),
                         borderRadius: BorderRadius.circular(8),
                         boxShadow: [
                           BoxShadow(
@@ -778,10 +818,10 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
                   children: [
                     Text(
                       nameAr,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 15,
-                        color: AppColors.textDark,
+                        color: titleColor,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -789,9 +829,9 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
                     const SizedBox(height: 2),
                     Text(
                       nameEn,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: AppColors.textMuted,
+                        color: subtitleColor,
                         fontWeight: FontWeight.w500,
                       ),
                       maxLines: 1,
@@ -823,6 +863,13 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
     String? imageUrl = currentImageUrl;
     bool isSaving = false;
 
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+
+    final panelBg = isDarkMode ? theme.cardColor : Colors.white;
+    final textColor = isDarkMode ? Colors.white : AppColors.textDark;
+    final borderInputColor = isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300;
+
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -844,13 +891,13 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
                   width: panelWidth,
                   height: double.infinity,
                   padding: const EdgeInsets.all(24),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.only(
+                  decoration: BoxDecoration(
+                    color: panelBg,
+                    borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(20),
                       bottomLeft: Radius.circular(20),
                     ),
-                    boxShadow: [
+                    boxShadow: const [
                       BoxShadow(
                         color: Colors.black12,
                         blurRadius: 20,
@@ -871,29 +918,29 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
                                 docId == null
                                     ? "Add Subcategory"
                                     : "Edit Subcategory",
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
-                                  color: AppColors.textDark,
+                                  color: textColor,
                                 ),
                               ),
                               IconButton(
-                                icon: const Icon(Icons.close_rounded),
+                                icon: Icon(Icons.close_rounded, color: textColor),
                                 onPressed: () => Navigator.pop(ctx),
                               )
                             ],
                           ),
-                          const Divider(height: 24),
+                          Divider(height: 24, color: borderInputColor),
                           Expanded(
                             child: SingleChildScrollView(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text(
+                                  Text(
                                     "Subcategory Image",
                                     style: TextStyle(
                                       fontWeight: FontWeight.w600,
-                                      color: AppColors.textDark,
+                                      color: textColor,
                                     ),
                                   ),
                                   const SizedBox(height: 8),
@@ -903,10 +950,10 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
                                     height: 180,
                                     width: double.infinity,
                                     decoration: BoxDecoration(
-                                      color: Colors.grey.shade50,
+                                      color: isDarkMode ? Colors.grey.shade900 : Colors.grey.shade50,
                                       borderRadius: BorderRadius.circular(12),
                                       border: Border.all(
-                                          color: Colors.grey.shade300),
+                                          color: borderInputColor),
                                     ),
                                     child: pickedImageBytes != null
                                         ? ClipRRect(
@@ -927,22 +974,21 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
                                         fit: BoxFit.contain,
                                       ),
                                     )
-                                        : const Column(
+                                        : Column(
                                       mainAxisAlignment:
                                       MainAxisAlignment.center,
                                       children: [
-                                        Icon(
+                                        const Icon(
                                           Icons.add_a_photo_outlined,
                                           size: 38,
                                           color:
                                           AppColors.primaryPurple,
                                         ),
-                                        SizedBox(height: 8),
+                                        const SizedBox(height: 8),
                                         Text(
                                           "Click button below to select Subcategory Image",
                                           style: TextStyle(
-                                            color:
-                                            AppColors.textMuted,
+                                            color: isDarkMode ? Colors.grey.shade400 : AppColors.textMuted,
                                             fontSize: 12,
                                           ),
                                         ),
@@ -1064,8 +1110,10 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
                                   const SizedBox(height: 20),
                                   TextFormField(
                                     controller: nameArController,
+                                    style: TextStyle(color: textColor),
                                     decoration: InputDecoration(
                                       labelText: "الاسم بالعربي",
+                                      labelStyle: TextStyle(color: isDarkMode ? Colors.grey.shade400 : null),
                                       border: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(10),
                                       ),
@@ -1078,8 +1126,10 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
                                   const SizedBox(height: 16),
                                   TextFormField(
                                     controller: nameEnController,
+                                    style: TextStyle(color: textColor),
                                     decoration: InputDecoration(
                                       labelText: "English Name",
+                                      labelStyle: TextStyle(color: isDarkMode ? Colors.grey.shade400 : null),
                                       border: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(10),
                                       ),
@@ -1232,13 +1282,19 @@ class _SubcategoryWidgetState extends State<SubcategoryWidget> {
       String subcategoryName,
       String imageUrl,
       ) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = isDarkMode ? Theme.of(context).cardColor : Colors.white;
+    final textColor = isDarkMode ? Colors.white : AppColors.textDark;
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        backgroundColor: cardBg,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text("Delete Subcategory",
-            style: TextStyle(fontWeight: FontWeight.bold)),
-        content: Text("Are you sure you want to delete '$subcategoryName'?"),
+        title: Text("Delete Subcategory",
+            style: TextStyle(fontWeight: FontWeight.bold, color: textColor)),
+        content: Text("Are you sure you want to delete '$subcategoryName'?",
+            style: TextStyle(color: isDarkMode ? Colors.grey.shade300 : Colors.black87)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),

@@ -70,6 +70,7 @@ class _CategoryWidgetState extends State<CategoryWidget> {
     required BuildContext context,
     required XFile imageFile,
   }) async {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     try {
       final String sourcePath = imageFile.path;
       if (sourcePath.isEmpty) throw Exception("Image path is empty");
@@ -81,9 +82,10 @@ class _CategoryWidgetState extends State<CategoryWidget> {
         uiSettings: [
           AndroidUiSettings(
             toolbarTitle: 'Edit Category Image'.tr,
-            toolbarColor: AppColors.primaryPurple,
+            toolbarColor: isDark ? const Color(0xFF1E1E1E) : AppColors.primaryPurple,
             toolbarWidgetColor: Colors.white,
             activeControlsWidgetColor: AppColors.primaryPurple,
+            backgroundColor: isDark ? const Color(0xFF121212) : Colors.white,
             initAspectRatio: CropAspectRatioPreset.square,
             hideBottomControls: false,
             showCropGrid: true,
@@ -201,7 +203,10 @@ class _CategoryWidgetState extends State<CategoryWidget> {
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setState) {
+            final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
             return AlertDialog(
+              backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16)),
               title: Row(
@@ -209,7 +214,12 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                   const Icon(Icons.photo_size_select_large,
                       color: AppColors.primaryPurple),
                   const SizedBox(width: 10),
-                  Text("Resize Image".tr),
+                  Text(
+                    "Resize Image".tr,
+                    style: TextStyle(
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
                 ],
               ),
               content: SizedBox(
@@ -221,7 +231,9 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: AppColors.primaryPurple.withOpacity(0.08),
+                        color: isDark
+                            ? AppColors.primaryPurple.withOpacity(0.15)
+                            : AppColors.primaryPurple.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Row(
@@ -232,8 +244,11 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                           Expanded(
                             child: Text(
                               "${"Original size".tr}: $originalWidth × $originalHeight px",
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w600, fontSize: 13),
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                                color: isDark ? Colors.white70 : Colors.black87,
+                              ),
                             ),
                           ),
                         ],
@@ -243,11 +258,26 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                     TextField(
                       controller: widthController,
                       keyboardType: TextInputType.number,
+                      style: TextStyle(
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
                       decoration: InputDecoration(
                         labelText: "Width".tr,
+                        labelStyle: TextStyle(
+                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
+                        ),
                         suffixText: "px",
+                        suffixStyle: TextStyle(
+                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
+                        ),
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10)),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(
+                            color: isDark ? Colors.grey.shade700 : Colors.grey.shade400,
+                          ),
+                        ),
                       ),
                       onChanged: (value) {
                         if (!keepRatio) return;
@@ -261,9 +291,13 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                     Row(
                       children: [
                         Expanded(
-                          child: Text("Keep aspect ratio".tr,
-                              style:
-                              const TextStyle(fontWeight: FontWeight.w600)),
+                          child: Text(
+                            "Keep aspect ratio".tr,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: isDark ? Colors.white : Colors.black87,
+                            ),
+                          ),
                         ),
                         Switch(
                           value: keepRatio,
@@ -276,11 +310,26 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                     TextField(
                       controller: heightController,
                       keyboardType: TextInputType.number,
+                      style: TextStyle(
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
                       decoration: InputDecoration(
                         labelText: "Height".tr,
+                        labelStyle: TextStyle(
+                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
+                        ),
                         suffixText: "px",
+                        suffixStyle: TextStyle(
+                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
+                        ),
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10)),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(
+                            color: isDark ? Colors.grey.shade700 : Colors.grey.shade400,
+                          ),
+                        ),
                       ),
                       onChanged: (value) {
                         if (!keepRatio) return;
@@ -296,8 +345,12 @@ class _CategoryWidgetState extends State<CategoryWidget> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(dialogContext),
-                  child: Text("Cancel".tr,
-                      style: const TextStyle(color: Colors.grey)),
+                  child: Text(
+                    "Cancel".tr,
+                    style: TextStyle(
+                      color: isDark ? Colors.grey.shade400 : Colors.grey,
+                    ),
+                  ),
                 ),
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
@@ -379,12 +432,14 @@ class _CategoryWidgetState extends State<CategoryWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
     if (!_permision.contains("categories")) {
       return AccessDefindView();
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF8FAFC),
       body: LayoutBuilder(
         builder: (context, constraints) {
           final bool isMobile = constraints.maxWidth < 650;
@@ -399,9 +454,9 @@ class _CategoryWidgetState extends State<CategoryWidget> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildHeader(context, isMobile),
+                _buildHeader(context, isMobile, isDark),
                 const SizedBox(height: 20),
-                _buildSearchBar(),
+                _buildSearchBar(isDark),
                 const SizedBox(height: 20),
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
@@ -409,7 +464,12 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                     builder: (context, snapshot) {
                       if (snapshot.hasError) {
                         return Center(
-                          child: Text("Error loading categories!".tr),
+                          child: Text(
+                            "Error loading categories!".tr,
+                            style: TextStyle(
+                              color: isDark ? Colors.white70 : Colors.black87,
+                            ),
+                          ),
                         );
                       }
                       if (snapshot.connectionState ==
@@ -441,8 +501,7 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                               Container(
                                 padding: const EdgeInsets.all(20),
                                 decoration: BoxDecoration(
-                                  color:
-                                  AppColors.primaryPurple.withOpacity(0.05),
+                                  color: AppColors.primaryPurple.withOpacity(0.1),
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(
@@ -454,8 +513,8 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                               const SizedBox(height: 16),
                               Text(
                                 "No categories found matching your search.".tr,
-                                style: const TextStyle(
-                                  color: AppColors.textMuted,
+                                style: TextStyle(
+                                  color: isDark ? Colors.grey.shade400 : AppColors.textMuted,
                                   fontSize: 15,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -514,6 +573,7 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                             nameAr: nameAr,
                             nameEn: nameEn,
                             imageUrl: imageUrl,
+                            isDark: isDark,
                           );
                         },
                       );
@@ -529,7 +589,7 @@ class _CategoryWidgetState extends State<CategoryWidget> {
   }
 
   // Header Section
-  Widget _buildHeader(BuildContext context, bool isMobile) {
+  Widget _buildHeader(BuildContext context, bool isMobile, bool isDark) {
     if (isMobile) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -542,17 +602,19 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                 children: [
                   Text(
                     "Categories Management".tr,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.textDark,
+                      color: isDark ? Colors.white : AppColors.textDark,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     "Manage your store product categories".tr,
-                    style: const TextStyle(
-                        fontSize: 12, color: AppColors.textMuted),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? Colors.grey.shade400 : AppColors.textMuted,
+                    ),
                   ),
                 ],
               ),
@@ -563,8 +625,7 @@ class _CategoryWidgetState extends State<CategoryWidget> {
             width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: () => _openCategoryFormPanel(context),
-              icon:
-              const Icon(Icons.add_rounded, color: Colors.white, size: 20),
+              icon: const Icon(Icons.add_rounded, color: Colors.white, size: 20),
               label: Text(
                 "Add New Category".tr,
                 style: const TextStyle(
@@ -595,19 +656,19 @@ class _CategoryWidgetState extends State<CategoryWidget> {
           children: [
             Text(
               "Categories Management".tr,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: AppColors.textDark,
+                color: isDark ? Colors.white : AppColors.textDark,
                 letterSpacing: -0.5,
               ),
             ),
             const SizedBox(height: 4),
             Text(
               "Manage your store product categories".tr,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
-                color: AppColors.textMuted,
+                color: isDark ? Colors.grey.shade400 : AppColors.textMuted,
               ),
             ),
           ],
@@ -637,15 +698,17 @@ class _CategoryWidgetState extends State<CategoryWidget> {
   }
 
   // Modern Search Bar
-  Widget _buildSearchBar() {
+  Widget _buildSearchBar(bool isDark) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white),
+        border: Border.all(
+          color: isDark ? Colors.grey.shade800 : Colors.white,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: isDark ? Colors.black.withOpacity(0.2) : Colors.black.withOpacity(0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -658,16 +721,23 @@ class _CategoryWidgetState extends State<CategoryWidget> {
             _searchQuery = value.trim().toLowerCase();
           });
         },
-        style: const TextStyle(fontSize: 14, color: AppColors.textDark),
+        style: TextStyle(
+          fontSize: 14,
+          color: isDark ? Colors.white : AppColors.textDark,
+        ),
         decoration: InputDecoration(
           hintText: "Search categories by Arabic or English name...".tr,
-          hintStyle: const TextStyle(fontSize: 13, color: AppColors.textMuted),
+          hintStyle: TextStyle(
+            fontSize: 13,
+            color: isDark ? Colors.grey.shade500 : AppColors.textMuted,
+          ),
           prefixIcon: const Icon(Icons.search_rounded,
               color: AppColors.primaryPurple, size: 22),
           suffixIcon: _searchQuery.isNotEmpty
               ? IconButton(
-            icon: const Icon(Icons.cancel_rounded,
-                color: Colors.grey, size: 20),
+            icon: Icon(Icons.cancel_rounded,
+                color: isDark ? Colors.grey.shade400 : Colors.grey,
+                size: 20),
             onPressed: () {
               _searchController.clear();
               setState(() {
@@ -692,15 +762,18 @@ class _CategoryWidgetState extends State<CategoryWidget> {
         required String nameAr,
         required String nameEn,
         required String imageUrl,
+        required bool isDark,
       }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(
+          color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: isDark ? Colors.black.withOpacity(0.3) : Colors.black.withOpacity(0.03),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -729,10 +802,10 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                   children: [
                     Container(
                       width: double.infinity,
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         borderRadius:
-                        BorderRadius.vertical(top: Radius.circular(16)),
-                        color: Color(0xFFF1F5F9),
+                        const BorderRadius.vertical(top: Radius.circular(16)),
+                        color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF1F5F9),
                       ),
                       child: ClipRRect(
                         borderRadius: const BorderRadius.vertical(
@@ -743,14 +816,20 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                           width: double.infinity,
                           height: double.infinity,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const Center(
-                            child: Icon(Icons.broken_image_outlined,
-                                color: Colors.grey, size: 32),
+                          errorBuilder: (_, __, ___) => Center(
+                            child: Icon(
+                              Icons.broken_image_outlined,
+                              color: isDark ? Colors.grey.shade500 : Colors.grey,
+                              size: 32,
+                            ),
                           ),
                         )
-                            : const Center(
-                          child: Icon(Icons.category_outlined,
-                              color: Colors.grey, size: 36),
+                            : Center(
+                          child: Icon(
+                            Icons.category_outlined,
+                            color: isDark ? Colors.grey.shade500 : Colors.grey,
+                            size: 36,
+                          ),
                         ),
                       ),
                     ),
@@ -763,11 +842,13 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 4, vertical: 2),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.9),
+                          color: isDark
+                              ? const Color(0xFF2D2D2D).withOpacity(0.9)
+                              : Colors.white.withOpacity(0.9),
                           borderRadius: BorderRadius.circular(8),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.08),
+                              color: Colors.black.withOpacity(0.12),
                               blurRadius: 6,
                             )
                           ],
@@ -818,10 +899,10 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                     children: [
                       Text(
                         nameAr,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 15,
-                          color: AppColors.textDark,
+                          color: isDark ? Colors.white : AppColors.textDark,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -829,9 +910,9 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                       const SizedBox(height: 2),
                       Text(
                         nameEn,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
-                          color: AppColors.textMuted,
+                          color: isDark ? Colors.grey.shade400 : AppColors.textMuted,
                           fontWeight: FontWeight.w500,
                         ),
                         maxLines: 1,
@@ -850,18 +931,35 @@ class _CategoryWidgetState extends State<CategoryWidget> {
 
   void _confirmDelete(
       BuildContext context, String docId, String nameEn, String imageUrl) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text("Delete Category".tr,
-            style: const TextStyle(fontWeight: FontWeight.bold)),
-        content: Text("${"Are you sure you want to delete".tr} '$nameEn'?"),
+        title: Text(
+          "Delete Category".tr,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.white : Colors.black87,
+          ),
+        ),
+        content: Text(
+          "${"Are you sure you want to delete".tr} '$nameEn'?",
+          style: TextStyle(
+            color: isDark ? Colors.white70 : Colors.black87,
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child:
-            Text("Cancel".tr, style: const TextStyle(color: Colors.grey)),
+            child: Text(
+              "Cancel".tr,
+              style: TextStyle(
+                color: isDark ? Colors.grey.shade400 : Colors.grey,
+              ),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -912,6 +1010,8 @@ class _CategoryWidgetState extends State<CategoryWidget> {
             color: Colors.transparent,
             child: StatefulBuilder(
               builder: (context, setPanelState) {
+                final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
                 final double panelWidth =
                 MediaQuery.of(context).size.width > 600
                     ? 480
@@ -921,15 +1021,15 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                   width: panelWidth,
                   height: double.infinity,
                   padding: const EdgeInsets.all(24),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.only(
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                    borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(20),
                       bottomLeft: Radius.circular(20),
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black12,
+                        color: isDark ? Colors.black45 : Colors.black12,
                         blurRadius: 20,
                         spreadRadius: 5,
                       )
@@ -948,19 +1048,25 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                                 docId == null
                                     ? "Add New Category".tr
                                     : "Edit Category".tr,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
-                                  color: AppColors.textDark,
+                                  color: isDark ? Colors.white : AppColors.textDark,
                                 ),
                               ),
                               IconButton(
-                                icon: const Icon(Icons.close_rounded),
+                                icon: Icon(
+                                  Icons.close_rounded,
+                                  color: isDark ? Colors.white70 : Colors.black87,
+                                ),
                                 onPressed: () => Navigator.pop(ctx),
                               )
                             ],
                           ),
-                          const Divider(height: 24),
+                          Divider(
+                            height: 24,
+                            color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+                          ),
                           Expanded(
                             child: SingleChildScrollView(
                               child: Column(
@@ -968,9 +1074,9 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                                 children: [
                                   Text(
                                     "Category Image".tr,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontWeight: FontWeight.w600,
-                                      color: AppColors.textDark,
+                                      color: isDark ? Colors.white : AppColors.textDark,
                                     ),
                                   ),
                                   const SizedBox(height: 8),
@@ -980,10 +1086,15 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                                     height: 180,
                                     width: double.infinity,
                                     decoration: BoxDecoration(
-                                      color: Colors.grey.shade50,
+                                      color: isDark
+                                          ? const Color(0xFF2A2A2A)
+                                          : Colors.grey.shade50,
                                       borderRadius: BorderRadius.circular(12),
                                       border: Border.all(
-                                          color: Colors.grey.shade300),
+                                        color: isDark
+                                            ? Colors.grey.shade700
+                                            : Colors.grey.shade300,
+                                      ),
                                     ),
                                     child: pickedImageBytes != null
                                         ? ClipRRect(
@@ -1011,16 +1122,16 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                                         const Icon(
                                           Icons.add_a_photo_outlined,
                                           size: 38,
-                                          color:
-                                          AppColors.primaryPurple,
+                                          color: AppColors.primaryPurple,
                                         ),
                                         const SizedBox(height: 8),
                                         Text(
                                           "Click button below to select Category Image"
                                               .tr,
-                                          style: const TextStyle(
-                                            color:
-                                            AppColors.textMuted,
+                                          style: TextStyle(
+                                            color: isDark
+                                                ? Colors.grey.shade400
+                                                : AppColors.textMuted,
                                             fontSize: 12,
                                           ),
                                         ),
@@ -1034,6 +1145,16 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                                     children: [
                                       Expanded(
                                         child: OutlinedButton.icon(
+                                          style: OutlinedButton.styleFrom(
+                                            side: BorderSide(
+                                              color: isDark
+                                                  ? Colors.grey.shade700
+                                                  : Colors.grey.shade400,
+                                            ),
+                                            foregroundColor: isDark
+                                                ? Colors.white
+                                                : Colors.black87,
+                                          ),
                                           icon: const Icon(
                                               Icons.photo_library_outlined,
                                               size: 18),
@@ -1069,6 +1190,16 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                                       children: [
                                         Expanded(
                                           child: OutlinedButton.icon(
+                                            style: OutlinedButton.styleFrom(
+                                              side: BorderSide(
+                                                color: isDark
+                                                    ? Colors.grey.shade700
+                                                    : Colors.grey.shade400,
+                                              ),
+                                              foregroundColor: isDark
+                                                  ? Colors.white
+                                                  : Colors.black87,
+                                            ),
                                             icon: const Icon(Icons.crop_rotate,
                                                 size: 18),
                                             label: Text("Crop / Edit".tr,
@@ -1105,6 +1236,16 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                                         const SizedBox(width: 8),
                                         Expanded(
                                           child: OutlinedButton.icon(
+                                            style: OutlinedButton.styleFrom(
+                                              side: BorderSide(
+                                                color: isDark
+                                                    ? Colors.grey.shade700
+                                                    : Colors.grey.shade400,
+                                              ),
+                                              foregroundColor: isDark
+                                                  ? Colors.white
+                                                  : Colors.black87,
+                                            ),
                                             icon: const Icon(
                                                 Icons.photo_size_select_large,
                                                 size: 18),
@@ -1144,10 +1285,26 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                                   const SizedBox(height: 20),
                                   TextFormField(
                                     controller: nameArController,
+                                    style: TextStyle(
+                                      color: isDark ? Colors.white : Colors.black87,
+                                    ),
                                     decoration: InputDecoration(
                                       labelText: "الاسم بالعربي",
+                                      labelStyle: TextStyle(
+                                        color: isDark
+                                            ? Colors.grey.shade400
+                                            : Colors.grey.shade700,
+                                      ),
                                       border: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                        borderSide: BorderSide(
+                                          color: isDark
+                                              ? Colors.grey.shade700
+                                              : Colors.grey.shade400,
+                                        ),
                                       ),
                                     ),
                                     validator: (v) =>
@@ -1158,10 +1315,26 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                                   const SizedBox(height: 16),
                                   TextFormField(
                                     controller: nameEnController,
+                                    style: TextStyle(
+                                      color: isDark ? Colors.white : Colors.black87,
+                                    ),
                                     decoration: InputDecoration(
                                       labelText: "English Name",
+                                      labelStyle: TextStyle(
+                                        color: isDark
+                                            ? Colors.grey.shade400
+                                            : Colors.grey.shade700,
+                                      ),
                                       border: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                        borderSide: BorderSide(
+                                          color: isDark
+                                              ? Colors.grey.shade700
+                                              : Colors.grey.shade400,
+                                        ),
                                       ),
                                     ),
                                     validator: (v) =>
@@ -1184,11 +1357,23 @@ class _CategoryWidgetState extends State<CategoryWidget> {
                                   style: OutlinedButton.styleFrom(
                                     padding: const EdgeInsets.symmetric(
                                         vertical: 14),
+                                    side: BorderSide(
+                                      color: isDark
+                                          ? Colors.grey.shade700
+                                          : Colors.grey.shade400,
+                                    ),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(10),
                                     ),
                                   ),
-                                  child: Text("Cancel".tr),
+                                  child: Text(
+                                    "Cancel".tr,
+                                    style: TextStyle(
+                                      color: isDark
+                                          ? Colors.grey.shade300
+                                          : Colors.black87,
+                                    ),
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 12),

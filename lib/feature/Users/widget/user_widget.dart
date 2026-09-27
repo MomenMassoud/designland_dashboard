@@ -86,12 +86,17 @@ class _UserWidgetState extends State<UserWidget> {
     final formKey = GlobalKey<FormState>();
     bool isSending = false;
 
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final textColor = isDarkMode ? Colors.white : AppColors.textDark;
+
     showDialog(
       context: context,
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
+              backgroundColor: isDarkMode ? theme.cardColor : Colors.white,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16)),
               title: Row(
@@ -101,7 +106,7 @@ class _UserWidgetState extends State<UserWidget> {
                   Expanded(
                     child: Text(
                       "Send Email to $userName",
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -116,11 +121,18 @@ class _UserWidgetState extends State<UserWidget> {
                     children: [
                       TextFormField(
                         controller: subjectController,
+                        style: TextStyle(color: textColor),
                         decoration: InputDecoration(
                           labelText: "Subject",
+                          labelStyle: TextStyle(color: isDarkMode ? Colors.grey.shade400 : null),
                           hintText: "Enter email subject...",
+                          hintStyle: TextStyle(color: isDarkMode ? Colors.grey.shade600 : null),
                           border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10)),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade400),
+                          ),
                         ),
                         validator: (val) => val == null || val.trim().isEmpty
                             ? "Please enter a subject"
@@ -130,11 +142,18 @@ class _UserWidgetState extends State<UserWidget> {
                       TextFormField(
                         controller: bodyController,
                         maxLines: 5,
+                        style: TextStyle(color: textColor),
                         decoration: InputDecoration(
                           labelText: "Message Body",
+                          labelStyle: TextStyle(color: isDarkMode ? Colors.grey.shade400 : null),
                           hintText: "Write your message here...",
+                          hintStyle: TextStyle(color: isDarkMode ? Colors.grey.shade600 : null),
                           border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10)),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade400),
+                          ),
                         ),
                         validator: (val) => val == null || val.trim().isEmpty
                             ? "Please enter message content"
@@ -147,7 +166,7 @@ class _UserWidgetState extends State<UserWidget> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text("Cancel"),
+                  child: Text("Cancel", style: TextStyle(color: isDarkMode ? Colors.grey.shade400 : null)),
                 ),
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
@@ -202,6 +221,9 @@ class _UserWidgetState extends State<UserWidget> {
   // ==================== 3. حذف الحساب نهائياً عبر الـ API الخاص بـ Backend ====================
   void _confirmDeleteUser(String userId, String name) {
     bool isDeleting = false;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final textColor = isDarkMode ? Colors.white : AppColors.textDark;
 
     showDialog(
       context: context,
@@ -209,21 +231,23 @@ class _UserWidgetState extends State<UserWidget> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
+              backgroundColor: isDarkMode ? theme.cardColor : Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: const Row(
+              title: Row(
                 children: [
-                  Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
-                  SizedBox(width: 8),
-                  Text("Delete Account"),
+                  const Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
+                  const SizedBox(width: 8),
+                  Text("Delete Account", style: TextStyle(color: textColor)),
                 ],
               ),
               content: Text(
                 "Are you sure you want to permanently delete '$name'? This action will delete user from Firebase Auth and Firestore.",
+                style: TextStyle(color: isDarkMode ? Colors.grey.shade300 : Colors.black87),
               ),
               actions: [
                 TextButton(
                   onPressed: isDeleting ? null : () => Navigator.pop(ctx),
-                  child: const Text("Cancel"),
+                  child: Text("Cancel", style: TextStyle(color: isDarkMode ? Colors.grey.shade400 : null)),
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
@@ -233,7 +257,6 @@ class _UserWidgetState extends State<UserWidget> {
                     setDialogState(() => isDeleting = true);
 
                     try {
-                      // ضعف هنا رابط الـ API المخصص للحذف
                       final url = Uri.parse('https://designland-backend.vercel.app/api/delete-account');
 
                       final response = await http.post(
@@ -287,9 +310,14 @@ class _UserWidgetState extends State<UserWidget> {
     required String userName,
     required String userEmail,
     required bool isBlocked,
+    required bool isDarkMode,
+    required ThemeData theme,
   }) {
+    final textColor = isDarkMode ? Colors.white : AppColors.textDark;
+
     return PopupMenuButton<String>(
-      icon: const Icon(Icons.more_vert, color: AppColors.textDark),
+      icon: Icon(Icons.more_vert, color: textColor),
+      color: isDarkMode ? theme.cardColor : Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       onSelected: (value) {
         if (value == 'block_toggle') {
@@ -321,17 +349,17 @@ class _UserWidgetState extends State<UserWidget> {
             ],
           ),
         ),
-        const PopupMenuItem<String>(
+        PopupMenuItem<String>(
           value: 'send_email',
           child: Row(
             children: [
-              Icon(Icons.email_outlined, color: AppColors.primaryPurple, size: 20),
-              SizedBox(width: 10),
-              Text('Send Custom Email', style: TextStyle(fontWeight: FontWeight.w600)),
+              const Icon(Icons.email_outlined, color: AppColors.primaryPurple, size: 20),
+              const SizedBox(width: 10),
+              Text('Send Custom Email', style: TextStyle(fontWeight: FontWeight.w600, color: textColor)),
             ],
           ),
         ),
-        const PopupMenuDivider(),
+        PopupMenuDivider(color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200),
         const PopupMenuItem<String>(
           value: 'delete_user',
           child: Row(
@@ -349,9 +377,14 @@ class _UserWidgetState extends State<UserWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+
+    final scaffoldBg = isDarkMode ? theme.scaffoldBackgroundColor : AppColors.bgLight;
+
     return _permision.contains("users")
         ? Scaffold(
-      backgroundColor: AppColors.bgLight,
+      backgroundColor: scaffoldBg,
       body: LayoutBuilder(
         builder: (context, constraints) {
           final bool isMobile = constraints.maxWidth < 600;
@@ -361,9 +394,9 @@ class _UserWidgetState extends State<UserWidget> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildHeader(isMobile),
+                _buildHeader(isMobile, isDarkMode),
                 const SizedBox(height: 20),
-                _buildSearchBar(),
+                _buildSearchBar(isDarkMode, theme),
                 const SizedBox(height: 20),
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
@@ -372,8 +405,8 @@ class _UserWidgetState extends State<UserWidget> {
                         .snapshots(),
                     builder: (context, snapshot) {
                       if (snapshot.hasError) {
-                        return const Center(
-                            child: Text("Error fetching users!"));
+                        return Center(
+                            child: Text("Error fetching users!", style: TextStyle(color: isDarkMode ? Colors.white : Colors.black)));
                       }
                       if (snapshot.connectionState ==
                           ConnectionState.waiting) {
@@ -398,13 +431,13 @@ class _UserWidgetState extends State<UserWidget> {
                         return Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
-                            children: const [
+                            children: [
                               Icon(Icons.person_off_outlined,
-                                  size: 64, color: AppColors.textMuted),
-                              SizedBox(height: 12),
+                                  size: 64, color: isDarkMode ? Colors.grey.shade600 : AppColors.textMuted),
+                              const SizedBox(height: 12),
                               Text("No users found.",
                                   style: TextStyle(
-                                      color: AppColors.textMuted,
+                                      color: isDarkMode ? Colors.grey.shade400 : AppColors.textMuted,
                                       fontSize: 16)),
                             ],
                           ),
@@ -412,8 +445,8 @@ class _UserWidgetState extends State<UserWidget> {
                       }
 
                       return isMobile
-                          ? _buildMobileUserList(filteredDocs)
-                          : _buildDesktopUserTable(filteredDocs);
+                          ? _buildMobileUserList(filteredDocs, isDarkMode, theme)
+                          : _buildDesktopUserTable(filteredDocs, isDarkMode, theme);
                     },
                   ),
                 ),
@@ -423,10 +456,13 @@ class _UserWidgetState extends State<UserWidget> {
         },
       ),
     )
-        :  AccessDefindView();
+        : AccessDefindView();
   }
 
-  Widget _buildHeader(bool isMobile) {
+  Widget _buildHeader(bool isMobile, bool isDarkMode) {
+    final textColor = isDarkMode ? Colors.white : AppColors.textDark;
+    final subtitleColor = isDarkMode ? Colors.grey.shade400 : AppColors.textMuted;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -435,26 +471,29 @@ class _UserWidgetState extends State<UserWidget> {
           style: TextStyle(
             fontSize: isMobile ? 22 : 26,
             fontWeight: FontWeight.bold,
-            color: AppColors.textDark,
+            color: textColor,
           ),
         ),
         const SizedBox(height: 4),
-        const Text(
+        Text(
           "Click on any user to view detailed address & session analytics",
-          style: TextStyle(fontSize: 14, color: AppColors.textMuted),
+          style: TextStyle(fontSize: 14, color: subtitleColor),
         ),
       ],
     );
   }
 
-  Widget _buildSearchBar() {
+  Widget _buildSearchBar(bool isDarkMode, ThemeData theme) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDarkMode ? theme.cardColor : Colors.white,
         borderRadius: BorderRadius.circular(12),
+        border: isDarkMode ? Border.all(color: Colors.grey.shade800) : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: isDarkMode
+                ? Colors.black.withOpacity(0.2)
+                : Colors.black.withOpacity(0.03),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -462,14 +501,16 @@ class _UserWidgetState extends State<UserWidget> {
       ),
       child: TextField(
         controller: _searchController,
+        style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
         onChanged: (val) =>
             setState(() => _searchQuery = val.trim().toLowerCase()),
         decoration: InputDecoration(
           hintText: "Search users by name or email...",
+          hintStyle: TextStyle(color: isDarkMode ? Colors.grey.shade500 : Colors.grey.shade400),
           prefixIcon: const Icon(Icons.search, color: AppColors.primaryPurple),
           suffixIcon: _searchQuery.isNotEmpty
               ? IconButton(
-            icon: const Icon(Icons.clear, color: Colors.grey),
+            icon: Icon(Icons.clear, color: isDarkMode ? Colors.grey.shade400 : Colors.grey),
             onPressed: () {
               _searchController.clear();
               setState(() => _searchQuery = "");
@@ -484,36 +525,43 @@ class _UserWidgetState extends State<UserWidget> {
     );
   }
 
-  Widget _buildDesktopUserTable(List<QueryDocumentSnapshot> docs) {
+  Widget _buildDesktopUserTable(List<QueryDocumentSnapshot> docs, bool isDarkMode, ThemeData theme) {
+    final textColor = isDarkMode ? Colors.white : Colors.black87;
+    final subtitleColor = isDarkMode ? Colors.grey.shade300 : Colors.grey.shade700;
+
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDarkMode ? theme.cardColor : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(
+          color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200,
+        ),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: SingleChildScrollView(
           child: DataTable(
             showCheckboxColumn: false,
-            headingRowColor: WidgetStateProperty.all(Colors.grey.shade50),
-            columns: const [
+            headingRowColor: WidgetStateProperty.all(
+              isDarkMode ? Colors.grey.shade900 : Colors.grey.shade50,
+            ),
+            columns: [
               DataColumn(
                   label: Text('User',
-                      style: TextStyle(fontWeight: FontWeight.bold))),
+                      style: TextStyle(fontWeight: FontWeight.bold, color: textColor))),
               DataColumn(
                   label: Text('Email',
-                      style: TextStyle(fontWeight: FontWeight.bold))),
+                      style: TextStyle(fontWeight: FontWeight.bold, color: textColor))),
               DataColumn(
                   label: Text('Status',
-                      style: TextStyle(fontWeight: FontWeight.bold))),
+                      style: TextStyle(fontWeight: FontWeight.bold, color: textColor))),
               DataColumn(
                   label: Text('Joined Date',
-                      style: TextStyle(fontWeight: FontWeight.bold))),
+                      style: TextStyle(fontWeight: FontWeight.bold, color: textColor))),
               DataColumn(
                   label: Text('Actions',
-                      style: TextStyle(fontWeight: FontWeight.bold))),
+                      style: TextStyle(fontWeight: FontWeight.bold, color: textColor))),
             ],
             rows: docs.map((doc) {
               final data = doc.data() as Map<String, dynamic>;
@@ -553,38 +601,40 @@ class _UserWidgetState extends State<UserWidget> {
                         ),
                         const SizedBox(width: 12),
                         Text(name,
-                            style: const TextStyle(fontWeight: FontWeight.w600)),
+                            style: TextStyle(fontWeight: FontWeight.w600, color: textColor)),
                       ],
                     ),
                   ),
-                  DataCell(Text(email)),
+                  DataCell(Text(email, style: TextStyle(color: subtitleColor))),
                   DataCell(
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: isBlocked
-                            ? Colors.red.withOpacity(0.1)
-                            : Colors.green.withOpacity(0.1),
+                            ? Colors.red.withOpacity(isDarkMode ? 0.2 : 0.1)
+                            : Colors.green.withOpacity(isDarkMode ? 0.2 : 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
                         isBlocked ? "Blocked" : "Active",
                         style: TextStyle(
-                          color: isBlocked ? Colors.red : Colors.green,
+                          color: isBlocked ? (isDarkMode ? Colors.redAccent : Colors.red) : (isDarkMode ? Colors.greenAccent : Colors.green),
                           fontWeight: FontWeight.bold,
                           fontSize: 12,
                         ),
                       ),
                     ),
                   ),
-                  DataCell(Text(createdAtStr)),
+                  DataCell(Text(createdAtStr, style: TextStyle(color: subtitleColor))),
                   DataCell(
                     _buildUserActionsMenu(
                       userId: id,
                       userName: name,
                       userEmail: email,
                       isBlocked: isBlocked,
+                      isDarkMode: isDarkMode,
+                      theme: theme,
                     ),
                   ),
                 ],
@@ -596,7 +646,10 @@ class _UserWidgetState extends State<UserWidget> {
     );
   }
 
-  Widget _buildMobileUserList(List<QueryDocumentSnapshot> docs) {
+  Widget _buildMobileUserList(List<QueryDocumentSnapshot> docs, bool isDarkMode, ThemeData theme) {
+    final textColor = isDarkMode ? Colors.white : Colors.black87;
+    final subtitleColor = isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600;
+
     return ListView.builder(
       itemCount: docs.length,
       itemBuilder: (context, index) {
@@ -609,11 +662,13 @@ class _UserWidgetState extends State<UserWidget> {
 
         return Card(
           elevation: 0,
-          color: Colors.white,
+          color: isDarkMode ? theme.cardColor : Colors.white,
           margin: const EdgeInsets.only(bottom: 12),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
-            side: BorderSide(color: Colors.grey.shade200),
+            side: BorderSide(
+              color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200,
+            ),
           ),
           child: ListTile(
             onTap: () => _onUserSelected(doc.id, data),
@@ -634,31 +689,38 @@ class _UserWidgetState extends State<UserWidget> {
             title: Row(
               children: [
                 Expanded(
-                  child: Text(name,
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                  child: Text(
+                    name,
+                    style: TextStyle(fontWeight: FontWeight.bold, color: textColor),
+                  ),
                 ),
                 if (isBlocked)
                   Container(
                     padding:
                     const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.1),
+                      color: Colors.red.withOpacity(isDarkMode ? 0.2 : 0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: const Text("Blocked",
-                        style: TextStyle(
-                            color: Colors.red,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold)),
+                    child: Text(
+                      "Blocked",
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.redAccent : Colors.red,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
               ],
             ),
-            subtitle: Text(email),
+            subtitle: Text(email, style: TextStyle(color: subtitleColor)),
             trailing: _buildUserActionsMenu(
               userId: doc.id,
               userName: name,
               userEmail: email,
               isBlocked: isBlocked,
+              isDarkMode: isDarkMode,
+              theme: theme,
             ),
           ),
         );

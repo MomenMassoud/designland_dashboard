@@ -26,19 +26,27 @@ class ReportFilterHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final mobile = isMobile(context);
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+
+    final cardBackgroundColor = isDarkMode ? theme.cardColor : Colors.white;
+    final borderColor = isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200;
+    final titleTextColor = isDarkMode ? Colors.white : AppColors.textDark;
 
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(mobile ? 14 : 18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardBackgroundColor,
         borderRadius: BorderRadius.circular(18),
         border: BoxBorder.all(
-          color: Colors.grey.shade200,
+          color: borderColor,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(.035),
+            color: isDarkMode
+                ? Colors.black.withOpacity(.25)
+                : Colors.black.withOpacity(.035),
             blurRadius: 16,
             offset: const Offset(0, 5),
           ),
@@ -48,12 +56,12 @@ class ReportFilterHeader extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (mobile) ...[
-            const Text(
+            Text(
               "Report Filters",
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w800,
-                color: AppColors.textDark,
+                color: titleTextColor,
               ),
             ),
             const SizedBox(height: 12),
@@ -102,26 +110,34 @@ class ReportFilterHeader extends StatelessWidget {
   }
 
   Widget _buildReportDropdown(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+
+    final fieldBg = isDarkMode ? Colors.grey.shade900 : AppColors.bgLight;
+    final borderColor = isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200;
+    final textColor = isDarkMode ? Colors.white : Colors.black87;
+
     return Container(
       height: 52,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: AppColors.bgLight,
+        color: fieldBg,
         borderRadius: BorderRadius.circular(13),
         border: BoxBorder.all(
-          color: Colors.grey.shade200,
+          color: borderColor,
         ),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<ReportType>(
           value: selectedReportType,
+          dropdownColor: isDarkMode ? theme.cardColor : Colors.white,
           isExpanded: true,
           icon: const Icon(
             Icons.keyboard_arrow_down_rounded,
             color: AppColors.primaryPurple,
           ),
           onChanged: onReportTypeChanged,
-          items: const [
+          items: [
             DropdownMenuItem(
               value: ReportType.combinedFinancial,
               child: Row(
@@ -129,13 +145,14 @@ class ReportFilterHeader extends StatelessWidget {
                   Icon(
                     Icons.account_balance_wallet_outlined,
                     size: 20,
-                    color: Colors.green,
+                    color: isDarkMode ? Colors.greenAccent : Colors.green,
                   ),
-                  SizedBox(width: 10),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       "Financial Ledger & Expenses",
                       overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: textColor),
                     ),
                   ),
                 ],
@@ -148,13 +165,14 @@ class ReportFilterHeader extends StatelessWidget {
                   Icon(
                     Icons.shopping_bag_outlined,
                     size: 20,
-                    color: Colors.orange,
+                    color: isDarkMode ? Colors.orangeAccent : Colors.orange,
                   ),
-                  SizedBox(width: 10),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       "Orders Report",
                       overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: textColor),
                     ),
                   ),
                 ],
@@ -164,16 +182,17 @@ class ReportFilterHeader extends StatelessWidget {
               value: ReportType.users,
               child: Row(
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.people_alt_outlined,
                     size: 20,
                     color: AppColors.primaryPurple,
                   ),
-                  SizedBox(width: 10),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       "Users Report",
                       overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: textColor),
                     ),
                   ),
                 ],
@@ -187,18 +206,24 @@ class ReportFilterHeader extends StatelessWidget {
 
   Widget _buildDateFilterButton(BuildContext context) {
     final mobile = isMobile(context);
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+
+    final buttonBg = isDarkMode ? theme.cardColor : Colors.white;
+    final borderColor = isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300;
+    final textColor = isDarkMode ? Colors.white : AppColors.textDark;
 
     return SizedBox(
       height: 52,
       width: double.infinity,
       child: OutlinedButton.icon(
         style: OutlinedButton.styleFrom(
-          backgroundColor: Colors.white,
+          backgroundColor: buttonBg,
           padding: const EdgeInsets.symmetric(
             horizontal: 14,
           ),
           side: BorderSide(
-            color: Colors.grey.shade300,
+            color: borderColor,
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(13),
@@ -218,7 +243,7 @@ class ReportFilterHeader extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: AppColors.textDark,
+              color: textColor,
               fontSize: mobile ? 12 : 13,
               fontWeight: FontWeight.w600,
             ),
@@ -230,18 +255,29 @@ class ReportFilterHeader extends StatelessWidget {
   }
 
   Widget _buildSearchField(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+
+    final fieldBg = isDarkMode ? theme.cardColor : Colors.white;
+    final borderColor = isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300;
+    final textColor = isDarkMode ? Colors.white : Colors.black87;
+    final hintColor = isDarkMode ? Colors.grey.shade400 : Colors.grey.shade500;
+
     return SizedBox(
       height: 52,
       child: TextField(
         onChanged: onSearchChanged,
+        style: TextStyle(color: textColor),
         decoration: InputDecoration(
           hintText: "Search reports...",
-          prefixIcon: const Icon(
+          hintStyle: TextStyle(color: hintColor),
+          prefixIcon: Icon(
             Icons.search_rounded,
             size: 21,
+            color: hintColor,
           ),
           filled: true,
-          fillColor: Colors.white,
+          fillColor: fieldBg,
           contentPadding: const EdgeInsets.symmetric(
             vertical: 0,
             horizontal: 12,
@@ -249,13 +285,13 @@ class ReportFilterHeader extends StatelessWidget {
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(13),
             borderSide: BorderSide(
-              color: Colors.grey.shade300,
+              color: borderColor,
             ),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(13),
             borderSide: BorderSide(
-              color: Colors.grey.shade300,
+              color: borderColor,
             ),
           ),
           focusedBorder: OutlineInputBorder(

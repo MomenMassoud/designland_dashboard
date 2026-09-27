@@ -18,12 +18,22 @@ class UserDetailView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+
+    final scaffoldBg = isDarkMode ? theme.scaffoldBackgroundColor : AppColors.bgLight;
+    final appBarBg = isDarkMode ? theme.cardColor : Colors.white;
+    final textColor = isDarkMode ? Colors.white : AppColors.textDark;
+
     return Scaffold(
-      backgroundColor: AppColors.bgLight,
+      backgroundColor: scaffoldBg,
       appBar: AppBar(
-        title: Text(userData['name'] ?? 'User Details'),
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.textDark,
+        title: Text(
+          userData['name'] ?? 'User Details',
+          style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: appBarBg,
+        iconTheme: IconThemeData(color: textColor),
         elevation: 0.5,
       ),
       body: SingleChildScrollView(
@@ -32,11 +42,11 @@ class UserDetailView extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 1. البيانات الأساسية للمستخدم
-            _buildBasicInfoCard(),
+            _buildBasicInfoCard(context),
             const SizedBox(height: 20),
 
             // 2. بيانات العناوين ورقم الهاتف من كوليكشن 'users'
-            _buildAddressesSection(),
+            _buildAddressesSection(context),
             const SizedBox(height: 20),
 
             // 3. سجل الجلسات والزيارات من 'analytics_sessions'
@@ -48,17 +58,24 @@ class UserDetailView extends StatelessWidget {
   }
 
   // كارت البيانات الأساسية
-  Widget _buildBasicInfoCard() {
+  Widget _buildBasicInfoCard(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
     final String name = userData['name'] ?? 'N/A';
     final String email = userData['email'] ?? 'N/A';
     final String imageUrl = userData['image'] ?? userData['profilePic'] ?? '';
 
+    final cardBg = isDarkMode ? theme.cardColor : Colors.white;
+    final textColor = isDarkMode ? Colors.white : AppColors.textDark;
+    final subtitleColor = isDarkMode ? Colors.grey.shade400 : AppColors.textMuted;
+    final borderColor = isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200;
+
     return Card(
       elevation: 0,
-      color: Colors.white,
+      color: cardBg,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.shade200),
+        side: BorderSide(color: borderColor),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -66,7 +83,7 @@ class UserDetailView extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 30,
-              backgroundColor: AppColors.primaryPurple.withOpacity(0.1),
+              backgroundColor: AppColors.primaryPurple.withOpacity(0.15),
               backgroundImage: imageUrl.isNotEmpty ? NetworkImage(imageUrl) : null,
               child: imageUrl.isEmpty
                   ? Text(
@@ -86,14 +103,14 @@ class UserDetailView extends StatelessWidget {
                 children: [
                   Text(
                     name,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.textDark,
+                      color: textColor,
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(email, style: const TextStyle(color: AppColors.textMuted)),
+                  Text(email, style: TextStyle(color: subtitleColor)),
                 ],
               ),
             ),
@@ -104,19 +121,31 @@ class UserDetailView extends StatelessWidget {
   }
 
   // قسم العناوين ورقم التواصل
-  // قسم العناوين ورقم التواصل
-  Widget _buildAddressesSection() {
+  Widget _buildAddressesSection(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+
+    final cardBg = isDarkMode ? theme.cardColor : Colors.white;
+    final textColor = isDarkMode ? Colors.white : AppColors.textDark;
+    final subtitleColor = isDarkMode ? Colors.grey.shade400 : AppColors.textMuted;
+    final borderColor = isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200;
+    final itemBg = isDarkMode ? Colors.grey.shade900 : Colors.grey.shade50;
+
     return FutureBuilder<DocumentSnapshot>(
       future: FirebaseFirestore.instance.collection('users').doc(userId).get(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(child: CircularProgressIndicator(color: AppColors.primaryPurple));
         }
 
         if (!snapshot.hasData || !snapshot.data!.exists) {
           return _buildSectionContainer(
+            context: context,
             title: "Addresses & Contact",
-            child: const Text("No additional details found in 'users' collection."),
+            child: Text(
+              "No additional details found in 'users' collection.",
+              style: TextStyle(color: subtitleColor),
+            ),
           );
         }
 
@@ -125,23 +154,24 @@ class UserDetailView extends StatelessWidget {
         final List addresses = data['addresses'] as List? ?? [];
 
         return _buildSectionContainer(
+          context: context,
           title: "Addresses & Contact",
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // كارت المنتجات المفضلة
               Card(
-                color: Colors.white,
+                color: cardBg,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
-                  side: BorderSide(color: Colors.grey.shade200),
+                  side: BorderSide(color: borderColor),
                 ),
                 child: ListTile(
-                  title: const Text("Favourite Products"),
-                  subtitle: const Text("Click to show user favourite products"),
+                  title: Text("Favourite Products", style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
+                  subtitle: Text("Click to show user favourite products", style: TextStyle(color: subtitleColor)),
                   leading: const Icon(Icons.favorite, color: Colors.red),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  trailing: Icon(Icons.arrow_forward_ios, size: 16, color: isDarkMode ? Colors.grey.shade400 : Colors.grey),
                   onTap: () {
                     Get.to(() => UserFavouriteProduct(UserId: userId));
                   },
@@ -151,46 +181,44 @@ class UserDetailView extends StatelessWidget {
 
               // كارت طلبات المستخدم الجديد
               Card(
-                color: Colors.white,
+                color: cardBg,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
-                  side: BorderSide(color: Colors.grey.shade200),
+                  side: BorderSide(color: borderColor),
                 ),
                 child: ListTile(
-                  title: const Text("User Orders"),
-                  subtitle: const Text("Click to view all orders for this user"),
+                  title: Text("User Orders", style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
+                  subtitle: Text("Click to view all orders for this user", style: TextStyle(color: subtitleColor)),
                   leading: const Icon(Icons.shopping_cart, color: AppColors.primaryPurple),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  trailing: Icon(Icons.arrow_forward_ios, size: 16, color: isDarkMode ? Colors.grey.shade400 : Colors.grey),
                   onTap: () {
-                    // استبدل UserOrdersView باسم صفحة الطلبات لديك
                     Get.to(() => UserOrdersDeatils(UserID: userId));
                   },
                 ),
               ),
 
-              const Divider(height: 24),
+              Divider(height: 24, color: borderColor),
               Row(
                 children: [
                   const Icon(Icons.phone, size: 18, color: AppColors.primaryPurple),
                   const SizedBox(width: 8),
-                  Text("Phone: $phone", style: const TextStyle(fontWeight: FontWeight.w600)),
+                  Text("Phone: $phone", style: TextStyle(fontWeight: FontWeight.w600, color: textColor)),
                 ],
               ),
-              const Divider(height: 24),
-              const Text(
+              Divider(height: 24, color: borderColor),
+              Text(
                 "Saved Addresses:",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: textColor),
               ),
               const SizedBox(height: 10),
               if (addresses.isEmpty)
-                const Text("No saved addresses.", style: TextStyle(color: AppColors.textMuted))
+                Text("No saved addresses.", style: TextStyle(color: subtitleColor))
               else
                 Column(
                   children: addresses.map((addr) {
                     final map = addr as Map<String, dynamic>? ?? {};
 
-                    // استخراج تفاصيل العنوان بمرونة
                     final String fullName = map['fullName'] ?? map['name'] ?? '';
                     final String street = map['street'] ?? '';
                     final String building = map['building'] ?? '';
@@ -201,7 +229,6 @@ class UserDetailView extends StatelessWidget {
                     final String landmark = map['landmark'] ?? '';
                     final String addressPhone = map['phone'] ?? '';
 
-                    // تجميع سطر العنوان كامل
                     List<String> detailsParts = [];
                     if (building.isNotEmpty) detailsParts.add("Building $building");
                     if (street.isNotEmpty) detailsParts.add("Street $street");
@@ -217,9 +244,9 @@ class UserDetailView extends StatelessWidget {
                       margin: const EdgeInsets.only(bottom: 8),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.grey.shade50,
+                        color: itemBg,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.grey.shade200),
+                        border: Border.all(color: borderColor),
                       ),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -233,20 +260,20 @@ class UserDetailView extends StatelessWidget {
                                 if (fullName.isNotEmpty)
                                   Text(
                                     fullName,
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: textColor),
                                   ),
                                 if (addressDetailsStr.isNotEmpty) ...[
                                   const SizedBox(height: 4),
                                   Text(
                                     addressDetailsStr,
-                                    style: const TextStyle(color: AppColors.textDark, fontSize: 13),
+                                    style: TextStyle(color: textColor, fontSize: 13),
                                   ),
                                 ],
                                 if (addressPhone.isNotEmpty) ...[
                                   const SizedBox(height: 4),
                                   Text(
                                     "Phone: $addressPhone",
-                                    style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                                    style: TextStyle(color: subtitleColor, fontSize: 12),
                                   ),
                                 ],
                               ],
@@ -266,7 +293,15 @@ class UserDetailView extends StatelessWidget {
 
   // قسم عرض الجلسات والزيارات من 'analytics_sessions'
   Widget _buildSessionsSection(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    final textColor = isDarkMode ? Colors.white : AppColors.textDark;
+    final subtitleColor = isDarkMode ? Colors.grey.shade400 : AppColors.textMuted;
+    final borderColor = isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200;
+    final itemBg = isDarkMode ? Colors.grey.shade900 : Colors.grey.shade50;
+
     return _buildSectionContainer(
+      context: context,
       title: "Visit History (Analytics)",
       child: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
@@ -275,12 +310,12 @@ class UserDetailView extends StatelessWidget {
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator(color: AppColors.primaryPurple));
           }
 
           final docs = snapshot.data?.docs ?? [];
           if (docs.isEmpty) {
-            return const Text("No activity sessions logged for this user.");
+            return Text("No activity sessions logged for this user.", style: TextStyle(color: subtitleColor));
           }
 
           return ListView.separated(
@@ -308,16 +343,16 @@ class UserDetailView extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
+                    color: itemBg,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade200),
+                    border: Border.all(color: borderColor),
                   ),
                   child: Row(
                     children: [
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: AppColors.primaryPurple.withOpacity(0.1),
+                          color: AppColors.primaryPurple.withOpacity(0.15),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
@@ -333,14 +368,14 @@ class UserDetailView extends StatelessWidget {
                           children: [
                             Text(
                               "Session: ${session['sessionId'] ?? sessionId}",
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: textColor),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                             const SizedBox(height: 4),
                             Text(
                               "Started: $startTimeStr | Platform: ${platform.toUpperCase()}",
-                              style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                              style: TextStyle(fontSize: 12, color: subtitleColor),
                             ),
                             const SizedBox(height: 6),
                             Wrap(
@@ -352,9 +387,13 @@ class UserDetailView extends StatelessWidget {
                                   padding: const EdgeInsets.symmetric(horizontal: 8),
                                   label: Text(
                                     "${visitedTabs.length} Tabs Visited",
-                                    style: const TextStyle(fontSize: 11, color: Colors.blue),
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: isDarkMode ? Colors.lightBlue : Colors.blue.shade700,
+                                    ),
                                   ),
-                                  backgroundColor: Colors.blue.shade50,
+                                  backgroundColor: isDarkMode ? Colors.blue.withOpacity(0.2) : Colors.blue.shade50,
+                                  side: BorderSide.none,
                                 ),
                                 Chip(
                                   visualDensity: VisualDensity.compact,
@@ -362,16 +401,20 @@ class UserDetailView extends StatelessWidget {
                                   padding: const EdgeInsets.symmetric(horizontal: 8),
                                   label: Text(
                                     "${viewedProducts.length} Products Viewed",
-                                    style: const TextStyle(fontSize: 11, color: Colors.deepOrange),
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: isDarkMode ? Colors.orangeAccent : Colors.deepOrange,
+                                    ),
                                   ),
-                                  backgroundColor: Colors.orange.shade50,
+                                  backgroundColor: isDarkMode ? Colors.orange.withOpacity(0.2) : Colors.orange.shade50,
+                                  side: BorderSide.none,
                                 ),
                               ],
                             ),
                           ],
                         ),
                       ),
-                      const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+                      Icon(Icons.arrow_forward_ios, size: 14, color: isDarkMode ? Colors.grey.shade400 : Colors.grey),
                     ],
                   ),
                 ),
@@ -383,8 +426,17 @@ class UserDetailView extends StatelessWidget {
     );
   }
 
-  // النافذة المنبثقة مع استخراج productId الصافي من الـ Map
+  // النافذة المنبثقة للـ Session
   void _showSessionDetailsDialog(BuildContext context, String docId, Map<String, dynamic> session) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+
+    final cardBg = isDarkMode ? theme.cardColor : Colors.white;
+    final textColor = isDarkMode ? Colors.white : AppColors.textDark;
+    final subtitleColor = isDarkMode ? Colors.grey.shade400 : AppColors.textMuted;
+    final borderColor = isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200;
+    final itemBg = isDarkMode ? Colors.grey.shade900 : Colors.grey.shade50;
+
     final List visitedTabs = session['visitedTabs'] as List? ?? [];
     final List viewedProducts = session['viewedProducts'] as List? ?? [];
 
@@ -405,12 +457,13 @@ class UserDetailView extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        backgroundColor: cardBg,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
-          children: const [
-            Icon(Icons.analytics_outlined, color: AppColors.primaryPurple),
-            SizedBox(width: 8),
-            Text("Session Overview"),
+          children: [
+            const Icon(Icons.analytics_outlined, color: AppColors.primaryPurple),
+            const SizedBox(width: 8),
+            Text("Session Overview", style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
           ],
         ),
         content: SizedBox(
@@ -420,43 +473,43 @@ class UserDetailView extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildDetailRow("Session ID", session['sessionId'] ?? docId),
-                _buildDetailRow("Platform", (session['platform'] ?? 'N/A').toString().toUpperCase()),
-                _buildDetailRow("Is Guest", (session['isGuest'] ?? false).toString()),
-                _buildDetailRow("Start Time", startTimeStr),
-                _buildDetailRow("Last Active", lastActiveStr),
-                const Divider(height: 24),
+                _buildDetailRow(context, "Session ID", session['sessionId'] ?? docId),
+                _buildDetailRow(context, "Platform", (session['platform'] ?? 'N/A').toString().toUpperCase()),
+                _buildDetailRow(context, "Is Guest", (session['isGuest'] ?? false).toString()),
+                _buildDetailRow(context, "Start Time", startTimeStr),
+                _buildDetailRow(context, "Last Active", lastActiveStr),
+                Divider(height: 24, color: borderColor),
 
                 // Visited Tabs Section
-                const Text(
+                Text(
                   "Visited Tabs",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: textColor),
                 ),
                 const SizedBox(height: 8),
                 visitedTabs.isEmpty
-                    ? const Text("No tabs recorded.", style: TextStyle(color: AppColors.textMuted))
+                    ? Text("No tabs recorded.", style: TextStyle(color: subtitleColor))
                     : Wrap(
                   spacing: 6,
                   runSpacing: 6,
                   children: visitedTabs
                       .map((tab) => Chip(
-                    label: Text(tab.toString()),
-                    backgroundColor: Colors.purple.shade50,
-                    side: BorderSide(color: Colors.purple.shade100),
+                    label: Text(tab.toString(), style: TextStyle(color: isDarkMode ? Colors.purpleAccent : AppColors.primaryPurple)),
+                    backgroundColor: isDarkMode ? Colors.purple.withOpacity(0.2) : Colors.purple.shade50,
+                    side: BorderSide(color: isDarkMode ? Colors.purple.shade900 : Colors.purple.shade100),
                   ))
                       .toList(),
                 ),
 
-                const Divider(height: 24),
+                Divider(height: 24, color: borderColor),
 
-                // Viewed Products Section (استخراج productId و title بأمان)
-                const Text(
+                // Viewed Products Section
+                Text(
                   "Viewed Products (Click to inspect)",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: textColor),
                 ),
                 const SizedBox(height: 8),
                 viewedProducts.isEmpty
-                    ? const Text("No products viewed in this session.", style: TextStyle(color: AppColors.textMuted))
+                    ? Text("No products viewed in this session.", style: TextStyle(color: subtitleColor))
                     : Column(
                   children: viewedProducts.map((pItem) {
                     String productIdStr = '';
@@ -472,7 +525,7 @@ class UserDetailView extends StatelessWidget {
                     return Container(
                       margin: const EdgeInsets.only(bottom: 6),
                       child: Material(
-                        color: Colors.grey.shade50,
+                        color: itemBg,
                         borderRadius: BorderRadius.circular(8),
                         child: InkWell(
                           borderRadius: BorderRadius.circular(8),
@@ -489,7 +542,7 @@ class UserDetailView extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.grey.shade200),
+                              border: Border.all(color: borderColor),
                             ),
                             child: Row(
                               children: [
@@ -498,10 +551,10 @@ class UserDetailView extends StatelessWidget {
                                 Expanded(
                                   child: Text(
                                     productTitle.isNotEmpty ? productTitle : "Product ID: $productIdStr",
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor),
                                   ),
                                 ),
-                                const Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey),
+                                Icon(Icons.arrow_forward_ios, size: 12, color: isDarkMode ? Colors.grey.shade400 : Colors.grey),
                               ],
                             ),
                           ),
@@ -517,43 +570,54 @@ class UserDetailView extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text("Close"),
+            child: const Text("Close", style: TextStyle(color: AppColors.primaryPurple)),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildDetailRow(String title, String value) {
+  Widget _buildDetailRow(BuildContext context, String title, String value) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDarkMode ? Colors.white : AppColors.textDark;
+    final subtitleColor = isDarkMode ? Colors.grey.shade400 : AppColors.textMuted;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(title, style: const TextStyle(color: AppColors.textMuted, fontSize: 13)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+          Text(title, style: TextStyle(color: subtitleColor, fontSize: 13)),
+          Text(value, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor)),
         ],
       ),
     );
   }
 
-  Widget _buildSectionContainer({required String title, required Widget child}) {
+  Widget _buildSectionContainer({required BuildContext context, required String title, required Widget child}) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+
+    final cardBg = isDarkMode ? theme.cardColor : Colors.white;
+    final textColor = isDarkMode ? Colors.white : AppColors.textDark;
+    final borderColor = isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardBg,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textDark),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textColor),
           ),
-          const Divider(height: 20),
+          Divider(height: 20, color: borderColor),
           child,
         ],
       ),

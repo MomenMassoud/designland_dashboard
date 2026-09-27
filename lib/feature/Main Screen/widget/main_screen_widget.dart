@@ -56,24 +56,24 @@ class _MainScreenWidgetState extends State<MainScreenWidget> {
     _startProgram();
   }
 
-
   void _startProgram() async {
     _userModel = await GetCurrentUserData(context);
     if (!kIsWeb) {
       await setupAndroidNotifications();
-    }
-    else{
+    } else {
       await setupWeb();
     }
     await saveDeviceTokenToFirestore();
     await cleanAndFetchValidPromoCodes();
 
-     setState(() {});
+    setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
-    try{
+    final bool isDark = Get.isDarkMode;
+
+    try {
       if (_userModel == null) {
         return const Scaffold(
           body: Center(
@@ -83,10 +83,9 @@ class _MainScreenWidgetState extends State<MainScreenWidget> {
       }
 
       if (_userModel!.role != "admin" && _userModel!.role != "staff") {
-        return  AccessDefindView();
+        return AccessDefindView();
       }
-    }
-    catch(e){
+    } catch (e) {
       print(e);
       LogoutMethod(context);
     }
@@ -97,20 +96,27 @@ class _MainScreenWidgetState extends State<MainScreenWidget> {
 
         return Scaffold(
           key: _scaffoldKey,
-          backgroundColor: AppColors.bgLight,
-          drawer: isMobile ? Drawer(child: _buildSidebarContent()) : null,
+          backgroundColor: isDark
+              ? Theme.of(context).scaffoldBackgroundColor
+              : AppColors.bgLight,
+          drawer: isMobile
+              ? Drawer(
+            backgroundColor: Theme.of(context).cardColor,
+            child: _buildSidebarContent(isDark),
+          )
+              : null,
           body: Padding(
             padding: const EdgeInsets.only(top: 15.0),
             child: Row(
               children: [
                 // إظهار الـ Sidebar الدائم فقط في الشاشات الكبيرة
-                if (!isMobile) _buildSidebar(context),
+                if (!isMobile) _buildSidebar(context, isDark),
 
                 // منطقة المحتوى الرئيسي والهيدر العلوي
                 Expanded(
                   child: Column(
                     children: [
-                      _buildTopHeader(isMobile),
+                      _buildTopHeader(isMobile, isDark),
 
                       // Dynamic Body View
                       Expanded(
@@ -131,27 +137,27 @@ class _MainScreenWidgetState extends State<MainScreenWidget> {
   }
 
   // ==================== SIDEBAR CONTAINER ====================
-  Widget _buildSidebar(BuildContext context) {
+  Widget _buildSidebar(BuildContext context, bool isDark) {
     return Container(
       width: 260,
       margin: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? Theme.of(context).cardColor : Colors.white,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withOpacity(isDark ? 0.2 : 0.03),
             blurRadius: 20,
             offset: const Offset(0, 5),
           ),
         ],
       ),
-      child: _buildSidebarContent(),
+      child: _buildSidebarContent(isDark),
     );
   }
 
   // ==================== SIDEBAR CONTENT ====================
-  Widget _buildSidebarContent() {
+  Widget _buildSidebarContent(bool isDark) {
     return Column(
       children: [
         const SizedBox(height: 24),
@@ -160,24 +166,28 @@ class _MainScreenWidgetState extends State<MainScreenWidget> {
           backgroundImage: AssetImage(AppImages.appPLogo),
         ),
         const SizedBox(height: 16),
-        const Divider(height: 1, thickness: 0.5, color: Colors.black12),
+        Divider(
+          height: 1,
+          thickness: 0.5,
+          color: isDark ? Colors.white24 : Colors.black12,
+        ),
         const SizedBox(height: 16),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             children: [
-              _buildNavItem(0, Icons.grid_view_rounded, "Home".tr),
-              _buildNavItem(1, Icons.category_outlined, "Categories".tr),
-              _buildNavItem(2, Icons.shopping_bag_outlined, "Orders".tr),
-              _buildNavItem(3, Icons.bar_chart_rounded, "Reports".tr),
-              _buildNavItem(4, Icons.inventory_2_outlined, "Products".tr),
-              _buildNavItem(5, Icons.badge_outlined, "Staff".tr),
-              _buildNavItem(6, Icons.people_alt_outlined, "Users".tr),
-              _buildNavItem(7, Icons.analytics, "Analytics".tr),
-              _buildNavItem(8, Icons.info_outline, "About".tr),
-              _buildNavItem(9, Icons.imagesearch_roller, "Banners".tr),
-              _buildNavItem(10, Icons.discount, "PromoCode".tr),
-              _buildNavItem(11, Icons.language, "Country".tr),
+              _buildNavItem(0, Icons.grid_view_rounded, "Home".tr, isDark),
+              _buildNavItem(1, Icons.category_outlined, "Categories".tr, isDark),
+              _buildNavItem(2, Icons.shopping_bag_outlined, "Orders".tr, isDark),
+              _buildNavItem(3, Icons.bar_chart_rounded, "Reports".tr, isDark),
+              _buildNavItem(4, Icons.inventory_2_outlined, "Products".tr, isDark),
+              _buildNavItem(5, Icons.badge_outlined, "Staff".tr, isDark),
+              _buildNavItem(6, Icons.people_alt_outlined, "Users".tr, isDark),
+              _buildNavItem(7, Icons.analytics, "Analytics".tr, isDark),
+              _buildNavItem(8, Icons.info_outline, "About".tr, isDark),
+              _buildNavItem(9, Icons.imagesearch_roller, "Banners".tr, isDark),
+              _buildNavItem(10, Icons.discount, "PromoCode".tr, isDark),
+              _buildNavItem(11, Icons.language, "Country".tr, isDark),
             ],
           ),
         ),
@@ -185,8 +195,9 @@ class _MainScreenWidgetState extends State<MainScreenWidget> {
     );
   }
 
-  Widget _buildNavItem(int index, IconData icon, String title) {
+  Widget _buildNavItem(int index, IconData icon, String title, bool isDark) {
     final isSelected = _selectedIndex == index;
+    final unselectedTextColor = isDark ? Colors.white70 : AppColors.textDark;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -223,7 +234,7 @@ class _MainScreenWidgetState extends State<MainScreenWidget> {
           title: Text(
             title,
             style: TextStyle(
-              color: isSelected ? Colors.white : AppColors.textDark,
+              color: isSelected ? Colors.white : unselectedTextColor,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
               fontSize: 15,
             ),
@@ -243,7 +254,7 @@ class _MainScreenWidgetState extends State<MainScreenWidget> {
   }
 
   // ==================== TOP HEADER WIDGET ====================
-  Widget _buildTopHeader(bool isMobile) {
+  Widget _buildTopHeader(bool isMobile, bool isDark) {
     return Container(
       margin: EdgeInsets.only(
         top: 16,
@@ -253,11 +264,11 @@ class _MainScreenWidgetState extends State<MainScreenWidget> {
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? Theme.of(context).cardColor : Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withOpacity(isDark ? 0.2 : 0.02),
             blurRadius: 15,
             offset: const Offset(0, 4),
           ),
@@ -268,7 +279,10 @@ class _MainScreenWidgetState extends State<MainScreenWidget> {
           // زر فتح القائمة الجانبية في شاشات الموبايل
           if (isMobile)
             IconButton(
-              icon: const Icon(Icons.menu, color: AppColors.textDark),
+              icon: Icon(
+                Icons.menu,
+                color: isDark ? Colors.white : AppColors.textDark,
+              ),
               onPressed: () {
                 _scaffoldKey.currentState?.openDrawer();
               },
@@ -279,19 +293,27 @@ class _MainScreenWidgetState extends State<MainScreenWidget> {
             child: Container(
               height: 42,
               decoration: BoxDecoration(
-                color: AppColors.bgLight,
+                color: isDark
+                    ? Colors.white.withOpacity(0.05)
+                    : AppColors.bgLight,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child:  TextField(
+              child: TextField(
+                style: TextStyle(
+                  color: isDark ? Colors.white : AppColors.textDark,
+                ),
                 decoration: InputDecoration(
                   hintText: "Search...".tr,
+                  hintStyle: TextStyle(
+                    color: isDark ? Colors.white : AppColors.textMuted,
+                  ),
                   prefixIcon: Icon(
                     Icons.search,
                     color: AppColors.textMuted,
                     size: 20,
                   ),
                   border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(vertical: 10),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
                 ),
               ),
             ),
@@ -331,20 +353,42 @@ class _MainScreenWidgetState extends State<MainScreenWidget> {
                     children: [
                       Text(
                         _userModel!.Name,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
-                          color: AppColors.textDark,
+                          color: isDark ? Colors.white : AppColors.textDark,
                         ),
                       ),
                       Text(
                         _userModel!.role,
                         style: const TextStyle(
-                            fontSize: 11, color: AppColors.textMuted),
+                          fontSize: 11,
+                          color: AppColors.textMuted,
+                        ),
                       ),
                     ],
                   ),
+
                 const SizedBox(width: 8),
+
+                // ==================== زر تغيير الثيم (Dark/Light Mode) ====================
+                IconButton(
+                  tooltip: isDark ? 'Light Mode' : 'Dark Mode',
+                  icon: Icon(
+                    isDark ? Icons.light_mode : Icons.dark_mode,
+                    color: isDark ? Colors.amber : AppColors.primaryPurple,
+                  ),
+                  onPressed: () {
+                    Get.changeThemeMode(
+                      isDark ? ThemeMode.light : ThemeMode.dark,
+                    );
+                    setState(() {});
+                  },
+                ),
+
+                const SizedBox(width: 4),
+
+                // زر التسجيل خروج
                 IconButton(
                   onPressed: () async {
                     LogoutMethod(context);

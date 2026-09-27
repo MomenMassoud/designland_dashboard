@@ -53,7 +53,7 @@ class _OrdersWidgetState extends State<OrdersWidget> with SingleTickerProviderSt
     if (mounted) setState(() {});
   }
 
-  void _saveNotification(String userID, String status, String orderID,String title,String body) async {
+  void _saveNotification(String userID, String status, String orderID, String title, String body) async {
     try {
       await _firestore.collection('user').doc(userID).collection('notifications').add({
         'isRead': false,
@@ -69,14 +69,20 @@ class _OrdersWidgetState extends State<OrdersWidget> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
-    if (!_permision.contains("orders")) return  AccessDefindView();
+    if (!_permision.contains("orders")) return AccessDefindView();
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDark ? const Color(0xFF121212) : AppColors.bgLight;
+    final surfaceColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final textColor = isDark ? Colors.white : AppColors.textDark;
+    final mutedTextColor = isDark ? Colors.grey[400] : AppColors.textMuted;
 
     return Scaffold(
-      backgroundColor: AppColors.bgLight,
+      backgroundColor: backgroundColor,
       appBar: AppBar(
-        title: const Text("Orders & Financial Management", style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.textDark,
+        title: Text("Orders & Financial Management", style: TextStyle(fontWeight: FontWeight.bold, color: textColor)),
+        backgroundColor: surfaceColor,
+        foregroundColor: textColor,
         elevation: 0.5,
         actions: [
           Padding(
@@ -105,7 +111,7 @@ class _OrdersWidgetState extends State<OrdersWidget> with SingleTickerProviderSt
           controller: _tabController,
           isScrollable: true,
           labelColor: AppColors.primaryPurple,
-          unselectedLabelColor: Colors.grey,
+          unselectedLabelColor: mutedTextColor,
           indicatorColor: AppColors.primaryPurple,
           indicatorWeight: 3,
           tabs: _tabs.map((tab) => Tab(text: tab)).toList(),
@@ -115,16 +121,18 @@ class _OrdersWidgetState extends State<OrdersWidget> with SingleTickerProviderSt
         children: [
           // 🔍 شريط البحث برقم الطلب أو اسم العميل
           Container(
-            color: Colors.white,
+            color: surfaceColor,
             padding: const EdgeInsets.all(12.0),
             child: TextField(
               controller: _searchController,
+              style: TextStyle(color: textColor),
               decoration: InputDecoration(
                 hintText: "Search by Order # or Customer Name...",
+                hintStyle: TextStyle(color: isDark ? Colors.grey[500] : Colors.grey[400]),
                 prefixIcon: const Icon(Icons.search, color: AppColors.primaryPurple),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
-                  icon: const Icon(Icons.clear, color: Colors.grey),
+                  icon: Icon(Icons.clear, color: mutedTextColor),
                   onPressed: () {
                     _searchController.clear();
                     setState(() => _searchQuery = '');
@@ -132,7 +140,7 @@ class _OrdersWidgetState extends State<OrdersWidget> with SingleTickerProviderSt
                 )
                     : null,
                 filled: true,
-                fillColor: const Color(0xFFF1F5F9),
+                fillColor: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF1F5F9),
                 contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
                 enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
@@ -148,7 +156,7 @@ class _OrdersWidgetState extends State<OrdersWidget> with SingleTickerProviderSt
           Expanded(
             child: TabBarView(
               controller: _tabController,
-              children: _tabs.map((tabFilter) => _buildOrdersList(tabFilter)).toList(),
+              children: _tabs.map((tabFilter) => _buildOrdersList(tabFilter, isDark)).toList(),
             ),
           ),
         ],
@@ -156,7 +164,11 @@ class _OrdersWidgetState extends State<OrdersWidget> with SingleTickerProviderSt
     );
   }
 
-  Widget _buildOrdersList(String filterStatus) {
+  Widget _buildOrdersList(String filterStatus, bool isDark) {
+    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final textColor = isDark ? Colors.white : AppColors.textDark;
+    final mutedTextColor = isDark ? Colors.grey[400] : AppColors.textMuted;
+
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: _firestore.collectionGroup('orders').snapshots(),
       builder: (context, snapshot) {
@@ -165,7 +177,7 @@ class _OrdersWidgetState extends State<OrdersWidget> with SingleTickerProviderSt
         }
 
         if (snapshot.hasError) {
-          return Center(child: Text("Error: ${snapshot.error}"));
+          return Center(child: Text("Error: ${snapshot.error}", style: TextStyle(color: textColor)));
         }
 
         var docs = snapshot.data?.docs ?? [];
@@ -186,17 +198,14 @@ class _OrdersWidgetState extends State<OrdersWidget> with SingleTickerProviderSt
             final orderId = doc.id.toLowerCase();
             final userId = data['userId'] ?? doc.reference.parent.parent?.id ?? '';
 
-            // جلب اسم العميل من الـ Manual Data أو من كاش أسماء العملاء
             String customerName = (data['customerName'] ?? '').toString().toLowerCase();
 
-            // التحقق من عنوان Selected Address إن وجد
             final selectedAddress = data['selectedAddress'];
             if (selectedAddress is Map) {
               final fullName = (selectedAddress['fullName'] ?? selectedAddress['name'] ?? '').toString().toLowerCase();
               if (fullName.isNotEmpty) customerName = fullName;
             }
 
-            // الاستعانة بالكاش لبيانات المستخدم المسجل
             if (_userNamesCache.containsKey(userId)) {
               customerName = _userNamesCache[userId]!.toLowerCase();
             }
@@ -215,7 +224,7 @@ class _OrdersWidgetState extends State<OrdersWidget> with SingleTickerProviderSt
                 _searchQuery.isNotEmpty
                     ? "No orders found matching '$_searchQuery'"
                     : "No $filterStatus orders found.",
-                style: const TextStyle(color: Colors.grey, fontSize: 15),
+                style: TextStyle(color: mutedTextColor, fontSize: 15),
               ),
             ),
           );
@@ -244,11 +253,15 @@ class _OrdersWidgetState extends State<OrdersWidget> with SingleTickerProviderSt
 
             return Card(
               elevation: 0,
-              color: Colors.white,
+              color: cardColor,
               margin: const EdgeInsets.only(bottom: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
-                side: BorderSide(color: isManual ? Colors.orange.shade300 : Colors.grey.shade200),
+                side: BorderSide(
+                  color: isManual
+                      ? Colors.orange.shade400
+                      : (isDark ? Colors.grey.shade800 : Colors.grey.shade200),
+                ),
               ),
               child: InkWell(
                 borderRadius: BorderRadius.circular(12),
@@ -276,15 +289,15 @@ class _OrdersWidgetState extends State<OrdersWidget> with SingleTickerProviderSt
                             children: [
                               Text(
                                 "Order #${orderNumber != 0 ? orderNumber : orderId.substring(0, orderId.length > 8 ? 8 : orderId.length)}",
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: textColor),
                               ),
                               if (isManual) ...[
                                 const SizedBox(width: 8),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                   decoration: BoxDecoration(
-                                    color: Colors.orange.shade50,
-                                    border: Border.all(color: Colors.orange.shade200),
+                                    color: isDark ? Colors.orange.withOpacity(0.2) : Colors.orange.shade50,
+                                    border: Border.all(color: Colors.orange.shade300),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: const Text("Manual", style: TextStyle(fontSize: 10, color: Colors.orange, fontWeight: FontWeight.bold)),
@@ -292,10 +305,10 @@ class _OrdersWidgetState extends State<OrdersWidget> with SingleTickerProviderSt
                               ]
                             ],
                           ),
-                          _buildStatusDropdown(userId, orderId, currentStatus, totalPrice, orderDoc.reference, orderNumber, orderData),
+                          _buildStatusDropdown(userId, orderId, currentStatus, totalPrice, orderDoc.reference, orderNumber, orderData, isDark),
                         ],
                       ),
-                      const Divider(height: 20),
+                      Divider(height: 20, color: isDark ? Colors.grey.shade800 : Colors.grey.shade200),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -305,7 +318,7 @@ class _OrdersWidgetState extends State<OrdersWidget> with SingleTickerProviderSt
                               if (isManual && (orderData['customerName']?.toString().isNotEmpty ?? false)) ...[
                                 Text(
                                   "Customer: ${orderData['customerName']}",
-                                  style: const TextStyle(fontSize: 13, color: AppColors.textDark, fontWeight: FontWeight.w600),
+                                  style: TextStyle(fontSize: 13, color: textColor, fontWeight: FontWeight.w600),
                                 ),
                               ] else if (userId.isNotEmpty) ...[
                                 FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
@@ -314,7 +327,7 @@ class _OrdersWidgetState extends State<OrdersWidget> with SingleTickerProviderSt
                                     if (userSnapshot.connectionState == ConnectionState.waiting) {
                                       return Text(
                                         "Customer: ${_userNamesCache[userId] ?? 'Loading...'}",
-                                        style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
+                                        style: TextStyle(fontSize: 13, color: mutedTextColor),
                                       );
                                     }
 
@@ -322,47 +335,41 @@ class _OrdersWidgetState extends State<OrdersWidget> with SingleTickerProviderSt
                                     if (userSnapshot.hasData && userSnapshot.data!.exists) {
                                       final userData = userSnapshot.data!.data();
 
-                                      // 1. البحث في حقل name المباشر
                                       if (userData?['name'] != null && userData!['name'].toString().isNotEmpty) {
                                         userName = userData['name'];
-                                      }
-                                      // 2. البحث داخل مصفوفة العناوين addresses[0]['fullName'] أو ['name']
-                                      else if (userData?['addresses'] is List && (userData!['addresses'] as List).isNotEmpty) {
+                                      } else if (userData?['addresses'] is List && (userData!['addresses'] as List).isNotEmpty) {
                                         final firstAddr = (userData['addresses'] as List).first;
                                         if (firstAddr is Map) {
                                           userName = firstAddr['fullName'] ?? firstAddr['name'] ?? userName;
                                         }
-                                      }
-                                      // 3. الحل الأخير
-                                      else {
+                                      } else {
                                         userName = orderData['customerName'] ?? orderData['userEmail'] ?? userId;
                                       }
                                     } else {
                                       userName = orderData['customerName'] ?? orderData['userEmail'] ?? userId;
                                     }
 
-                                    // حفظ الاسم في الكاش ليعمل معه شريط البحث تلقائياً
                                     _userNamesCache[userId] = userName;
 
                                     return Text(
                                       "Customer: $userName",
-                                      style: const TextStyle(fontSize: 13, color: AppColors.textDark, fontWeight: FontWeight.w600),
+                                      style: TextStyle(fontSize: 13, color: textColor, fontWeight: FontWeight.w600),
                                     );
                                   },
                                 ),
                               ] else ...[
                                 Text(
                                   "Customer: ${orderData['customerName'] ?? orderData['userEmail'] ?? 'Guest'}",
-                                  style: const TextStyle(fontSize: 13, color: AppColors.textDark, fontWeight: FontWeight.w600),
+                                  style: TextStyle(fontSize: 13, color: textColor, fontWeight: FontWeight.w600),
                                 ),
                               ],
                               const SizedBox(height: 4),
-                              Text("Date: $formattedDate", style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                              Text("Date: $formattedDate", style: TextStyle(fontSize: 12, color: mutedTextColor)),
                               const SizedBox(height: 4),
                               Text("${items.length} Item(s)", style: const TextStyle(fontSize: 12, color: AppColors.primaryPurple, fontWeight: FontWeight.w600)),
                             ],
                           ),
-                          Text("$totalPrice EGP", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green)),
+                          Text("$totalPrice EGP", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.greenAccent : Colors.green)),
                         ],
                       ),
                     ],
@@ -377,15 +384,16 @@ class _OrdersWidgetState extends State<OrdersWidget> with SingleTickerProviderSt
   }
 
   Widget _buildStatusDropdown(String userId, String orderId, String currentStatus, num total, DocumentReference orderRef,
-      int orderNumber, Map<String, dynamic> orderData) {
+      int orderNumber, Map<String, dynamic> orderData, bool isDark) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-      decoration: BoxDecoration(color: _getStatusBgColor(currentStatus), borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(color: _getStatusBgColor(currentStatus, isDark), borderRadius: BorderRadius.circular(20)),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
+          dropdownColor: isDark ? const Color(0xFF2A2A2A) : Colors.white,
           value: _statuses.contains(currentStatus.toLowerCase()) ? currentStatus.toLowerCase() : 'pending',
-          icon: Icon(Icons.arrow_drop_down, color: _getStatusColor(currentStatus)),
-          style: TextStyle(color: _getStatusColor(currentStatus), fontWeight: FontWeight.bold, fontSize: 11),
+          icon: Icon(Icons.arrow_drop_down, color: _getStatusColor(currentStatus, isDark)),
+          style: TextStyle(color: _getStatusColor(currentStatus, isDark), fontWeight: FontWeight.bold, fontSize: 11),
           onChanged: (String? newStatus) async {
             if (newStatus != null && newStatus != currentStatus) {
               await orderRef.update({'status': newStatus});
@@ -414,8 +422,7 @@ class _OrdersWidgetState extends State<OrdersWidget> with SingleTickerProviderSt
                     title: "Order Confirmed!",
                     body: "We’re now preparing your order with care.",
                   );
-                  _saveNotification(userId, newStatus, orderId,"Order Confirmed!","We’re now preparing your order with care.");
-
+                  _saveNotification(userId, newStatus, orderId, "Order Confirmed!", "We’re now preparing your order with care.");
                 } else if (newStatus == "completed") {
                   sendOrderReadyEmail(
                     customerEmail: user.email,
@@ -427,7 +434,7 @@ class _OrdersWidgetState extends State<OrdersWidget> with SingleTickerProviderSt
                     title: "Order Shipped!",
                     body: "Please expect a call from our courier.",
                   );
-                  _saveNotification(userId, newStatus, orderId,"Order Shipped!","Please expect a call from our courier.");
+                  _saveNotification(userId, newStatus, orderId, "Order Shipped!", "Please expect a call from our courier.");
                 } else {
                   sendCancelInvoiceEmail(
                     customerEmail: user.email,
@@ -442,7 +449,7 @@ class _OrdersWidgetState extends State<OrdersWidget> with SingleTickerProviderSt
                     title: "Your Order Updated Status",
                     body: "Your Order Status $newStatus!",
                   );
-                  _saveNotification(userId, newStatus, orderId,"Your Order Updated Status","Your Order Status $newStatus!");
+                  _saveNotification(userId, newStatus, orderId, "Your Order Updated Status", "Your Order Status $newStatus!");
                 }
               }
 
@@ -455,16 +462,24 @@ class _OrdersWidgetState extends State<OrdersWidget> with SingleTickerProviderSt
     );
   }
 
-  Color _getStatusColor(String status) {
+  Color _getStatusColor(String status, bool isDark) {
     switch (status.toLowerCase()) {
-      case 'completed': return Colors.green;
-      case 'cancelled': return Colors.red;
-      case 'shipping': return Colors.blue;
-      default: return Colors.orange;
+      case 'completed': return isDark ? Colors.greenAccent : Colors.green;
+      case 'cancelled': return isDark ? Colors.redAccent : Colors.red;
+      case 'shipping': return isDark ? Colors.blueAccent : Colors.blue;
+      default: return isDark ? Colors.orangeAccent : Colors.orange;
     }
   }
 
-  Color _getStatusBgColor(String status) {
+  Color _getStatusBgColor(String status, bool isDark) {
+    if (isDark) {
+      switch (status.toLowerCase()) {
+        case 'completed': return Colors.green.withOpacity(0.2);
+        case 'cancelled': return Colors.red.withOpacity(0.2);
+        case 'shipping': return Colors.blue.withOpacity(0.2);
+        default: return Colors.orange.withOpacity(0.2);
+      }
+    }
     switch (status.toLowerCase()) {
       case 'completed': return Colors.green.shade50;
       case 'cancelled': return Colors.red.shade50;
@@ -509,13 +524,18 @@ class _CreateManualOrderPageState extends State<CreateManualOrderPage> {
   @override
   Widget build(BuildContext context) {
     final bool isDesktop = MediaQuery.of(context).size.width > 800;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final backgroundColor = isDark ? const Color(0xFF121212) : const Color(0xFFA6BAC8);
+    final surfaceColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final textColor = isDark ? Colors.white : AppColors.textDark;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFA6BAC8),
+      backgroundColor: backgroundColor,
       appBar: AppBar(
-        title: const Text("Create Manual Order", style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.textDark,
+        title: Text("Create Manual Order", style: TextStyle(fontWeight: FontWeight.bold, color: textColor)),
+        backgroundColor: surfaceColor,
+        foregroundColor: textColor,
         elevation: 0.5,
       ),
       body: SingleChildScrollView(
@@ -529,10 +549,12 @@ class _CreateManualOrderPageState extends State<CreateManualOrderPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _buildSectionCard(
+                isDark: isDark,
                 title: "1. Customer Profile",
                 icon: Icons.person_outline,
                 children: [
                   _buildTextField(
+                    isDark: isDark,
                     controller: nameController,
                     label: "Customer Full Name *",
                     hint: "e.g. John Doe",
@@ -543,6 +565,7 @@ class _CreateManualOrderPageState extends State<CreateManualOrderPage> {
                     children: [
                       Expanded(
                         child: _buildTextField(
+                          isDark: isDark,
                           controller: phoneController,
                           label: "Primary Phone *",
                           hint: "01xxxxxxxxx",
@@ -553,6 +576,7 @@ class _CreateManualOrderPageState extends State<CreateManualOrderPage> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: _buildTextField(
+                          isDark: isDark,
                           controller: additionalPhoneController,
                           label: "Alternative Phone",
                           hint: "Optional",
@@ -565,16 +589,19 @@ class _CreateManualOrderPageState extends State<CreateManualOrderPage> {
               ),
               const SizedBox(height: 16),
               _buildSectionCard(
+                isDark: isDark,
                 title: "2. Shipping Address Details",
                 icon: Icons.location_on_outlined,
                 children: [
                   _buildTextField(
+                    isDark: isDark,
                     controller: addressTitleController,
                     label: "Address Label",
                     hint: "e.g. Home, Office, Studio",
                   ),
                   const SizedBox(height: 12),
                   _buildTextField(
+                    isDark: isDark,
                     controller: detailsController,
                     label: "Street Address / Details *",
                     hint: "e.g. 15 El-Tahrir St.",
@@ -583,23 +610,24 @@ class _CreateManualOrderPageState extends State<CreateManualOrderPage> {
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      Expanded(child: _buildTextField(controller: buildingController, label: "Building", hint: "e.g. 12B")),
+                      Expanded(child: _buildTextField(isDark: isDark, controller: buildingController, label: "Building", hint: "e.g. 12B")),
                       const SizedBox(width: 8),
-                      Expanded(child: _buildTextField(controller: floorController, label: "Floor", hint: "e.g. 3rd")),
+                      Expanded(child: _buildTextField(isDark: isDark, controller: floorController, label: "Floor", hint: "e.g. 3rd")),
                       const SizedBox(width: 8),
-                      Expanded(child: _buildTextField(controller: apartmentController, label: "Apt No.", hint: "e.g. 302")),
+                      Expanded(child: _buildTextField(isDark: isDark, controller: apartmentController, label: "Apt No.", hint: "e.g. 302")),
                     ],
                   ),
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      Expanded(child: _buildTextField(controller: cityController, label: "City", hint: "e.g. Alexandria")),
+                      Expanded(child: _buildTextField(isDark: isDark, controller: cityController, label: "City", hint: "e.g. Alexandria")),
                       const SizedBox(width: 12),
-                      Expanded(child: _buildTextField(controller: stateController, label: "Governorate / State", hint: "e.g. Cairo")),
+                      Expanded(child: _buildTextField(isDark: isDark, controller: stateController, label: "Governorate / State", hint: "e.g. Cairo")),
                     ],
                   ),
                   const SizedBox(height: 12),
                   _buildTextField(
+                    isDark: isDark,
                     controller: landmarkController,
                     label: "Landmark",
                     hint: "e.g. Near Metro Station",
@@ -608,10 +636,12 @@ class _CreateManualOrderPageState extends State<CreateManualOrderPage> {
               ),
               const SizedBox(height: 16),
               _buildSectionCard(
+                isDark: isDark,
                 title: "3. Order Items & Pricing",
                 icon: Icons.shopping_bag_outlined,
                 children: [
                   _buildTextField(
+                    isDark: isDark,
                     controller: itemTitleController,
                     label: "Product / Service Description *",
                     hint: "e.g. Custom Canvas Print (60x90cm)",
@@ -619,6 +649,7 @@ class _CreateManualOrderPageState extends State<CreateManualOrderPage> {
                   ),
                   const SizedBox(height: 12),
                   _buildTextField(
+                    isDark: isDark,
                     controller: priceController,
                     label: "Total Price (EGP) *",
                     hint: "0.00",
@@ -658,15 +689,15 @@ class _CreateManualOrderPageState extends State<CreateManualOrderPage> {
     );
   }
 
-  Widget _buildSectionCard({required String title, required IconData icon, required List<Widget> children}) {
+  Widget _buildSectionCard({required bool isDark, required String title, required IconData icon, required List<Widget> children}) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: isDark ? Colors.black.withOpacity(0.3) : Colors.black.withOpacity(0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -681,11 +712,11 @@ class _CreateManualOrderPageState extends State<CreateManualOrderPage> {
               const SizedBox(width: 8),
               Text(
                 title,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textDark),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppColors.textDark),
               ),
             ],
           ),
-          const Divider(height: 24),
+          Divider(height: 24, color: isDark ? Colors.grey.shade800 : Colors.grey.shade200),
           ...children,
         ],
       ),
@@ -693,24 +724,30 @@ class _CreateManualOrderPageState extends State<CreateManualOrderPage> {
   }
 
   Widget _buildTextField({
+    required bool isDark,
     required TextEditingController controller,
     required String label,
     String? hint,
     TextInputType keyboardType = TextInputType.text,
     String? Function(String?)? validator,
   }) {
+    final borderColor = isDark ? Colors.grey.shade700 : const Color(0xFFE2E8F0);
+
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
       validator: validator,
+      style: TextStyle(color: isDark ? Colors.white : AppColors.textDark),
       decoration: InputDecoration(
         labelText: label,
+        labelStyle: TextStyle(color: isDark ? Colors.grey[400] : AppColors.textMuted),
         hintText: hint,
+        hintStyle: TextStyle(color: isDark ? Colors.grey[600] : Colors.grey[400]),
         filled: true,
-        fillColor: const Color(0xFFF8FAFC),
+        fillColor: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF8FAFC),
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: borderColor)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: borderColor)),
         focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.primaryPurple, width: 1.5)),
       ),
     );
@@ -787,7 +824,7 @@ class _CreateManualOrderPageState extends State<CreateManualOrderPage> {
         ]
       });
       await _firestore.collection('app_info').doc("const").update({
-        "order_number":nextOrderNumber+1
+        "order_number": nextOrderNumber + 1
       });
 
       if (mounted) {

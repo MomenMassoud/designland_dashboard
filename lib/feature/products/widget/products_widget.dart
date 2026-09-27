@@ -74,9 +74,12 @@ class _ProductsWidgetState extends State<ProductsWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDark ? const Color(0xFF121212) : AppColors.bgLight;
+
     return _permision.contains("products")
         ? Scaffold(
-      backgroundColor: AppColors.bgLight,
+      backgroundColor: backgroundColor,
       body: LayoutBuilder(
         builder: (context, constraints) {
           final bool isMobile = constraints.maxWidth < 600;
@@ -88,9 +91,9 @@ class _ProductsWidgetState extends State<ProductsWidget> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildHeader(context, isMobile),
+                _buildHeader(context, isMobile, isDark),
                 const SizedBox(height: 20),
-                _buildSearchBar(),
+                _buildSearchBar(isDark),
                 const SizedBox(height: 20),
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
@@ -123,14 +126,15 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                         return Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
-                            children: const [
+                            children: [
                               Icon(Icons.inventory_2_outlined,
-                                  size: 64, color: AppColors.textMuted),
-                              SizedBox(height: 12),
+                                  size: 64,
+                                  color: isDark ? Colors.grey[600] : AppColors.textMuted),
+                              const SizedBox(height: 12),
                               Text(
                                 "No products found matching your search.",
                                 style: TextStyle(
-                                    color: AppColors.textMuted,
+                                    color: isDark ? Colors.grey[400] : AppColors.textMuted,
                                     fontSize: 16),
                               ),
                             ],
@@ -173,8 +177,7 @@ class _ProductsWidgetState extends State<ProductsWidget> {
 
                               if (reviewSnapshot.hasData &&
                                   reviewSnapshot.data!.docs.isNotEmpty) {
-                                final reviews =
-                                    reviewSnapshot.data!.docs;
+                                final reviews = reviewSnapshot.data!.docs;
                                 final totalRating = reviews.fold<double>(
                                   0.0,
                                       (sum, rDoc) {
@@ -223,6 +226,7 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                 context,
                                 product: product,
                                 isMobile: isMobile,
+                                isDark: isDark,
                               );
                             },
                           );
@@ -240,23 +244,26 @@ class _ProductsWidgetState extends State<ProductsWidget> {
         : AccessDefindView();
   }
 
-  Widget _buildHeader(BuildContext context, bool isMobile) {
+  Widget _buildHeader(BuildContext context, bool isMobile, bool isDark) {
+    final textColor = isDark ? Colors.white : AppColors.textDark;
+    final mutedTextColor = isDark ? Colors.grey[400] : AppColors.textMuted;
+
     if (isMobile) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             "Products Management",
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
-              color: AppColors.textDark,
+              color: textColor,
             ),
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             "Manage items, prices, and catalog",
-            style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+            style: TextStyle(fontSize: 13, color: mutedTextColor),
           ),
           const SizedBox(height: 12),
           SizedBox(
@@ -285,7 +292,7 @@ class _ProductsWidgetState extends State<ProductsWidget> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Column(
+        Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
@@ -293,15 +300,15 @@ class _ProductsWidgetState extends State<ProductsWidget> {
               style: TextStyle(
                 fontSize: 26,
                 fontWeight: FontWeight.bold,
-                color: AppColors.textDark,
+                color: textColor,
               ),
             ),
-            SizedBox(height: 4),
+            const SizedBox(height: 4),
             Text(
               "Manage items, set prices, and view customer reviews",
               style: TextStyle(
                 fontSize: 14,
-                color: AppColors.textMuted,
+                color: mutedTextColor,
               ),
             ),
           ],
@@ -325,14 +332,14 @@ class _ProductsWidgetState extends State<ProductsWidget> {
     );
   }
 
-  Widget _buildSearchBar() {
+  Widget _buildSearchBar(bool isDark) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withOpacity(isDark ? 0.2 : 0.03),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -340,6 +347,7 @@ class _ProductsWidgetState extends State<ProductsWidget> {
       ),
       child: TextField(
         controller: _searchController,
+        style: TextStyle(color: isDark ? Colors.white : AppColors.textDark),
         onChanged: (val) {
           setState(() {
             _searchQuery = val.trim().toLowerCase();
@@ -347,10 +355,11 @@ class _ProductsWidgetState extends State<ProductsWidget> {
         },
         decoration: InputDecoration(
           hintText: "Search products by title...",
+          hintStyle: TextStyle(color: isDark ? Colors.grey[500] : Colors.grey[400]),
           prefixIcon: const Icon(Icons.search, color: AppColors.primaryPurple),
           suffixIcon: _searchQuery.isNotEmpty
               ? IconButton(
-            icon: const Icon(Icons.clear, color: Colors.grey),
+            icon: Icon(Icons.clear, color: isDark ? Colors.grey[400] : Colors.grey),
             onPressed: () {
               _searchController.clear();
               setState(() {
@@ -367,7 +376,9 @@ class _ProductsWidgetState extends State<ProductsWidget> {
     );
   }
 
-  Widget _buildPriceWidget(ProductModel product) {
+  Widget _buildPriceWidget(ProductModel product, bool isDark) {
+    final greenColor = isDark ? Colors.greenAccent : Colors.green;
+
     if (product.hasActiveDiscount) {
       return Wrap(
         crossAxisAlignment: WrapCrossAlignment.center,
@@ -375,16 +386,16 @@ class _ProductsWidgetState extends State<ProductsWidget> {
         children: [
           Text(
             "\$${product.discountedPrice.toStringAsFixed(2)}",
-            style: const TextStyle(
-              color: Colors.green,
+            style: TextStyle(
+              color: greenColor,
               fontWeight: FontWeight.bold,
               fontSize: 15,
             ),
           ),
           Text(
             "\$${product.price.toStringAsFixed(2)}",
-            style: const TextStyle(
-              color: Colors.grey,
+            style: TextStyle(
+              color: isDark ? Colors.grey[500] : Colors.grey,
               decoration: TextDecoration.lineThrough,
               fontSize: 12,
             ),
@@ -392,13 +403,13 @@ class _ProductsWidgetState extends State<ProductsWidget> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              color: Colors.redAccent.withOpacity(0.1),
+              color: Colors.redAccent.withOpacity(isDark ? 0.2 : 0.1),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
               "-${product.discountPercentage}%",
-              style: const TextStyle(
-                color: Colors.redAccent,
+              style: TextStyle(
+                color: isDark ? Colors.red.shade300 : Colors.redAccent,
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
               ),
@@ -410,8 +421,8 @@ class _ProductsWidgetState extends State<ProductsWidget> {
 
     return Text(
       "${product.price.toStringAsFixed(2)} EGP",
-      style: const TextStyle(
-        color: Colors.green,
+      style: TextStyle(
+        color: greenColor,
         fontWeight: FontWeight.bold,
         fontSize: 15,
       ),
@@ -422,15 +433,20 @@ class _ProductsWidgetState extends State<ProductsWidget> {
       BuildContext context, {
         required ProductModel product,
         required bool isMobile,
+        required bool isDark,
       }) {
     final hasImage = product.images.isNotEmpty;
+    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final textColor = isDark ? Colors.white : AppColors.textDark;
+    final mutedTextColor = isDark ? Colors.grey[400] : AppColors.textMuted;
+    final borderColor = isDark ? Colors.grey.shade800 : Colors.grey.shade200;
 
     return Card(
       elevation: 0,
-      color: Colors.white,
+      color: cardColor,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.shade200),
+        side: BorderSide(color: borderColor),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
@@ -449,9 +465,9 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                   height: 80,
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) =>
-                      _buildPlaceholder(80),
+                      _buildPlaceholder(80, isDark),
                 )
-                    : _buildPlaceholder(80),
+                    : _buildPlaceholder(80, isDark),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -461,16 +477,16 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                   children: [
                     Text(
                       product.title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 15,
-                        color: AppColors.textDark,
+                        color: textColor,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
-                    _buildPriceWidget(product),
+                    _buildPriceWidget(product, isDark),
                     const SizedBox(height: 4),
                     Row(
                       children: [
@@ -479,9 +495,9 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                         const SizedBox(width: 4),
                         Text(
                           product.avgRate.toStringAsFixed(1),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
-                            color: AppColors.textMuted,
+                            color: mutedTextColor,
                           ),
                         ),
                       ],
@@ -492,7 +508,7 @@ class _ProductsWidgetState extends State<ProductsWidget> {
               IconButton(
                 icon: const Icon(Icons.delete_outline,
                     color: Colors.redAccent, size: 20),
-                onPressed: () => _confirmDeleteProduct(context, product),
+                onPressed: () => _confirmDeleteProduct(context, product, isDark),
               ),
             ],
           )
@@ -510,23 +526,25 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                           product.images.first,
                           fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) =>
-                              _buildPlaceholder(double.infinity),
+                              _buildPlaceholder(double.infinity, isDark),
                         )
-                            : _buildPlaceholder(double.infinity),
+                            : _buildPlaceholder(double.infinity, isDark),
                       ),
                     ),
                     Positioned(
                       top: 8,
                       right: 8,
                       child: CircleAvatar(
-                        backgroundColor: Colors.white.withOpacity(0.9),
+                        backgroundColor: isDark
+                            ? Colors.black.withOpacity(0.6)
+                            : Colors.white.withOpacity(0.9),
                         radius: 16,
                         child: IconButton(
                           padding: EdgeInsets.zero,
                           icon: const Icon(Icons.delete_outline,
                               size: 18, color: Colors.redAccent),
                           onPressed: () =>
-                              _confirmDeleteProduct(context, product),
+                              _confirmDeleteProduct(context, product, isDark),
                         ),
                       ),
                     ),
@@ -536,10 +554,10 @@ class _ProductsWidgetState extends State<ProductsWidget> {
               const SizedBox(height: 12),
               Text(
                 product.title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 15,
-                  color: AppColors.textDark,
+                  color: textColor,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -548,7 +566,7 @@ class _ProductsWidgetState extends State<ProductsWidget> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Expanded(child: _buildPriceWidget(product)),
+                  Expanded(child: _buildPriceWidget(product, isDark)),
                   Row(
                     children: [
                       const Icon(Icons.star,
@@ -556,10 +574,10 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                       const SizedBox(width: 4),
                       Text(
                         product.avgRate.toStringAsFixed(1),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.textDark,
+                          color: textColor,
                         ),
                       ),
                     ],
@@ -573,16 +591,17 @@ class _ProductsWidgetState extends State<ProductsWidget> {
     );
   }
 
-  Widget _buildPlaceholder(double dimension) {
+  Widget _buildPlaceholder(double dimension, bool isDark) {
     return Container(
       width: dimension,
       height: dimension,
-      color: Colors.grey.shade100,
-      child: const Icon(Icons.image_not_supported, color: Colors.grey),
+      color: isDark ? const Color(0xFF2A2A2A) : Colors.grey.shade100,
+      child: Icon(Icons.image_not_supported, color: isDark ? Colors.grey[600] : Colors.grey),
     );
   }
 
   void _openProductFormPanel(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final formKey = GlobalKey<FormState>();
     final titleController = TextEditingController();
     final descController = TextEditingController();
@@ -599,6 +618,14 @@ class _ProductsWidgetState extends State<ProductsWidget> {
 
     // قائمة الحقول المخصصة
     List<DynamicFieldModel> customFields = [];
+
+    // الألوان للوضع الداكن داخل اللوحة
+    final panelBgColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final textColor = isDark ? Colors.white : AppColors.textDark;
+    final mutedTextColor = isDark ? Colors.grey[400] : AppColors.textMuted;
+    final cardBgColor = isDark ? const Color(0xFF252525) : Colors.grey.shade50;
+    final borderColor = isDark ? Colors.grey.shade700 : Colors.grey.shade300;
+    final inputFillColor = isDark ? const Color(0xFF2A2A2A) : Colors.white;
 
     showGeneralDialog(
       context: context,
@@ -617,19 +644,38 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                     ? 540
                     : MediaQuery.of(context).size.width;
 
+                InputDecoration buildInputDecoration(String label, {String? hint}) {
+                  return InputDecoration(
+                    labelText: label,
+                    hintText: hint,
+                    labelStyle: TextStyle(color: mutedTextColor),
+                    hintStyle: TextStyle(color: isDark ? Colors.grey[500] : Colors.grey[400]),
+                    filled: true,
+                    fillColor: inputFillColor,
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: AppColors.primaryPurple, width: 1.5),
+                    ),
+                  );
+                }
+
                 return Container(
                   width: panelWidth,
                   height: double.infinity,
                   padding: const EdgeInsets.all(24),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.only(
+                  decoration: BoxDecoration(
+                    color: panelBgColor,
+                    borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(20),
                       bottomLeft: Radius.circular(20),
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black12,
+                        color: Colors.black.withOpacity(isDark ? 0.5 : 0.12),
                         blurRadius: 20,
                         spreadRadius: 5,
                       )
@@ -644,21 +690,21 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text(
+                              Text(
                                 "Add New Product",
                                 style: TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
-                                  color: AppColors.textDark,
+                                  color: textColor,
                                 ),
                               ),
                               IconButton(
-                                icon: const Icon(Icons.close),
+                                icon: Icon(Icons.close, color: textColor),
                                 onPressed: () => Navigator.pop(ctx),
                               )
                             ],
                           ),
-                          const Divider(height: 24),
+                          Divider(height: 24, color: isDark ? Colors.grey.shade800 : Colors.grey.shade300),
                           Expanded(
                             child: SingleChildScrollView(
                               child: Column(
@@ -672,20 +718,18 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                       }
                                       return DropdownButtonFormField<String>(
                                         value: selectedCategoryId,
-                                        decoration: InputDecoration(
-                                          labelText: "Select Category",
-                                          border: OutlineInputBorder(
-                                            borderRadius:
-                                            BorderRadius.circular(10),
-                                          ),
-                                        ),
+                                        dropdownColor: panelBgColor,
+                                        style: TextStyle(color: textColor),
+                                        decoration: buildInputDecoration("Select Category"),
                                         items: snapshot.data!.docs.map((doc) {
                                           final data = doc.data()
                                           as Map<String, dynamic>;
                                           return DropdownMenuItem<String>(
                                             value: doc.id,
                                             child: Text(
-                                                "${data['nameEn']} (${data['nameAr']})"),
+                                              "${data['nameEn']} (${data['nameAr']})",
+                                              style: TextStyle(color: textColor),
+                                            ),
                                           );
                                         }).toList(),
                                         onChanged: (val) {
@@ -713,20 +757,18 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                         }
                                         return DropdownButtonFormField<String>(
                                           value: selectedSubcategoryId,
-                                          decoration: InputDecoration(
-                                            labelText: "Select Subcategory",
-                                            border: OutlineInputBorder(
-                                              borderRadius:
-                                              BorderRadius.circular(10),
-                                            ),
-                                          ),
+                                          dropdownColor: panelBgColor,
+                                          style: TextStyle(color: textColor),
+                                          decoration: buildInputDecoration("Select Subcategory"),
                                           items: snapshot.data!.docs.map((doc) {
                                             final data = doc.data()
                                             as Map<String, dynamic>;
                                             return DropdownMenuItem<String>(
                                               value: doc.id,
                                               child: Text(
-                                                  "${data['nameEn']} (${data['nameAr']})"),
+                                                "${data['nameEn']} (${data['nameAr']})",
+                                                style: TextStyle(color: textColor),
+                                              ),
                                             );
                                           }).toList(),
                                           onChanged: (val) => setPanelState(
@@ -741,12 +783,8 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                   ],
                                   TextFormField(
                                     controller: titleController,
-                                    decoration: InputDecoration(
-                                      labelText: "Product Title",
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                    ),
+                                    style: TextStyle(color: textColor),
+                                    decoration: buildInputDecoration("Product Title"),
                                     validator: (v) => v == null || v.isEmpty
                                         ? "Enter product title"
                                         : null,
@@ -755,12 +793,8 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                   TextFormField(
                                     controller: priceController,
                                     keyboardType: TextInputType.number,
-                                    decoration: InputDecoration(
-                                      labelText: "Price (\$)",
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                    ),
+                                    style: TextStyle(color: textColor),
+                                    decoration: buildInputDecoration("Price (\$)"),
                                     validator: (v) =>
                                     v == null || double.tryParse(v) == null
                                         ? "Enter valid price"
@@ -773,14 +807,8 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                         child: TextFormField(
                                           controller: discountPercController,
                                           keyboardType: TextInputType.number,
-                                          decoration: InputDecoration(
-                                            labelText: "Discount (%)",
-                                            hintText: "e.g. 10",
-                                            border: OutlineInputBorder(
-                                              borderRadius:
-                                              BorderRadius.circular(10),
-                                            ),
-                                          ),
+                                          style: TextStyle(color: textColor),
+                                          decoration: buildInputDecoration("Discount (%)", hint: "e.g. 10"),
                                         ),
                                       ),
                                       const SizedBox(width: 12),
@@ -788,14 +816,8 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                         child: TextFormField(
                                           controller: discountDaysController,
                                           keyboardType: TextInputType.number,
-                                          decoration: InputDecoration(
-                                            labelText: "Duration (Days)",
-                                            hintText: "e.g. 7",
-                                            border: OutlineInputBorder(
-                                              borderRadius:
-                                              BorderRadius.circular(10),
-                                            ),
-                                          ),
+                                          style: TextStyle(color: textColor),
+                                          decoration: buildInputDecoration("Duration (Days)", hint: "e.g. 7"),
                                         ),
                                       ),
                                     ],
@@ -804,29 +826,25 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                   TextFormField(
                                     controller: descController,
                                     maxLines: 3,
-                                    decoration: InputDecoration(
-                                      labelText: "Description",
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                    ),
+                                    style: TextStyle(color: textColor),
+                                    decoration: buildInputDecoration("Description"),
                                     validator: (v) => v == null || v.isEmpty
                                         ? "Enter description"
                                         : null,
                                   ),
                                   const SizedBox(height: 20),
 
-                                  // ==================== قسم الحقول المخصصة (Required Order Fields) ====================
+                                  // ==================== قسم الحقول المخصصة ====================
                                   Row(
                                     mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                     children: [
-                                      const Text(
+                                      Text(
                                         "Required Order Fields",
                                         style: TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.bold,
-                                          color: AppColors.textDark,
+                                          color: textColor,
                                         ),
                                       ),
                                       TextButton.icon(
@@ -847,13 +865,13 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                       width: double.infinity,
                                       padding: const EdgeInsets.all(12),
                                       decoration: BoxDecoration(
-                                        color: Colors.grey.shade100,
+                                        color: cardBgColor,
                                         borderRadius: BorderRadius.circular(8),
                                       ),
-                                      child: const Text(
+                                      child: Text(
                                         "No custom fields added. Click 'Add Field' to define required inputs for this product.",
                                         style: TextStyle(
-                                            color: AppColors.textMuted,
+                                            color: mutedTextColor,
                                             fontSize: 12),
                                       ),
                                     )
@@ -873,11 +891,11 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                           const EdgeInsets.only(bottom: 12),
                                           padding: const EdgeInsets.all(12),
                                           decoration: BoxDecoration(
-                                            color: Colors.grey.shade50,
+                                            color: cardBgColor,
                                             borderRadius:
                                             BorderRadius.circular(10),
                                             border: Border.all(
-                                                color: Colors.grey.shade300),
+                                                color: borderColor),
                                           ),
                                           child: Column(
                                             crossAxisAlignment:
@@ -888,12 +906,12 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                                   Expanded(
                                                     child: TextFormField(
                                                       initialValue: field.name,
-                                                      decoration:
-                                                      const InputDecoration(
-                                                        labelText:
-                                                        "Field Name / Title",
-                                                        hintText:
-                                                        "e.g. Select Size, Color, Drive Link",
+                                                      style: TextStyle(color: textColor),
+                                                      decoration: InputDecoration(
+                                                        labelText: "Field Name / Title",
+                                                        hintText: "e.g. Select Size, Color, Drive Link",
+                                                        labelStyle: TextStyle(color: mutedTextColor),
+                                                        hintStyle: TextStyle(color: isDark ? Colors.grey[500] : Colors.grey[400]),
                                                         isDense: true,
                                                       ),
                                                       onChanged: (val) =>
@@ -924,35 +942,31 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                               Row(
                                                 children: [
                                                   Expanded(
-                                                    child:
-                                                    DropdownButtonFormField<
-                                                        String>(
+                                                    child: DropdownButtonFormField<String>(
                                                       value: field.type,
-                                                      decoration:
-                                                      const InputDecoration(
+                                                      dropdownColor: panelBgColor,
+                                                      style: TextStyle(color: textColor),
+                                                      decoration: InputDecoration(
                                                         labelText: "Field Type",
+                                                        labelStyle: TextStyle(color: mutedTextColor),
                                                         isDense: true,
                                                       ),
-                                                      items: const [
+                                                      items: [
                                                         DropdownMenuItem(
                                                           value: 'text',
-                                                          child:
-                                                          Text("Text / كلام"),
+                                                          child: Text("Text / كلام", style: TextStyle(color: textColor)),
                                                         ),
                                                         DropdownMenuItem(
                                                           value: 'number',
-                                                          child: Text(
-                                                              "Number / أرقام"),
+                                                          child: Text("Number / أرقام", style: TextStyle(color: textColor)),
                                                         ),
                                                         DropdownMenuItem(
                                                           value: 'drive_link',
-                                                          child: Text(
-                                                              "Google Drive Link / لينك درايف"),
+                                                          child: Text("Google Drive Link / لينك درايف", style: TextStyle(color: textColor)),
                                                         ),
                                                         DropdownMenuItem(
                                                           value: 'dropdown',
-                                                          child: Text(
-                                                              "Dropdown / قائمة اختيارات"),
+                                                          child: Text("Dropdown / قائمة اختيارات", style: TextStyle(color: textColor)),
                                                         ),
                                                       ],
                                                       onChanged: (val) {
@@ -969,6 +983,7 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                                     children: [
                                                       Checkbox(
                                                         value: field.isRequired,
+                                                        activeColor: AppColors.primaryPurple,
                                                         onChanged: (val) {
                                                           setPanelState(() {
                                                             field.isRequired =
@@ -976,23 +991,24 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                                           });
                                                         },
                                                       ),
-                                                      const Text("Required",
+                                                      Text("Required",
                                                           style: TextStyle(
-                                                              fontSize: 12)),
+                                                              fontSize: 12,
+                                                              color: textColor)),
                                                     ],
                                                   ),
                                                 ],
                                               ),
 
-                                              // ==================== خيارات الـ Dropdown (في حال اختيار dropdown) ====================
+                                              // ==================== خيارات Dropdown ====================
                                               if (field.type == 'dropdown') ...[
                                                 const SizedBox(height: 12),
-                                                const Text(
+                                                Text(
                                                   "Dropdown Options:",
                                                   style: TextStyle(
                                                     fontSize: 13,
                                                     fontWeight: FontWeight.bold,
-                                                    color: AppColors.textDark,
+                                                    color: textColor,
                                                   ),
                                                 ),
                                                 const SizedBox(height: 6),
@@ -1000,51 +1016,37 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                                   children: [
                                                     Expanded(
                                                       child: TextField(
-                                                        controller:
-                                                        optionController,
-                                                        decoration:
-                                                        const InputDecoration(
-                                                          hintText:
-                                                          "Add option (e.g. Red, XL)",
+                                                        controller: optionController,
+                                                        style: TextStyle(color: textColor),
+                                                        decoration: InputDecoration(
+                                                          hintText: "Add option (e.g. Red, XL)",
+                                                          hintStyle: TextStyle(color: isDark ? Colors.grey[500] : Colors.grey[400]),
                                                           isDense: true,
-                                                          contentPadding:
-                                                          EdgeInsets.symmetric(
-                                                              horizontal:
-                                                              10,
+                                                          contentPadding: const EdgeInsets.symmetric(
+                                                              horizontal: 10,
                                                               vertical: 8),
-                                                          border:
-                                                          OutlineInputBorder(),
+                                                          border: OutlineInputBorder(
+                                                            borderSide: BorderSide(color: borderColor),
+                                                          ),
                                                         ),
                                                       ),
                                                     ),
                                                     const SizedBox(width: 8),
                                                     ElevatedButton(
-                                                      style:
-                                                      ElevatedButton.styleFrom(
-                                                        backgroundColor:
-                                                        AppColors
-                                                            .primaryPurple,
-                                                        padding: const EdgeInsets
-                                                            .symmetric(
-                                                            horizontal: 12),
+                                                      style: ElevatedButton.styleFrom(
+                                                        backgroundColor: AppColors.primaryPurple,
+                                                        padding: const EdgeInsets.symmetric(horizontal: 12),
                                                       ),
                                                       onPressed: () {
-                                                        final text =
-                                                        optionController.text
-                                                            .trim();
+                                                        final text = optionController.text.trim();
                                                         if (text.isNotEmpty) {
                                                           setPanelState(() {
-                                                            field.options
-                                                                .add(text);
-                                                            optionController
-                                                                .clear();
+                                                            field.options.add(text);
+                                                            optionController.clear();
                                                           });
                                                         }
                                                       },
-                                                      child: const Text("Add",
-                                                          style: TextStyle(
-                                                              color: Colors
-                                                                  .white)),
+                                                      child: const Text("Add", style: TextStyle(color: Colors.white)),
                                                     ),
                                                   ],
                                                 ),
@@ -1064,31 +1066,23 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                                         .asMap()
                                                         .entries
                                                         .map((entry) {
-                                                      final optIndex =
-                                                          entry.key;
-                                                      final optValue =
-                                                          entry.value;
+                                                      final optIndex = entry.key;
+                                                      final optValue = entry.value;
                                                       return Chip(
                                                         label: Text(optValue,
-                                                            style:
-                                                            const TextStyle(
-                                                                fontSize:
-                                                                12)),
-                                                        deleteIcon: const Icon(
+                                                            style: TextStyle(
+                                                                fontSize: 12,
+                                                                color: isDark ? Colors.white : AppColors.primaryPurple)),
+                                                        deleteIcon: Icon(
                                                             Icons.close,
-                                                            size: 14),
+                                                            size: 14,
+                                                            color: isDark ? Colors.white70 : Colors.black),
                                                         onDeleted: () {
                                                           setPanelState(() {
-                                                            field.options
-                                                                .removeAt(
-                                                                optIndex);
+                                                            field.options.removeAt(optIndex);
                                                           });
                                                         },
-                                                        backgroundColor:
-                                                        AppColors
-                                                            .primaryPurple
-                                                            .withOpacity(
-                                                            0.1),
+                                                        backgroundColor: AppColors.primaryPurple.withOpacity(isDark ? 0.3 : 0.1),
                                                       );
                                                     }).toList(),
                                                   ),
@@ -1101,35 +1095,33 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                   const SizedBox(height: 20),
 
                                   // ==================== صور المنتج ====================
-                                  const Text(
+                                  Text(
                                     "Product Images",
                                     style: TextStyle(
                                       fontWeight: FontWeight.w600,
-                                      color: AppColors.textDark,
+                                      color: textColor,
                                     ),
                                   ),
                                   const SizedBox(height: 8),
                                   OutlinedButton.icon(
                                     style: OutlinedButton.styleFrom(
                                       minimumSize: const Size.fromHeight(48),
+                                      side: BorderSide(color: borderColor),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(10),
                                       ),
                                     ),
                                     onPressed: () async {
                                       try {
-                                        final ImagePicker picker =
-                                        ImagePicker();
-                                        final List<XFile> images =
-                                        await picker.pickMultiImage(
+                                        final ImagePicker picker = ImagePicker();
+                                        final List<XFile> images = await picker.pickMultiImage(
                                           imageQuality: 85,
                                         );
 
                                         if (images.isNotEmpty) {
                                           List<Uint8List> bytesList = [];
                                           for (var img in images) {
-                                            bytesList
-                                                .add(await img.readAsBytes());
+                                            bytesList.add(await img.readAsBytes());
                                           }
                                           setPanelState(() {
                                             pickedImages = images;
@@ -1140,10 +1132,10 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                         debugPrint("Error picking images: $e");
                                       }
                                     },
-                                    icon:
-                                    const Icon(Icons.add_a_photo_outlined),
+                                    icon: const Icon(Icons.add_a_photo_outlined),
                                     label: Text(
                                       "Select Images (${pickedImages.length} selected)",
+                                      style: TextStyle(color: textColor),
                                     ),
                                   ),
                                   if (imagesBytes.isNotEmpty) ...[
@@ -1155,17 +1147,13 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                         itemCount: imagesBytes.length,
                                         itemBuilder: (context, index) {
                                           return Container(
-                                            margin:
-                                            const EdgeInsets.only(right: 8),
+                                            margin: const EdgeInsets.only(right: 8),
                                             width: 80,
                                             height: 80,
                                             decoration: BoxDecoration(
-                                              borderRadius:
-                                              BorderRadius.circular(8),
+                                              borderRadius: BorderRadius.circular(8),
                                               image: DecorationImage(
-                                                image: MemoryImage(
-                                                  imagesBytes[index],
-                                                ),
+                                                image: MemoryImage(imagesBytes[index]),
                                                 fit: BoxFit.cover,
                                               ),
                                             ),
@@ -1183,17 +1171,15 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                             children: [
                               Expanded(
                                 child: OutlinedButton(
-                                  onPressed: isSaving
-                                      ? null
-                                      : () => Navigator.pop(ctx),
+                                  onPressed: isSaving ? null : () => Navigator.pop(ctx),
                                   style: OutlinedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 14),
+                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                    side: BorderSide(color: borderColor),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(10),
                                     ),
                                   ),
-                                  child: const Text("Cancel"),
+                                  child: Text("Cancel", style: TextStyle(color: textColor)),
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -1201,8 +1187,7 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                 child: ElevatedButton(
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: AppColors.primaryPurple,
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 14),
+                                    padding: const EdgeInsets.symmetric(vertical: 14),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(10),
                                     ),
@@ -1210,29 +1195,21 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                   onPressed: isSaving
                                       ? null
                                       : () async {
-                                    if (formKey.currentState!
-                                        .validate()) {
+                                    if (formKey.currentState!.validate()) {
                                       if (pickedImages.isEmpty) {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
+                                        ScaffoldMessenger.of(context).showSnackBar(
                                           const SnackBar(
-                                            content: Text(
-                                              "Please select at least one image!",
-                                            ),
+                                            content: Text("Please select at least one image!"),
                                           ),
                                         );
                                         return;
                                       }
 
-                                      // تحقق من صحة خيارات Dropdown
                                       for (var f in customFields) {
-                                        if (f.type == 'dropdown' &&
-                                            f.options.isEmpty) {
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
+                                        if (f.type == 'dropdown' && f.options.isEmpty) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
                                             SnackBar(
-                                              content: Text(
-                                                  "Please add at least one option for dropdown field '${f.name}'"),
+                                              content: Text("Please add at least one option for dropdown field '${f.name}'"),
                                               backgroundColor: Colors.red,
                                             ),
                                           );
@@ -1240,99 +1217,60 @@ class _ProductsWidgetState extends State<ProductsWidget> {
                                         }
                                       }
 
-                                      setPanelState(
-                                              () => isSaving = true);
+                                      setPanelState(() => isSaving = true);
 
                                       try {
                                         List<String> uploadedUrls = [];
                                         for (var img in pickedImages) {
-                                          final url =
-                                          await CloudinaryService
-                                              .uploadImage(img);
+                                          final url = await CloudinaryService.uploadImage(img);
                                           if (url != null) {
                                             uploadedUrls.add(url);
                                           }
                                         }
 
                                         if (uploadedUrls.isEmpty) {
-                                          setPanelState(
-                                                  () => isSaving = false);
+                                          setPanelState(() => isSaving = false);
                                           if (context.mounted) {
-                                            ScaffoldMessenger.of(context)
-                                                .showSnackBar(
+                                            ScaffoldMessenger.of(context).showSnackBar(
                                               const SnackBar(
-                                                content: Text(
-                                                  "Failed to upload images to Cloudinary!",
-                                                ),
-                                                backgroundColor:
-                                                Colors.red,
+                                                content: Text("Failed to upload images to Cloudinary!"),
+                                                backgroundColor: Colors.red,
                                               ),
                                             );
                                           }
                                           return;
                                         }
 
-                                        final int discountVal =
-                                            int.tryParse(
-                                                discountPercController
-                                                    .text
-                                                    .trim()) ??
-                                                0;
-                                        final int discountDays =
-                                            int.tryParse(
-                                                discountDaysController
-                                                    .text
-                                                    .trim()) ??
-                                                0;
+                                        final int discountVal = int.tryParse(discountPercController.text.trim()) ?? 0;
+                                        final int discountDays = int.tryParse(discountDaysController.text.trim()) ?? 0;
 
                                         DateTime? discountUntilDate;
-                                        if (discountVal > 0 &&
-                                            discountDays > 0) {
-                                          discountUntilDate = DateTime.now()
-                                              .add(Duration(
-                                              days: discountDays));
+                                        if (discountVal > 0 && discountDays > 0) {
+                                          discountUntilDate = DateTime.now().add(Duration(days: discountDays));
                                         }
 
-                                        // تجهيز الحقول لإرسالها لـ Firestore
-                                        List<Map<String, dynamic>>
-                                        fieldsList = customFields
-                                            .map((f) => f.toMap())
-                                            .toList();
+                                        List<Map<String, dynamic>> fieldsList = customFields.map((f) => f.toMap()).toList();
 
                                         await _productsRef.add({
-                                          'title':
-                                          titleController.text.trim(),
-                                          'description':
-                                          descController.text.trim(),
-                                          'price': double.parse(
-                                              priceController.text
-                                                  .trim()),
-                                          'discountPercentage':
-                                          discountVal,
-                                          'discountUntil':
-                                          discountUntilDate != null
-                                              ? Timestamp.fromDate(
-                                              discountUntilDate)
-                                              : null,
-                                          'categoryId':
-                                          selectedCategoryId,
-                                          'subcategoryId':
-                                          selectedSubcategoryId,
+                                          'title': titleController.text.trim(),
+                                          'description': descController.text.trim(),
+                                          'price': double.parse(priceController.text.trim()),
+                                          'discountPercentage': discountVal,
+                                          'discountUntil': discountUntilDate != null ? Timestamp.fromDate(discountUntilDate) : null,
+                                          'categoryId': selectedCategoryId,
+                                          'subcategoryId': selectedSubcategoryId,
                                           'images': uploadedUrls,
                                           'fields': fieldsList,
                                           'avgRating': 0.0,
-                                          'createdAt':
-                                          FieldValue.serverTimestamp(),
+                                          'createdAt': FieldValue.serverTimestamp(),
                                         });
 
                                         if (context.mounted) {
                                           Navigator.pop(ctx);
                                         }
                                       } catch (e) {
-                                        debugPrint(
-                                            "Error saving product: $e");
-                                        setPanelState(
-                                                () => isSaving = false);
+                                        debugPrint("Error saving product: $e");
+                                        setPanelState(() => isSaving = false);
                                       }
                                     }
                                   },
@@ -1368,25 +1306,34 @@ class _ProductsWidgetState extends State<ProductsWidget> {
           position: Tween<Offset>(
             begin: const Offset(1, 0),
             end: Offset.zero,
-          ).animate(
-              CurvedAnimation(parent: anim1, curve: Curves.easeOutCubic)),
+          ).animate(CurvedAnimation(parent: anim1, curve: Curves.easeOutCubic)),
           child: child,
         );
       },
     );
   }
 
-  void _confirmDeleteProduct(BuildContext context, ProductModel product) {
+  void _confirmDeleteProduct(BuildContext context, ProductModel product, bool isDark) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text("Delete Product"),
-        content: Text("Are you sure you want to delete '${product.title}'?"),
+        title: Text(
+          "Delete Product",
+          style: TextStyle(color: isDark ? Colors.white : AppColors.textDark),
+        ),
+        content: Text(
+          "Are you sure you want to delete '${product.title}'?",
+          style: TextStyle(color: isDark ? Colors.grey[300] : Colors.black87),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text("Cancel"),
+            child: Text(
+              "Cancel",
+              style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[700]),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),

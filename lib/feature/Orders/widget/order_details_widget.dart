@@ -51,34 +51,54 @@ class _OrderDetailViewState extends State<OrderDetailView> {
     }
   }
 
-  void _showAddTransactionDialog(BuildContext context, {required bool isExpense}) {
+  void _showAddTransactionDialog(BuildContext context, {required bool isExpense, required bool isDark}) {
     final amountController = TextEditingController();
     final notesController = TextEditingController();
+
+    final dialogBgColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final dialogTextColor = isDark ? Colors.white : AppColors.textDark;
+    final hintColor = isDark ? Colors.grey[400] : Colors.grey[600];
+    final inputFillColor = isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF8FAFC);
+    final borderColor = isDark ? Colors.grey.shade700 : const Color(0xFFE2E8F0);
 
     showDialog(
       context: context,
       builder: (dialogCtx) => AlertDialog(
+        backgroundColor: dialogBgColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(isExpense ? "Record New Expense".tr : "Record New Payment Deposit".tr),
+        title: Text(
+          isExpense ? "Record New Expense".tr : "Record New Payment Deposit".tr,
+          style: TextStyle(color: dialogTextColor, fontWeight: FontWeight.bold),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: amountController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              style: TextStyle(color: dialogTextColor),
               decoration: InputDecoration(
                 labelText: isExpense ? "Expense Amount (\$) *" : "Amount Paid (\$) *".tr,
-                border: const OutlineInputBorder(),
+                labelStyle: TextStyle(color: hintColor),
+                filled: true,
+                fillColor: inputFillColor,
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: borderColor)),
+                focusedBorder: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(8)), borderSide: BorderSide(color: AppColors.primaryPurple, width: 1.5)),
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: notesController,
+              style: TextStyle(color: dialogTextColor),
               decoration: InputDecoration(
                 labelText: isExpense
                     ? "Notes (e.g. Shipping, Printing, Packaging)".tr
                     : "Notes (e.g. Bank Transfer, Instapay, Cash)".tr,
-                border: const OutlineInputBorder(),
+                labelStyle: TextStyle(color: hintColor),
+                filled: true,
+                fillColor: inputFillColor,
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: borderColor)),
+                focusedBorder: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(8)), borderSide: BorderSide(color: AppColors.primaryPurple, width: 1.5)),
               ),
             ),
           ],
@@ -86,7 +106,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx),
-            child: Text("Cancel".tr),
+            child: Text("Cancel".tr, style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[700])),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -104,7 +124,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                       ? (isExpense ? 'Expense' : 'Deposit')
                       : notesController.text,
                   'createdAt': FieldValue.serverTimestamp(),
-                  'ordernumber':widget.orderData['orderNumber'].toString()
+                  'ordernumber': widget.orderData['orderNumber'].toString()
                 });
 
                 if (mounted) {
@@ -129,6 +149,13 @@ class _OrderDetailViewState extends State<OrderDetailView> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDark ? const Color(0xFF121212) : AppColors.bgLight;
+    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final textColor = isDark ? Colors.white : AppColors.textDark;
+    final mutedTextColor = isDark ? Colors.grey[400] : AppColors.textMuted;
+    final dividerColor = isDark ? Colors.grey.shade800 : Colors.grey.shade200;
+
     final order = widget.orderData;
     final List items = order['items'] as List? ?? [];
     final num totalPrice = order['totalPrice'] ?? 0;
@@ -142,11 +169,11 @@ class _OrderDetailViewState extends State<OrderDetailView> {
     }
 
     return Scaffold(
-      backgroundColor: AppColors.bgLight,
+      backgroundColor: backgroundColor,
       appBar: AppBar(
-        title: Text("${"Order".tr} #${order['orderNumber']}"),
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.textDark,
+        title: Text("${"Order".tr} #${order['orderNumber']}", style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
+        backgroundColor: cardColor,
+        foregroundColor: textColor,
         elevation: 0.5,
       ),
       body: SingleChildScrollView(
@@ -179,37 +206,39 @@ class _OrderDetailViewState extends State<OrderDetailView> {
 
                     return Card(
                       elevation: 0,
-                      color: Colors.white,
+                      color: cardColor,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text("Financial Summary".tr, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                            const Divider(height: 20),
+                            Text("Financial Summary".tr, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: textColor)),
+                            Divider(height: 20, color: dividerColor),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text("${"Total Price:".tr} $totalPrice EGP", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                                    Text("${"Total Price:".tr} $totalPrice EGP", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: textColor)),
                                     if (promoCode != null)
-                                      Text("${"Promo Code:".tr} $promoCode (-$discountAmount) EGP", style: const TextStyle(color: Colors.green, fontSize: 12)),
+                                      Text("${"Promo Code:".tr} $promoCode (-$discountAmount) EGP", style: TextStyle(color: isDark ? Colors.greenAccent : Colors.green, fontSize: 12)),
                                   ],
                                 ),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                   decoration: BoxDecoration(
-                                    color: netProfit >= 0 ? Colors.green.shade50 : Colors.red.shade50,
+                                    color: netProfit >= 0
+                                        ? (isDark ? Colors.green.withOpacity(0.2) : Colors.green.shade50)
+                                        : (isDark ? Colors.red.withOpacity(0.2) : Colors.red.shade50),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
                                     "${"Net Profit:".tr} $netProfit EGP",
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
-                                      color: netProfit >= 0 ? Colors.green : Colors.red,
+                                      color: netProfit >= 0 ? (isDark ? Colors.greenAccent : Colors.green) : (isDark ? Colors.redAccent : Colors.red),
                                       fontSize: 16,
                                     ),
                                   ),
@@ -220,9 +249,9 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceAround,
                               children: [
-                                _buildSummaryBadge("Total Paid".tr, "$totalPaid EGP", Colors.green),
-                                _buildSummaryBadge("Remaining".tr, "$remaining EGP", remaining > 0 ? Colors.red : Colors.green),
-                                _buildSummaryBadge("Expenses".tr, "$totalExpenses EGP", Colors.orange.shade800),
+                                _buildSummaryBadge("Total Paid".tr, "$totalPaid EGP", isDark ? Colors.greenAccent : Colors.green, isDark),
+                                _buildSummaryBadge("Remaining".tr, "$remaining EGP", remaining > 0 ? (isDark ? Colors.redAccent : Colors.red) : (isDark ? Colors.greenAccent : Colors.green), isDark),
+                                _buildSummaryBadge("Expenses".tr, "$totalExpenses EGP", isDark ? Colors.orangeAccent : Colors.orange.shade800, isDark),
                               ],
                             ),
                             const SizedBox(height: 16),
@@ -230,19 +259,19 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                               children: [
                                 Expanded(
                                   child: ElevatedButton.icon(
-                                    style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                                    style: ElevatedButton.styleFrom(backgroundColor: isDark ? Colors.green.shade700 : Colors.green),
                                     icon: const Icon(Icons.add, size: 16, color: Colors.white),
                                     label: Text("Add Payment".tr, style: const TextStyle(color: Colors.white)),
-                                    onPressed: () => _showAddTransactionDialog(context, isExpense: false),
+                                    onPressed: () => _showAddTransactionDialog(context, isExpense: false, isDark: isDark),
                                   ),
                                 ),
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: ElevatedButton.icon(
-                                    style: ElevatedButton.styleFrom(backgroundColor: Colors.orange.shade800),
+                                    style: ElevatedButton.styleFrom(backgroundColor: isDark ? Colors.orange.shade900 : Colors.orange.shade800),
                                     icon: const Icon(Icons.remove_circle_outline, size: 16, color: Colors.white),
                                     label: Text("Add Expense".tr, style: const TextStyle(color: Colors.white)),
-                                    onPressed: () => _showAddTransactionDialog(context, isExpense: true),
+                                    onPressed: () => _showAddTransactionDialog(context, isExpense: true, isDark: isDark),
                                   ),
                                 ),
                               ],
@@ -261,20 +290,20 @@ class _OrderDetailViewState extends State<OrderDetailView> {
             // 2. تفاصيل العميل والعنوان المعدل
             Card(
               elevation: 0,
-              color: Colors.white,
+              color: cardColor,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text("Customer Info".tr, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                    const Divider(height: 20),
+                    Text("Customer Info".tr, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: textColor)),
+                    Divider(height: 20, color: dividerColor),
                     ListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: Text("${"Customer Name:".tr} ${order['customerName'] ?? order['userEmail'] ?? _userModel.Name}"),
+                      title: Text("${"Customer Name:".tr} ${order['customerName'] ?? order['userEmail'] ?? _userModel.Name}", style: TextStyle(color: textColor, fontWeight: FontWeight.w600)),
                       leading: const Icon(Icons.person, color: AppColors.primaryPurple),
-                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      trailing: Icon(Icons.arrow_forward_ios, size: 16, color: mutedTextColor),
                       onTap: () {
                         if (data != null) {
                           Get.to(UserDetailView(userId: widget.userId, userData: data!));
@@ -282,16 +311,16 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                       },
                     ),
                     const SizedBox(height: 4),
-                    SelectableText("${"Order Date:".tr} $formattedDate", style: const TextStyle(color: AppColors.textMuted, fontSize: 13)),
+                    SelectableText("${"Order Date:".tr} $formattedDate", style: TextStyle(color: mutedTextColor, fontSize: 13)),
 
                     // --- عرض العنوان بالشكل الجديد ---
                     if (order['selectedAddress'] != null) ...[
-                      const Divider(height: 24),
+                      Divider(height: 24, color: dividerColor),
                       Row(
                         children: [
                           const Icon(Icons.location_on_outlined, color: AppColors.primaryPurple, size: 20),
                           const SizedBox(width: 8),
-                          Text("Delivery Address".tr, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                          Text("Delivery Address".tr, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: textColor)),
                         ],
                       ),
                       const SizedBox(height: 10),
@@ -299,11 +328,11 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                         width: double.infinity,
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: AppColors.bgLight,
+                          color: isDark ? const Color(0xFF2A2A2A) : AppColors.bgLight,
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.grey.shade300),
+                          border: Border.all(color: isDark ? Colors.grey.shade800 : Colors.grey.shade300),
                         ),
-                        child: _buildAddressDetailsWidget(order['selectedAddress']),
+                        child: _buildAddressDetailsWidget(order['selectedAddress'], isDark),
                       ),
                     ],
                   ],
@@ -316,15 +345,15 @@ class _OrderDetailViewState extends State<OrderDetailView> {
             // 3. عناصر الطلب والحقول الديناميكية
             Card(
               elevation: 0,
-              color: Colors.white,
+              color: cardColor,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text("Order Items & Details".tr, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                    const Divider(height: 20),
+                    Text("Order Items & Details".tr, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: textColor)),
+                    Divider(height: 20, color: dividerColor),
                     ...items.map((item) {
                       final map = item is Map<String, dynamic> ? item : {};
                       final customFields = map['customFieldsData'] as Map<String, dynamic>? ?? {};
@@ -334,9 +363,9 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                         margin: const EdgeInsets.only(bottom: 12),
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade50,
+                          color: isDark ? const Color(0xFF252525) : Colors.grey.shade50,
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey.shade200),
+                          border: Border.all(color: isDark ? Colors.grey.shade800 : Colors.grey.shade200),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -344,13 +373,13 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text("${map['title']} (x${map['quantity'] ?? 1})", style: const TextStyle(fontWeight: FontWeight.bold)),
-                                Text("${map['price'] ?? 0} EGP", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+                                Text("${map['title']} (x${map['quantity'] ?? 1})", style: TextStyle(fontWeight: FontWeight.bold, color: textColor)),
+                                Text("${map['price'] ?? 0} EGP", style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.greenAccent : Colors.green)),
                               ],
                             ),
                             if (notes.isNotEmpty) ...[
                               const SizedBox(height: 6),
-                              Text("${"Notes:".tr} $notes", style: const TextStyle(color: Colors.grey, fontSize: 13)),
+                              Text("${"Notes:".tr} $notes", style: TextStyle(color: mutedTextColor, fontSize: 13)),
                             ],
                             if (customFields.isNotEmpty) ...[
                               const SizedBox(height: 8),
@@ -370,13 +399,13 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                                     },
                                     child: Row(
                                       children: [
-                                        Text("${entry.key}: ", style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                                        const Icon(Icons.link, size: 14, color: Colors.blue),
+                                        Text("${entry.key}: ", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: textColor)),
+                                        Icon(Icons.link, size: 14, color: isDark ? Colors.lightBlueAccent : Colors.blue),
                                         const SizedBox(width: 4),
                                         Expanded(
                                           child: Text(
                                             entry.value.toString(),
-                                            style: const TextStyle(color: Colors.blue, decoration: TextDecoration.underline, fontSize: 13),
+                                            style: TextStyle(color: isDark ? Colors.lightBlueAccent : Colors.blue, decoration: TextDecoration.underline, fontSize: 13),
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                           ),
@@ -384,7 +413,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                                       ],
                                     ),
                                   )
-                                      : SelectableText("${entry.key}: ${entry.value}", style: const TextStyle(fontSize: 13)),
+                                      : SelectableText("${entry.key}: ${entry.value}", style: TextStyle(fontSize: 13, color: textColor)),
                                 );
                               }),
                             ]
@@ -406,20 +435,20 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                 Expanded(
                   child: Card(
                     elevation: 0,
-                    color: Colors.white,
+                    color: cardColor,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text("Payments History".tr, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
-                          const Divider(),
+                          Text("Payments History".tr, style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.greenAccent : Colors.green)),
+                          Divider(color: dividerColor),
                           StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                             stream: _firestore.collection('payments').where('orderId', isEqualTo: widget.orderId).snapshots(),
                             builder: (context, snap) {
                               final docs = snap.data?.docs ?? [];
-                              if (docs.isEmpty) return Text("No payments yet.".tr, style: const TextStyle(color: Colors.grey, fontSize: 12));
+                              if (docs.isEmpty) return Text("No payments yet.".tr, style: TextStyle(color: mutedTextColor, fontSize: 12));
 
                               return Column(
                                 children: docs.map((d) {
@@ -427,8 +456,8 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                                   return ListTile(
                                     dense: true,
                                     contentPadding: EdgeInsets.zero,
-                                    title: Text("${data['amount']} EGP", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
-                                    subtitle: Text(data['notes'] ?? ''),
+                                    title: Text("${data['amount']} EGP", style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.greenAccent : Colors.green)),
+                                    subtitle: Text(data['notes'] ?? '', style: TextStyle(color: mutedTextColor)),
                                   );
                                 }).toList(),
                               );
@@ -443,20 +472,20 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                 Expanded(
                   child: Card(
                     elevation: 0,
-                    color: Colors.white,
+                    color: cardColor,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text("Expenses History".tr, style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange.shade800)),
-                          const Divider(),
+                          Text("Expenses History".tr, style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.orangeAccent : Colors.orange.shade800)),
+                          Divider(color: dividerColor),
                           StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                             stream: _firestore.collection('expenses').where('orderId', isEqualTo: widget.orderId).snapshots(),
                             builder: (context, snap) {
                               final docs = snap.data?.docs ?? [];
-                              if (docs.isEmpty) return Text("No expenses yet.".tr, style: const TextStyle(color: Colors.grey, fontSize: 12));
+                              if (docs.isEmpty) return Text("No expenses yet.".tr, style: TextStyle(color: mutedTextColor, fontSize: 12));
 
                               return Column(
                                 children: docs.map((d) {
@@ -464,8 +493,8 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                                   return ListTile(
                                     dense: true,
                                     contentPadding: EdgeInsets.zero,
-                                    title: Text("${data['amount']} EGP", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange.shade800)),
-                                    subtitle: Text(data['notes'] ?? ''),
+                                    title: Text("${data['amount']} EGP", style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.orangeAccent : Colors.orange.shade800)),
+                                    subtitle: Text(data['notes'] ?? '', style: TextStyle(color: mutedTextColor)),
                                   );
                                 }).toList(),
                               );
@@ -485,10 +514,13 @@ class _OrderDetailViewState extends State<OrderDetailView> {
   }
 
   // --- دالة مساعدة لتنسيق وعرض تفاصيل العنوان بالشكل الجديد ---
-  Widget _buildAddressDetailsWidget(dynamic addressData) {
+  Widget _buildAddressDetailsWidget(dynamic addressData, bool isDark) {
     if (addressData is! Map) {
-      return Text(addressData.toString(), style: const TextStyle(fontSize: 13));
+      return Text(addressData.toString(), style: TextStyle(fontSize: 13, color: isDark ? Colors.white : AppColors.textDark));
     }
+
+    final textColor = isDark ? Colors.white : AppColors.textDark;
+    final mutedTextColor = isDark ? Colors.grey[400] : AppColors.textMuted;
 
     final addr = Map<String, dynamic>.from(addressData);
 
@@ -516,7 +548,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
-                    color: AppColors.primaryPurple.withOpacity(0.1),
+                    color: AppColors.primaryPurple.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
@@ -526,7 +558,7 @@ class _OrderDetailViewState extends State<OrderDetailView> {
                 ),
                 if (recipientName.isNotEmpty && recipientName != title) ...[
                   const SizedBox(width: 8),
-                  Text("($recipientName)", style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                  Text("($recipientName)", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: textColor)),
                 ],
               ],
             ),
@@ -534,35 +566,35 @@ class _OrderDetailViewState extends State<OrderDetailView> {
         if (details.isNotEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 2),
-            child: SelectableText("العنوان: $details", style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+            child: SelectableText("العنوان: $details", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: textColor)),
           ),
         if (building.isNotEmpty || floor.isNotEmpty || apartment.isNotEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 2),
             child: SelectableText(
               "المبنى: ${building.isEmpty ? '-' : building} | الدور: ${floor.isEmpty ? '-' : floor} | الشقة: ${apartment.isEmpty ? '-' : apartment}",
-              style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+              style: TextStyle(fontSize: 12, color: mutedTextColor),
             ),
           ),
         if (landmark.isNotEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 2),
-            child: SelectableText("علامة مميزة: $landmark", style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+            child: SelectableText("علامة مميزة: $landmark", style: TextStyle(fontSize: 12, color: mutedTextColor)),
           ),
         if (city.isNotEmpty || state.isNotEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 2),
-            child: SelectableText("المدينة / المحافظة: $city ${state.isNotEmpty ? '($state)' : ''}", style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+            child: SelectableText("المدينة / المحافظة: $city ${state.isNotEmpty ? '($state)' : ''}", style: TextStyle(fontSize: 12, color: mutedTextColor)),
           ),
         if (phone.isNotEmpty || additionalPhone.isNotEmpty) ...[
           const SizedBox(height: 4),
           Row(
             children: [
-              const Icon(Icons.phone_outlined, size: 14, color: Colors.grey),
+              Icon(Icons.phone_outlined, size: 14, color: mutedTextColor),
               const SizedBox(width: 4),
               SelectableText(
                 "رقم الهاتف: $phone ${additionalPhone.isNotEmpty ? ' | آخر: $additionalPhone' : ''}",
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blueGrey),
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: isDark ? Colors.lightBlueAccent : Colors.blueGrey),
               ),
             ],
           ),
@@ -571,10 +603,10 @@ class _OrderDetailViewState extends State<OrderDetailView> {
     );
   }
 
-  Widget _buildSummaryBadge(String label, String val, Color color) {
+  Widget _buildSummaryBadge(String label, String val, Color color, bool isDark) {
     return Column(
       children: [
-        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+        Text(label, style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey, fontSize: 12)),
         const SizedBox(height: 2),
         Text(val, style: TextStyle(fontWeight: FontWeight.bold, color: color, fontSize: 14)),
       ],

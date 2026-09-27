@@ -74,25 +74,32 @@ class _ForgetPasswordWidgetState extends State<ForgetPasswordWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppColors.bgLight,
+      backgroundColor: isDark ? const Color(0xFF121212) : AppColors.bgLight,
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
           child: Container(
             padding: const EdgeInsets.all(32.0),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
               borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: isDark ? Colors.grey.shade800 : Colors.transparent,
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
+                  color: isDark
+                      ? Colors.black.withOpacity(0.3)
+                      : Colors.black.withOpacity(0.04),
                   blurRadius: 20,
                   offset: const Offset(0, 8),
                 ),
               ],
             ),
-            child: _emailSent ? _buildSuccessState() : _buildResetForm(),
+            child: _emailSent ? _buildSuccessState(isDark) : _buildResetForm(isDark),
           ),
         ),
       ),
@@ -100,7 +107,7 @@ class _ForgetPasswordWidgetState extends State<ForgetPasswordWidget> {
   }
 
   // واجهة إدخال البريد الإلكتروني
-  Widget _buildResetForm() {
+  Widget _buildResetForm(bool isDark) {
     return Form(
       key: _formKey,
       child: Column(
@@ -111,7 +118,7 @@ class _ForgetPasswordWidgetState extends State<ForgetPasswordWidget> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.primaryPurple.withOpacity(0.1),
+              color: AppColors.primaryPurple.withOpacity(0.15),
               shape: BoxShape.circle,
             ),
             child: const Icon(
@@ -123,21 +130,21 @@ class _ForgetPasswordWidgetState extends State<ForgetPasswordWidget> {
           const SizedBox(height: 24),
 
           // Title & Description
-           Text(
+          Text(
             "Forgot Password?".tr,
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: AppColors.textDark,
+              color: isDark ? Colors.white : AppColors.textDark,
             ),
           ),
           const SizedBox(height: 8),
-           Text(
+          Text(
             "No worries, enter your registered email and we'll send you a link to reset your password.".tr,
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14,
-              color: AppColors.textMuted,
+              color: isDark ? Colors.grey.shade400 : AppColors.textMuted,
               height: 1.4,
             ),
           ),
@@ -147,9 +154,18 @@ class _ForgetPasswordWidgetState extends State<ForgetPasswordWidget> {
           TextFormField(
             controller: _emailController,
             keyboardType: TextInputType.emailAddress,
+            style: TextStyle(
+              color: isDark ? Colors.white : AppColors.textDark,
+            ),
             decoration: InputDecoration(
               labelText: "Email Address".tr,
+              labelStyle: TextStyle(
+                color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
+              ),
               hintText: "example@domain.com",
+              hintStyle: TextStyle(
+                color: isDark ? Colors.grey.shade600 : Colors.grey.shade400,
+              ),
               prefixIcon: const Icon(Icons.email_outlined,
                   color: AppColors.primaryPurple),
               border: OutlineInputBorder(
@@ -157,7 +173,9 @@ class _ForgetPasswordWidgetState extends State<ForgetPasswordWidget> {
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey.shade300),
+                borderSide: BorderSide(
+                  color: isDark ? Colors.grey.shade700 : Colors.grey.shade300,
+                ),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -200,9 +218,9 @@ class _ForgetPasswordWidgetState extends State<ForgetPasswordWidget> {
                   strokeWidth: 2,
                 ),
               )
-                  :  Text(
+                  : Text(
                 "Send Reset Link".tr,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
@@ -217,12 +235,15 @@ class _ForgetPasswordWidgetState extends State<ForgetPasswordWidget> {
             onPressed: () {
               Navigator.pop(context);
             },
-            icon: const Icon(Icons.arrow_back_rounded,
-                size: 18, color: AppColors.textMuted),
-            label:  Text(
+            icon: Icon(
+              Icons.arrow_back_rounded,
+              size: 18,
+              color: isDark ? Colors.grey.shade400 : AppColors.textMuted,
+            ),
+            label: Text(
               "Back to Login".tr,
               style: TextStyle(
-                color: AppColors.textMuted,
+                color: isDark ? Colors.grey.shade400 : AppColors.textMuted,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -233,39 +254,41 @@ class _ForgetPasswordWidgetState extends State<ForgetPasswordWidget> {
   }
 
   // واجهة تأكيد إرسال البريد النجاح
-  Widget _buildSuccessState() {
+  Widget _buildSuccessState(bool isDark) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Container(
           padding: const EdgeInsets.all(16),
-          decoration: const BoxDecoration(
-            color: Color(0xFFDCFCE7),
+          decoration: BoxDecoration(
+            color: isDark
+                ? Colors.green.withOpacity(0.2)
+                : const Color(0xFFDCFCE7),
             shape: BoxShape.circle,
           ),
-          child: const Icon(
+          child: Icon(
             Icons.mark_email_read_rounded,
             size: 40,
-            color: Colors.green,
+            color: isDark ? Colors.greenAccent : Colors.green,
           ),
         ),
         const SizedBox(height: 24),
-         Text(
+        Text(
           "Check Your Email".tr,
           style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
-            color: AppColors.textDark,
+            color: isDark ? Colors.white : AppColors.textDark,
           ),
         ),
         const SizedBox(height: 8),
         Text(
           "${"We sent a password reset link to:".tr}\n${_emailController.text.trim()}",
           textAlign: TextAlign.center,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
-            color: AppColors.textMuted,
+            color: isDark ? Colors.grey.shade400 : AppColors.textMuted,
             height: 1.4,
           ),
         ),
@@ -283,9 +306,9 @@ class _ForgetPasswordWidgetState extends State<ForgetPasswordWidget> {
             onPressed: () {
               Navigator.pop(context);
             },
-            child:  Text(
+            child: Text(
               "Return to Login".tr,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
@@ -300,9 +323,9 @@ class _ForgetPasswordWidgetState extends State<ForgetPasswordWidget> {
               _emailSent = false;
             });
           },
-          child:  Text(
+          child: Text(
             "Didn't receive the email? Try again".tr,
-            style: TextStyle(
+            style: const TextStyle(
               color: AppColors.primaryPurple,
               fontWeight: FontWeight.w600,
             ),

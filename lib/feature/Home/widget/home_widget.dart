@@ -14,34 +14,13 @@ class HomeWidget extends StatefulWidget {
 }
 
 class _HomeWidgetState extends State<HomeWidget> {
-  final CollectionReference _usersRef = FirebaseFirestore.instance.collection(
-    'users',
-  );
-
-  final CollectionReference _discountRef = FirebaseFirestore.instance
-      .collection('promo_codes');
-
-  final CollectionReference _clientsRef = FirebaseFirestore.instance.collection(
-    'user',
-  );
-
-  final CollectionReference _productsRef = FirebaseFirestore.instance
-      .collection('products');
-
-  final CollectionReference _categoriesRef = FirebaseFirestore.instance
-      .collection('categories');
-
-  final CollectionReference _subcategoriesRef = FirebaseFirestore.instance
-      .collection('subcategories');
-
-  final CollectionReference _employeesRef = FirebaseFirestore.instance
-      .collection('employees');
-
-  final CollectionReference _analyticsSessionsRef = FirebaseFirestore.instance
-      .collection('analytics_sessions');
-
-  int _clientCount = 0;
-  int _staffCount = 0;
+  final CollectionReference _usersRef = FirebaseFirestore.instance.collection('users');
+  final CollectionReference _discountRef = FirebaseFirestore.instance.collection('promo_codes');
+  final CollectionReference _clientsRef = FirebaseFirestore.instance.collection('user');
+  final CollectionReference _productsRef = FirebaseFirestore.instance.collection('products');
+  final CollectionReference _categoriesRef = FirebaseFirestore.instance.collection('categories');
+  final CollectionReference _subcategoriesRef = FirebaseFirestore.instance.collection('subcategories');
+  final CollectionReference _analyticsSessionsRef = FirebaseFirestore.instance.collection('analytics_sessions');
 
   UserModel? _currentUser;
 
@@ -54,121 +33,105 @@ class _HomeWidgetState extends State<HomeWidget> {
   void Start() async {
     try {
       _currentUser = await GetCurrentUserData(context);
-
-      await FirebaseFirestore.instance
-          .collection('user')
-          .where('role', isEqualTo: "staff")
-          .get()
-          .then((value) {
-            if (!mounted) return;
-
-            setState(() {
-              _staffCount = value.size;
-            });
-          });
+      if (!mounted) return;
+      setState(() {});
     } catch (e) {
       if (!mounted) return;
-
       showErrorDialog(context, "Error".tr, e.toString());
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // الألوان الديناميكية للـ Dark & Light Mode
+    final scaffoldBg = isDark ? const Color(0xFF121212) : AppColors.bgLight;
+    final cardBg = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final textPrimary = isDark ? Colors.white : AppColors.textDark;
+    final textSecondary = isDark ? Colors.white60 : AppColors.textMuted;
+    final appBarBg = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+
     return _currentUser != null
         ? Scaffold(
-            backgroundColor: AppColors.bgLight,
-            appBar: AppBar(
-              backgroundColor: Colors.white,
-              elevation: 0.5,
-              title: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "System Overview Dashboard".tr,
-                    style: TextStyle(
-                      color: AppColors.textDark,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
-                  ),
-                  Text(
-                    "Real-time analytics and business insights".tr,
-                    style: TextStyle(color: AppColors.textMuted, fontSize: 12),
-                  ),
-                ],
-              ),
-              actions: [
-                IconButton(
-                  icon: const Icon(
-                    Icons.refresh,
-                    color: AppColors.primaryPurple,
-                  ),
-                  onPressed: () => setState(() {}),
-                  tooltip: "Refresh Data".tr,
-                ),
-                const SizedBox(width: 12),
-              ],
-            ),
-            body: SingleChildScrollView(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildWelcomeBanner(),
-
-                  const SizedBox(height: 24),
-
-                  Text(
-                    "System Metrics & Resources".tr,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textDark,
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  _buildPrimaryStatsGrid(),
-
-                  const SizedBox(height: 24),
-
-                  Text(
-                    "Financials & Orders Breakdown".tr,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textDark,
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  _buildFinancialAndOrdersSection(),
-
-                  const SizedBox(height: 24),
-
-                  Text(
-                    "Business Growth & Conversion".tr,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textDark,
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  _buildGrowthAnalyticsSection(),
-
-                  const SizedBox(height: 24),
-
-                  _buildRecentOrdersCard(),
-                ],
+      backgroundColor: scaffoldBg,
+      appBar: AppBar(
+        backgroundColor: appBarBg,
+        elevation: 0.5,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "System Overview Dashboard".tr,
+              style: TextStyle(
+                color: textPrimary,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
               ),
             ),
-          )
+            Text(
+              "Real-time analytics and business insights".tr,
+              style: TextStyle(color: textSecondary, fontSize: 12),
+            ),
+          ],
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(
+              Icons.refresh,
+              color: AppColors.primaryPurple,
+            ),
+            onPressed: () => setState(() {}),
+            tooltip: "Refresh Data".tr,
+          ),
+          const SizedBox(width: 12),
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildWelcomeBanner(),
+            const SizedBox(height: 24),
+            Text(
+              "System Metrics & Resources".tr,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: textPrimary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildPrimaryStatsGrid(cardBg, textPrimary, textSecondary),
+            const SizedBox(height: 24),
+            Text(
+              "Financials & Orders Breakdown".tr,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: textPrimary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildFinancialAndOrdersSection(cardBg, textPrimary, textSecondary),
+            const SizedBox(height: 24),
+            Text(
+              "Business Growth & Conversion".tr,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: textPrimary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildGrowthAnalyticsSection(cardBg, textPrimary, textSecondary),
+            const SizedBox(height: 24),
+            _buildRecentOrdersCard(cardBg, textPrimary, textSecondary),
+          ],
+        ),
+      ),
+    )
         : const Center(child: CircularProgressIndicator());
   }
 
@@ -271,7 +234,7 @@ class _HomeWidgetState extends State<HomeWidget> {
   // 2. Primary Stats Grid
   // ============================================================
 
-  Widget _buildPrimaryStatsGrid() {
+  Widget _buildPrimaryStatsGrid(Color cardBg, Color textPrimary, Color textSecondary) {
     return LayoutBuilder(
       builder: (context, constraints) {
         int crossAxisCount;
@@ -294,59 +257,44 @@ class _HomeWidgetState extends State<HomeWidget> {
             childAspectRatio: constraints.maxWidth < 400 ? 2.2 : 1.8,
           ),
           children: [
-            // ==================================================
-            // TODAY / YESTERDAY VISITORS
-            // ==================================================
-            _buildVisitorsStatCard(),
-
-            // ==================================================
-            // TOTAL CUSTOMERS
-            // ==================================================
+            _buildVisitorsStatCard(cardBg, textPrimary, textSecondary),
             _buildStatCard(
+              cardBg: cardBg,
+              textPrimary: textPrimary,
+              textSecondary: textSecondary,
               title: "Total Customers".tr,
-              valueStream: _clientsRef
-                  .where('role', isEqualTo: "user")
-                  .snapshots(),
+              valueStream: _clientsRef.where('role', isEqualTo: "user").snapshots(),
               icon: Icons.people_alt_outlined,
               color: Colors.indigo,
             ),
-
-            // ==================================================
-            // EMPLOYEES
-            // ==================================================
             _buildStatCard(
+              cardBg: cardBg,
+              textPrimary: textPrimary,
+              textSecondary: textSecondary,
               title: "Employees & Staff".tr,
-              valueStream: _clientsRef
-                  .where('role', isEqualTo: "staff")
-                  .snapshots(),
-              icon: Icons.badge_outlined,
+              valueStream: _clientsRef.where('role', isEqualTo: "staff").snapshots(),
+              icon: Icons.supervised_user_circle_sharp,
               color: Colors.teal,
             ),
-
-            // ==================================================
-            // PRODUCTS
-            // ==================================================
             _buildStatCard(
+              cardBg: cardBg,
+              textPrimary: textPrimary,
+              textSecondary: textSecondary,
               title: "Total Products".tr,
               valueStream: _productsRef.snapshots(),
               icon: Icons.inventory_2_outlined,
               color: Colors.orange,
             ),
-
-            // ==================================================
-            // PROMO CODES
-            // ==================================================
             _buildStatCard(
+              cardBg: cardBg,
+              textPrimary: textPrimary,
+              textSecondary: textSecondary,
               title: "Total PromoCode".tr,
               valueStream: _discountRef.snapshots(),
               icon: Icons.discount_outlined,
               color: Colors.blue,
             ),
-
-            // ==================================================
-            // CATEGORIES
-            // ==================================================
-            _buildCombinedCategoriesCard(),
+            _buildCombinedCategoriesCard(cardBg, textPrimary, textSecondary),
           ],
         );
       },
@@ -357,110 +305,72 @@ class _HomeWidgetState extends State<HomeWidget> {
   // VISITORS CARD
   // ============================================================
 
-  Widget _buildVisitorsStatCard() {
+  Widget _buildVisitorsStatCard(Color cardBg, Color textPrimary, Color textSecondary) {
     final DateTime now = DateTime.now();
-
-    // بداية اليوم
     final DateTime startOfToday = DateTime(now.year, now.month, now.day);
-
-    // بداية بكرة
     final DateTime startOfTomorrow = startOfToday.add(const Duration(days: 1));
-
-    // بداية امبارح
-    final DateTime startOfYesterday = startOfToday.subtract(
-      const Duration(days: 1),
-    );
+    final DateTime startOfYesterday = startOfToday.subtract(const Duration(days: 1));
 
     return StreamBuilder<QuerySnapshot>(
       stream: _analyticsSessionsRef
-          .where(
-            'startTime',
-            isGreaterThanOrEqualTo: Timestamp.fromDate(startOfYesterday),
-          )
+          .where('startTime', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfYesterday))
           .where('startTime', isLessThan: Timestamp.fromDate(startOfTomorrow))
           .snapshots(),
       builder: (context, snapshot) {
         int todayVisitors = 0;
         int yesterdayVisitors = 0;
-
         int todayGuests = 0;
         int todayRegistered = 0;
-
-        int yesterdayGuests = 0;
-        int yesterdayRegistered = 0;
 
         if (snapshot.hasData) {
           for (final doc in snapshot.data!.docs) {
             final data = doc.data() as Map<String, dynamic>;
-
             final dynamic startTimeValue = data['startTime'];
 
-            if (startTimeValue is! Timestamp) {
-              continue;
-            }
+            if (startTimeValue is! Timestamp) continue;
 
             final DateTime startTime = startTimeValue.toDate();
-
-            final bool isToday =
-                !startTime.isBefore(startOfToday) &&
-                startTime.isBefore(startOfTomorrow);
-
-            final bool isYesterday =
-                !startTime.isBefore(startOfYesterday) &&
-                startTime.isBefore(startOfToday);
-
+            final bool isToday = !startTime.isBefore(startOfToday) && startTime.isBefore(startOfTomorrow);
+            final bool isYesterday = !startTime.isBefore(startOfYesterday) && startTime.isBefore(startOfToday);
             final bool isGuest = data['isGuest'] == true;
 
             if (isToday) {
               todayVisitors++;
-
-              if (isGuest) {
-                todayGuests++;
-              } else {
-                todayRegistered++;
-              }
+              if (isGuest) todayGuests++; else todayRegistered++;
             } else if (isYesterday) {
               yesterdayVisitors++;
-
-              if (isGuest) {
-                yesterdayGuests++;
-              } else {
-                yesterdayRegistered++;
-              }
             }
           }
         }
 
-        return _buildVisitorsCard(
+        return _buildVisitorsCardUI(
+          cardBg: cardBg,
+          textPrimary: textPrimary,
+          textSecondary: textSecondary,
           todayVisitors: todayVisitors,
           yesterdayVisitors: yesterdayVisitors,
           todayGuests: todayGuests,
           todayRegistered: todayRegistered,
-          yesterdayGuests: yesterdayGuests,
-          yesterdayRegistered: yesterdayRegistered,
           isLoading: snapshot.connectionState == ConnectionState.waiting,
         );
       },
     );
   }
 
-  // ============================================================
-  // VISITORS CARD UI
-  // ============================================================
-
-  Widget _buildVisitorsCard({
+  Widget _buildVisitorsCardUI({
+    required Color cardBg,
+    required Color textPrimary,
+    required Color textSecondary,
     required int todayVisitors,
     required int yesterdayVisitors,
     required int todayGuests,
     required int todayRegistered,
-    required int yesterdayGuests,
-    required int yesterdayRegistered,
     required bool isLoading,
   }) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardBg,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -480,8 +390,8 @@ class _HomeWidgetState extends State<HomeWidget> {
               Expanded(
                 child: Text(
                   "Today's Visitors".tr,
-                  style: const TextStyle(
-                    color: AppColors.textMuted,
+                  style: TextStyle(
+                    color: textSecondary,
                     fontWeight: FontWeight.w600,
                     fontSize: 13,
                   ),
@@ -494,44 +404,32 @@ class _HomeWidgetState extends State<HomeWidget> {
                   color: Colors.blue.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(
-                  Icons.remove_red_eye_outlined,
-                  color: Colors.blue,
-                  size: 20,
-                ),
+                child: const Icon(Icons.remove_red_eye_outlined, color: Colors.blue, size: 20),
               ),
             ],
           ),
-
           const SizedBox(height: 10),
-
           if (isLoading)
-            const SizedBox(
-              height: 24,
-              width: 24,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
+            const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2))
           else
             Text(
               "$todayVisitors",
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: AppColors.textDark,
+                color: textPrimary,
               ),
             ),
-
           const SizedBox(height: 4),
-
           Row(
             children: [
-              const Icon(Icons.history_rounded, size: 13, color: Colors.grey),
+              Icon(Icons.history_rounded, size: 13, color: textSecondary),
               const SizedBox(width: 4),
               Flexible(
                 child: Text(
                   "$yesterdayVisitors ${"yesterday".tr}",
-                  style: const TextStyle(
-                    color: Colors.grey,
+                  style: TextStyle(
+                    color: textSecondary,
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
                   ),
@@ -540,9 +438,7 @@ class _HomeWidgetState extends State<HomeWidget> {
               ),
             ],
           ),
-
           const SizedBox(height: 8),
-
           Row(
             children: [
               Expanded(
@@ -569,10 +465,6 @@ class _HomeWidgetState extends State<HomeWidget> {
     );
   }
 
-  // ============================================================
-  // SMALL VISITOR STAT
-  // ============================================================
-
   Widget _buildVisitorMiniStat({
     required String label,
     required int value,
@@ -582,7 +474,7 @@ class _HomeWidgetState extends State<HomeWidget> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.07),
+        color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -610,6 +502,9 @@ class _HomeWidgetState extends State<HomeWidget> {
   // ============================================================
 
   Widget _buildStatCard({
+    required Color cardBg,
+    required Color textPrimary,
+    required Color textSecondary,
     required String title,
     Stream<QuerySnapshot>? valueStream,
     String? customValue,
@@ -620,7 +515,7 @@ class _HomeWidgetState extends State<HomeWidget> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardBg,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -640,8 +535,8 @@ class _HomeWidgetState extends State<HomeWidget> {
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
-                    color: AppColors.textMuted,
+                  style: TextStyle(
+                    color: textSecondary,
                     fontWeight: FontWeight.w600,
                     fontSize: 13,
                   ),
@@ -658,43 +553,40 @@ class _HomeWidgetState extends State<HomeWidget> {
               ),
             ],
           ),
-
           valueStream != null
               ? StreamBuilder<QuerySnapshot>(
-                  stream: valueStream,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      );
-                    }
-
-                    return Text(
-                      "${snapshot.data?.docs.length ?? 0}",
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textDark,
-                      ),
-                    );
-                  },
-                )
-              : Text(
-                  customValue ?? "0",
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textDark,
-                  ),
+            stream: valueStream,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                );
+              }
+              return Text(
+                "${snapshot.data?.docs.length ?? 0}",
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: textPrimary,
                 ),
-
+              );
+            },
+          )
+              : Text(
+            customValue ?? "0",
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: textPrimary,
+            ),
+          ),
           if (subtitle != null)
             Text(
               subtitle,
-              style: const TextStyle(
-                color: Colors.grey,
+              style: TextStyle(
+                color: textSecondary,
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
               ),
@@ -711,11 +603,11 @@ class _HomeWidgetState extends State<HomeWidget> {
   // CATEGORIES
   // ============================================================
 
-  Widget _buildCombinedCategoriesCard() {
+  Widget _buildCombinedCategoriesCard(Color cardBg, Color textPrimary, Color textSecondary) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardBg,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -736,7 +628,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                 child: Text(
                   "Categories & Sub".tr,
                   style: TextStyle(
-                    color: AppColors.textMuted,
+                    color: textSecondary,
                     fontWeight: FontWeight.w600,
                     fontSize: 13,
                   ),
@@ -757,7 +649,6 @@ class _HomeWidgetState extends State<HomeWidget> {
               ),
             ],
           ),
-
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -765,51 +656,49 @@ class _HomeWidgetState extends State<HomeWidget> {
                 stream: _categoriesRef.snapshots(),
                 builder: (context, snap) {
                   final catCount = snap.data?.docs.length ?? 0;
-
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         "$catCount",
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
+                          color: textPrimary,
                         ),
                       ),
                       Text(
                         "Categories".tr,
                         style: TextStyle(
                           fontSize: 11,
-                          color: AppColors.textMuted,
+                          color: textSecondary,
                         ),
                       ),
                     ],
                   );
                 },
               ),
-
-              const SizedBox(height: 30, child: VerticalDivider(width: 1)),
-
+              SizedBox(height: 30, child: VerticalDivider(width: 1, color: textSecondary.withOpacity(0.3))),
               StreamBuilder<QuerySnapshot>(
                 stream: _subcategoriesRef.snapshots(),
                 builder: (context, snap) {
                   final subCount = snap.data?.docs.length ?? 0;
-
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         "$subCount",
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
+                          color: textPrimary,
                         ),
                       ),
                       Text(
                         "Subcategories".tr,
                         style: TextStyle(
                           fontSize: 11,
-                          color: AppColors.textMuted,
+                          color: textSecondary,
                         ),
                       ),
                     ],
@@ -827,7 +716,7 @@ class _HomeWidgetState extends State<HomeWidget> {
   // 3. Financials
   // ============================================================
 
-  Widget _buildFinancialAndOrdersSection() {
+  Widget _buildFinancialAndOrdersSection(Color cardBg, Color textPrimary, Color textSecondary) {
     final DateTime now = DateTime.now();
 
     return StreamBuilder<QuerySnapshot>(
@@ -843,14 +732,10 @@ class _HomeWidgetState extends State<HomeWidget> {
           stream: FirebaseFirestore.instance.collection('payments').snapshots(),
           builder: (context, paymentsSnapshot) {
             return StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('incomes')
-                  .snapshots(),
+              stream: FirebaseFirestore.instance.collection('incomes').snapshots(),
               builder: (context, generalIncomeSnapshot) {
                 return StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance
-                      .collection('expenses')
-                      .snapshots(),
+                  stream: FirebaseFirestore.instance.collection('expenses').snapshots(),
                   builder: (context, expensesSnapshot) {
                     num totalCollected = 0;
                     num totalGeneralIncome = 0;
@@ -859,127 +744,57 @@ class _HomeWidgetState extends State<HomeWidget> {
                     if (paymentsSnapshot.hasData) {
                       for (var payDoc in paymentsSnapshot.data!.docs) {
                         final payData = payDoc.data() as Map<String, dynamic>;
-
-                        final num amount =
-                            payData['amount'] ??
-                            payData['price'] ??
-                            payData['total'] ??
-                            0;
-
-                        dynamic dateVal =
-                            payData['paymentDate'] ??
-                            payData['createdAt'] ??
-                            payData['timestamp'] ??
-                            payData['date'];
+                        final num amount = payData['amount'] ?? payData['price'] ?? payData['total'] ?? 0;
+                        dynamic dateVal = payData['paymentDate'] ?? payData['createdAt'] ?? payData['timestamp'] ?? payData['date'];
 
                         bool isCurrentMonth = true;
-
                         if (dateVal is Timestamp) {
                           final DateTime pDate = dateVal.toDate();
-
-                          isCurrentMonth =
-                              pDate.month == now.month &&
-                              pDate.year == now.year;
-                        } else if (dateVal is String) {
-                          final DateTime? pDate = DateTime.tryParse(dateVal);
-
-                          if (pDate != null) {
-                            isCurrentMonth =
-                                pDate.month == now.month &&
-                                pDate.year == now.year;
-                          }
+                          isCurrentMonth = pDate.month == now.month && pDate.year == now.year;
                         }
 
-                        if (isCurrentMonth) {
-                          totalCollected += amount;
-                        }
+                        if (isCurrentMonth) totalCollected += amount;
                       }
                     }
 
                     if (generalIncomeSnapshot.hasData) {
                       for (var giDoc in generalIncomeSnapshot.data!.docs) {
                         final giData = giDoc.data() as Map<String, dynamic>;
-
                         final num amount = giData['amount'] ?? 0;
-
-                        dynamic dateVal =
-                            giData['createdAt'] ??
-                            giData['timestamp'] ??
-                            giData['date'];
+                        dynamic dateVal = giData['createdAt'] ?? giData['timestamp'] ?? giData['date'];
 
                         bool isCurrentMonth = true;
-
                         if (dateVal is Timestamp) {
                           final DateTime giDate = dateVal.toDate();
-
-                          isCurrentMonth =
-                              giDate.month == now.month &&
-                              giDate.year == now.year;
-                        } else if (dateVal is String) {
-                          final DateTime? giDate = DateTime.tryParse(dateVal);
-
-                          if (giDate != null) {
-                            isCurrentMonth =
-                                giDate.month == now.month &&
-                                giDate.year == now.year;
-                          }
+                          isCurrentMonth = giDate.month == now.month && giDate.year == now.year;
                         }
 
-                        if (isCurrentMonth) {
-                          totalGeneralIncome += amount;
-                        }
+                        if (isCurrentMonth) totalGeneralIncome += amount;
                       }
                     }
 
                     if (expensesSnapshot.hasData) {
                       for (var expDoc in expensesSnapshot.data!.docs) {
                         final expData = expDoc.data() as Map<String, dynamic>;
-
-                        final num amount =
-                            expData['amount'] ??
-                            expData['price'] ??
-                            expData['cost'] ??
-                            0;
-
-                        dynamic dateVal =
-                            expData['date'] ??
-                            expData['createdAt'] ??
-                            expData['timestamp'] ??
-                            expData['expenseDate'];
+                        final num amount = expData['amount'] ?? expData['price'] ?? expData['cost'] ?? 0;
+                        dynamic dateVal = expData['date'] ?? expData['createdAt'] ?? expData['timestamp'] ?? expData['expenseDate'];
 
                         bool isCurrentMonth = true;
-
                         if (dateVal is Timestamp) {
                           final DateTime eDate = dateVal.toDate();
-
-                          isCurrentMonth =
-                              eDate.month == now.month &&
-                              eDate.year == now.year;
-                        } else if (dateVal is String) {
-                          final DateTime? eDate = DateTime.tryParse(dateVal);
-
-                          if (eDate != null) {
-                            isCurrentMonth =
-                                eDate.month == now.month &&
-                                eDate.year == now.year;
-                          }
+                          isCurrentMonth = eDate.month == now.month && eDate.year == now.year;
                         }
 
-                        if (isCurrentMonth) {
-                          totalSpent += amount;
-                        }
+                        if (isCurrentMonth) totalSpent += amount;
                       }
                     }
 
                     final num totalIncome = totalCollected + totalGeneralIncome;
-
                     final num netMonthlyIncome = totalIncome - totalSpent;
 
                     return FutureBuilder<List<QuerySnapshot>>(
                       future: Future.wait(
-                        userDocs.map(
-                          (uDoc) => uDoc.reference.collection('orders').get(),
-                        ),
+                        userDocs.map((uDoc) => uDoc.reference.collection('orders').get()),
                       ),
                       builder: (context, ordersSnapshots) {
                         int activeOrders = 0;
@@ -990,13 +805,9 @@ class _HomeWidgetState extends State<HomeWidget> {
                           for (var orderSnap in ordersSnapshots.data!) {
                             for (var doc in orderSnap.docs) {
                               final data = doc.data() as Map<String, dynamic>;
+                              final status = (data['status'] ?? 'pending').toString().toLowerCase();
 
-                              final status = (data['status'] ?? 'pending')
-                                  .toString()
-                                  .toLowerCase();
-
-                              if (status == 'completed' ||
-                                  status == 'delivered') {
+                              if (status == 'completed' || status == 'delivered') {
                                 completedOrders++;
                               } else if (status == 'cancelled') {
                                 cancelledOrders++;
@@ -1012,9 +823,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                             final bool isDesktop = constraints.maxWidth > 800;
 
                             return Flex(
-                              direction: isDesktop
-                                  ? Axis.horizontal
-                                  : Axis.vertical,
+                              direction: isDesktop ? Axis.horizontal : Axis.vertical,
                               children: [
                                 Container(
                                   width: isDesktop ? null : double.infinity,
@@ -1024,7 +833,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                                   ),
                                   padding: const EdgeInsets.all(20),
                                   decoration: BoxDecoration(
-                                    color: Colors.white,
+                                    color: cardBg,
                                     borderRadius: BorderRadius.circular(16),
                                     boxShadow: [
                                       BoxShadow(
@@ -1035,17 +844,15 @@ class _HomeWidgetState extends State<HomeWidget> {
                                     ],
                                   ),
                                   child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
                                           Text(
                                             "Net Monthly Income".tr,
                                             style: TextStyle(
-                                              color: AppColors.textMuted,
+                                              color: textSecondary,
                                               fontSize: 14,
                                               fontWeight: FontWeight.w600,
                                             ),
@@ -1053,21 +860,12 @@ class _HomeWidgetState extends State<HomeWidget> {
                                           Container(
                                             padding: const EdgeInsets.all(8),
                                             decoration: BoxDecoration(
-                                              color:
-                                                  (netMonthlyIncome >= 0
-                                                          ? Colors.green
-                                                          : Colors.red)
-                                                      .withOpacity(0.12),
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
+                                              color: (netMonthlyIncome >= 0 ? Colors.green : Colors.red).withOpacity(0.12),
+                                              borderRadius: BorderRadius.circular(10),
                                             ),
                                             child: Icon(
-                                              netMonthlyIncome >= 0
-                                                  ? Icons.account_balance_wallet
-                                                  : Icons.money_off,
-                                              color: netMonthlyIncome >= 0
-                                                  ? Colors.green
-                                                  : Colors.red,
+                                              netMonthlyIncome >= 0 ? Icons.account_balance_wallet : Icons.money_off,
+                                              color: netMonthlyIncome >= 0 ? Colors.green : Colors.red,
                                               size: 24,
                                             ),
                                           ),
@@ -1079,29 +877,29 @@ class _HomeWidgetState extends State<HomeWidget> {
                                         style: TextStyle(
                                           fontSize: 26,
                                           fontWeight: FontWeight.bold,
-                                          color: netMonthlyIncome >= 0
-                                              ? Colors.green
-                                              : Colors.red,
+                                          color: netMonthlyIncome >= 0 ? Colors.green : Colors.red,
                                         ),
                                       ),
                                       const SizedBox(height: 6),
                                       Text(
                                         "${"In:".tr} \$${totalIncome.toStringAsFixed(0)} | ${"Out:".tr} \$${totalSpent.toStringAsFixed(0)}",
-                                        style: const TextStyle(
-                                          color: AppColors.textMuted,
+                                        style: TextStyle(
+                                          color: textSecondary,
                                           fontSize: 12,
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
-
                                 Expanded(
                                   flex: isDesktop ? 2 : 0,
                                   child: Row(
                                     children: [
                                       Expanded(
                                         child: _buildSmallStatusCard(
+                                          cardBg: cardBg,
+                                          textPrimary: textPrimary,
+                                          textSecondary: textSecondary,
                                           title: "Active".tr,
                                           count: activeOrders,
                                           color: Colors.orange,
@@ -1111,6 +909,9 @@ class _HomeWidgetState extends State<HomeWidget> {
                                       const SizedBox(width: 8),
                                       Expanded(
                                         child: _buildSmallStatusCard(
+                                          cardBg: cardBg,
+                                          textPrimary: textPrimary,
+                                          textSecondary: textSecondary,
                                           title: "Completed".tr,
                                           count: completedOrders,
                                           color: Colors.green,
@@ -1120,6 +921,9 @@ class _HomeWidgetState extends State<HomeWidget> {
                                       const SizedBox(width: 8),
                                       Expanded(
                                         child: _buildSmallStatusCard(
+                                          cardBg: cardBg,
+                                          textPrimary: textPrimary,
+                                          textSecondary: textSecondary,
                                           title: "Cancelled".tr,
                                           count: cancelledOrders,
                                           color: Colors.redAccent,
@@ -1150,6 +954,9 @@ class _HomeWidgetState extends State<HomeWidget> {
   // ============================================================
 
   Widget _buildSmallStatusCard({
+    required Color cardBg,
+    required Color textPrimary,
+    required Color textSecondary,
     required String title,
     required int count,
     required Color color,
@@ -1158,7 +965,7 @@ class _HomeWidgetState extends State<HomeWidget> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardBg,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -1175,10 +982,10 @@ class _HomeWidgetState extends State<HomeWidget> {
           const SizedBox(height: 12),
           Text(
             "$count",
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: AppColors.textDark,
+              color: textPrimary,
             ),
           ),
           const SizedBox(height: 4),
@@ -1186,8 +993,8 @@ class _HomeWidgetState extends State<HomeWidget> {
             title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppColors.textMuted,
+            style: TextStyle(
+              color: textSecondary,
               fontSize: 11,
               fontWeight: FontWeight.w500,
             ),
@@ -1201,14 +1008,12 @@ class _HomeWidgetState extends State<HomeWidget> {
   // 4. Growth & Business Analytics
   // ============================================================
 
-  Widget _buildGrowthAnalyticsSection() {
+  Widget _buildGrowthAnalyticsSection(Color cardBg, Color textPrimary, Color textSecondary) {
     final DateTime now = DateTime.now();
     final DateTime lastMonth = DateTime(now.year, now.month - 1);
 
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('analytics_sessions')
-          .snapshots(),
+      stream: FirebaseFirestore.instance.collection('analytics_sessions').snapshots(),
       builder: (context, sessionsSnapshot) {
         final totalSessionsCount = sessionsSnapshot.data?.docs.length ?? 0;
 
@@ -1216,9 +1021,7 @@ class _HomeWidgetState extends State<HomeWidget> {
           stream: FirebaseFirestore.instance.collection('payments').snapshots(),
           builder: (context, paymentsSnapshot) {
             return StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('incomes')
-                  .snapshots(),
+              stream: FirebaseFirestore.instance.collection('incomes').snapshots(),
               builder: (context, generalIncomeSnapshot) {
                 num currentMonthRevenue = 0;
                 num previousMonthRevenue = 0;
@@ -1226,20 +1029,13 @@ class _HomeWidgetState extends State<HomeWidget> {
                 if (paymentsSnapshot.hasData) {
                   for (var payDoc in paymentsSnapshot.data!.docs) {
                     final payData = payDoc.data() as Map<String, dynamic>;
-
-                    dynamic dateVal =
-                        payData['createdAt'] ??
-                        payData['timestamp'] ??
-                        payData['paymentDate'] ??
-                        payData['date'];
+                    dynamic dateVal = payData['createdAt'] ?? payData['timestamp'] ?? payData['paymentDate'] ?? payData['date'];
 
                     if (dateVal is Timestamp) {
                       final DateTime pDate = dateVal.toDate();
-
                       if (pDate.month == now.month && pDate.year == now.year) {
                         currentMonthRevenue += (payData['amount'] ?? 0);
-                      } else if (pDate.month == lastMonth.month &&
-                          pDate.year == lastMonth.year) {
+                      } else if (pDate.month == lastMonth.month && pDate.year == lastMonth.year) {
                         previousMonthRevenue += (payData['amount'] ?? 0);
                       }
                     }
@@ -1249,20 +1045,13 @@ class _HomeWidgetState extends State<HomeWidget> {
                 if (generalIncomeSnapshot.hasData) {
                   for (var giDoc in generalIncomeSnapshot.data!.docs) {
                     final giData = giDoc.data() as Map<String, dynamic>;
-
-                    dynamic dateVal =
-                        giData['createdAt'] ??
-                        giData['timestamp'] ??
-                        giData['date'];
+                    dynamic dateVal = giData['createdAt'] ?? giData['timestamp'] ?? giData['date'];
 
                     if (dateVal is Timestamp) {
                       final DateTime giDate = dateVal.toDate();
-
-                      if (giDate.month == now.month &&
-                          giDate.year == now.year) {
+                      if (giDate.month == now.month && giDate.year == now.year) {
                         currentMonthRevenue += (giData['amount'] ?? 0);
-                      } else if (giDate.month == lastMonth.month &&
-                          giDate.year == lastMonth.year) {
+                      } else if (giDate.month == lastMonth.month && giDate.year == lastMonth.year) {
                         previousMonthRevenue += (giData['amount'] ?? 0);
                       }
                     }
@@ -1270,12 +1059,8 @@ class _HomeWidgetState extends State<HomeWidget> {
                 }
 
                 double monthlyGrowthPercent = 0.0;
-
                 if (previousMonthRevenue > 0) {
-                  monthlyGrowthPercent =
-                      ((currentMonthRevenue - previousMonthRevenue) /
-                          previousMonthRevenue) *
-                      100;
+                  monthlyGrowthPercent = ((currentMonthRevenue - previousMonthRevenue) / previousMonthRevenue) * 100;
                 } else if (currentMonthRevenue > 0) {
                   monthlyGrowthPercent = 100.0;
                 }
@@ -1287,9 +1072,7 @@ class _HomeWidgetState extends State<HomeWidget> {
 
                     return FutureBuilder<List<QuerySnapshot>>(
                       future: Future.wait(
-                        userDocs.map(
-                          (uDoc) => uDoc.reference.collection('orders').get(),
-                        ),
+                        userDocs.map((uDoc) => uDoc.reference.collection('orders').get()),
                       ),
                       builder: (context, ordersSnapshots) {
                         double totalOrdersAmount = 0.0;
@@ -1299,80 +1082,61 @@ class _HomeWidgetState extends State<HomeWidget> {
                           for (var orderSnap in ordersSnapshots.data!) {
                             for (var doc in orderSnap.docs) {
                               final data = doc.data() as Map<String, dynamic>;
-
-                              totalOrdersAmount +=
-                                  (data['totalAmount'] ??
-                                          data['totalPrice'] ??
-                                          0.0)
-                                      .toDouble();
-
+                              totalOrdersAmount += (data['totalAmount'] ?? data['totalPrice'] ?? 0.0).toDouble();
                               totalOrdersCount++;
                             }
                           }
                         }
 
-                        final double avgOrderValue = totalOrdersCount > 0
-                            ? totalOrdersAmount / totalOrdersCount
-                            : 0.0;
-
-                        final double conversionRate = totalSessionsCount > 0
-                            ? (totalOrdersCount / totalSessionsCount) * 100
-                            : 0.0;
+                        final double avgOrderValue = totalOrdersCount > 0 ? totalOrdersAmount / totalOrdersCount : 0.0;
+                        final double conversionRate = totalSessionsCount > 0 ? (totalOrdersCount / totalSessionsCount) * 100 : 0.0;
 
                         return LayoutBuilder(
                           builder: (context, constraints) {
                             final isMobile = constraints.maxWidth < 600;
 
                             return Flex(
-                              direction: isMobile
-                                  ? Axis.vertical
-                                  : Axis.horizontal,
+                              direction: isMobile ? Axis.vertical : Axis.horizontal,
                               children: [
                                 Expanded(
                                   flex: isMobile ? 0 : 1,
                                   child: _buildAnalyticsMetricCard(
+                                    cardBg: cardBg,
+                                    textPrimary: textPrimary,
+                                    textSecondary: textSecondary,
                                     title: "Monthly Growth".tr,
-                                    value:
-                                        "${monthlyGrowthPercent >= 0 ? '+' : ''}${monthlyGrowthPercent.toStringAsFixed(1)}%",
-                                    icon: monthlyGrowthPercent >= 0
-                                        ? Icons.trending_up
-                                        : Icons.trending_down,
-                                    color: monthlyGrowthPercent >= 0
-                                        ? Colors.blueAccent
-                                        : Colors.redAccent,
+                                    value: "${monthlyGrowthPercent >= 0 ? '+' : ''}${monthlyGrowthPercent.toStringAsFixed(1)}%",
+                                    icon: monthlyGrowthPercent >= 0 ? Icons.trending_up : Icons.trending_down,
+                                    color: monthlyGrowthPercent >= 0 ? Colors.blueAccent : Colors.redAccent,
                                     subtitle: "Revenue vs last month".tr,
                                   ),
                                 ),
-                                SizedBox(
-                                  width: isMobile ? 0 : 12,
-                                  height: isMobile ? 12 : 0,
-                                ),
+                                SizedBox(width: isMobile ? 0 : 12, height: isMobile ? 12 : 0),
                                 Expanded(
                                   flex: isMobile ? 0 : 1,
                                   child: _buildAnalyticsMetricCard(
+                                    cardBg: cardBg,
+                                    textPrimary: textPrimary,
+                                    textSecondary: textSecondary,
                                     title: "Avg Order Value".tr,
-                                    value:
-                                        "\$${avgOrderValue.toStringAsFixed(2)}",
+                                    value: "\$${avgOrderValue.toStringAsFixed(2)}",
                                     icon: Icons.shopping_bag_outlined,
                                     color: Colors.purpleAccent,
-                                    subtitle:
-                                        "${"Across".tr} $totalOrdersCount ${"total orders".tr}",
+                                    subtitle: "${"Across".tr} $totalOrdersCount ${"total orders".tr}",
                                   ),
                                 ),
-                                SizedBox(
-                                  width: isMobile ? 0 : 12,
-                                  height: isMobile ? 12 : 0,
-                                ),
+                                SizedBox(width: isMobile ? 0 : 12, height: isMobile ? 12 : 0),
                                 Expanded(
                                   flex: isMobile ? 0 : 1,
                                   child: _buildAnalyticsMetricCard(
+                                    cardBg: cardBg,
+                                    textPrimary: textPrimary,
+                                    textSecondary: textSecondary,
                                     title: "Conversion Rate".tr,
-                                    value:
-                                        "${conversionRate.toStringAsFixed(2)}%",
+                                    value: "${conversionRate.toStringAsFixed(2)}%",
                                     icon: Icons.pie_chart_outline,
                                     color: Colors.teal,
-                                    subtitle:
-                                        "$totalOrdersCount ${"orders".tr} / $totalSessionsCount ${"sessions".tr}",
+                                    subtitle: "$totalOrdersCount ${"orders".tr} / $totalSessionsCount ${"sessions".tr}",
                                   ),
                                 ),
                               ],
@@ -1396,6 +1160,9 @@ class _HomeWidgetState extends State<HomeWidget> {
   // ============================================================
 
   Widget _buildAnalyticsMetricCard({
+    required Color cardBg,
+    required Color textPrimary,
+    required Color textSecondary,
     required String title,
     required String value,
     required IconData icon,
@@ -1406,7 +1173,7 @@ class _HomeWidgetState extends State<HomeWidget> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardBg,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -1426,8 +1193,8 @@ class _HomeWidgetState extends State<HomeWidget> {
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
-                    color: AppColors.textMuted,
+                  style: TextStyle(
+                    color: textSecondary,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
@@ -1439,10 +1206,10 @@ class _HomeWidgetState extends State<HomeWidget> {
           const SizedBox(height: 12),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: AppColors.textDark,
+              color: textPrimary,
             ),
           ),
           const SizedBox(height: 4),
@@ -1464,12 +1231,12 @@ class _HomeWidgetState extends State<HomeWidget> {
   // 5. Active Recent Orders
   // ============================================================
 
-  Widget _buildRecentOrdersCard() {
+  Widget _buildRecentOrdersCard(Color cardBg, Color textPrimary, Color textSecondary) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardBg,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -1488,10 +1255,10 @@ class _HomeWidgetState extends State<HomeWidget> {
               Expanded(
                 child: Text(
                   "Active Orders In Progress".tr,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.textDark,
+                    color: textPrimary,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -1503,9 +1270,7 @@ class _HomeWidgetState extends State<HomeWidget> {
               ),
             ],
           ),
-
           const SizedBox(height: 12),
-
           StreamBuilder<QuerySnapshot>(
             stream: _usersRef.snapshots(),
             builder: (context, usersSnapshot) {
@@ -1517,13 +1282,10 @@ class _HomeWidgetState extends State<HomeWidget> {
 
               return FutureBuilder<List<QuerySnapshot>>(
                 future: Future.wait(
-                  userDocs.map(
-                    (uDoc) => uDoc.reference.collection('orders').get(),
-                  ),
+                  userDocs.map((uDoc) => uDoc.reference.collection('orders').get()),
                 ),
                 builder: (context, ordersSnapshots) {
-                  if (ordersSnapshots.connectionState ==
-                      ConnectionState.waiting) {
+                  if (ordersSnapshots.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
                   }
 
@@ -1533,14 +1295,9 @@ class _HomeWidgetState extends State<HomeWidget> {
                     for (var orderSnap in ordersSnapshots.data!) {
                       for (var doc in orderSnap.docs) {
                         final data = doc.data() as Map<String, dynamic>;
+                        final status = (data['status'] ?? '').toString().toLowerCase();
 
-                        final status = (data['status'] ?? '')
-                            .toString()
-                            .toLowerCase();
-
-                        if (status != 'cancelled' &&
-                            status != 'completed' &&
-                            status != 'delivered') {
+                        if (status != 'cancelled' && status != 'completed' && status != 'delivered') {
                           data['id'] = doc.id;
                           activeOrders.add(data);
                         }
@@ -1554,7 +1311,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                         padding: const EdgeInsets.symmetric(vertical: 20),
                         child: Text(
                           "No active orders currently in progress.".tr,
-                          style: const TextStyle(color: AppColors.textMuted),
+                          style: TextStyle(color: textSecondary),
                         ),
                       ),
                     );
@@ -1563,10 +1320,8 @@ class _HomeWidgetState extends State<HomeWidget> {
                   activeOrders.sort((a, b) {
                     Timestamp? tA = a['createdAt'] as Timestamp?;
                     Timestamp? tB = b['createdAt'] as Timestamp?;
-
                     if (tA == null) return 1;
                     if (tB == null) return -1;
-
                     return tB.compareTo(tA);
                   });
 
@@ -1576,23 +1331,19 @@ class _HomeWidgetState extends State<HomeWidget> {
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: recentActive.length,
-                    separatorBuilder: (context, index) =>
-                        const Divider(height: 16),
+                    separatorBuilder: (context, index) => Divider(
+                      height: 16,
+                      color: textSecondary.withOpacity(0.2),
+                    ),
                     itemBuilder: (context, index) {
                       final data = recentActive[index];
-
-                      final orderId = data['id'] ?? '';
-
                       final status = data['status'] ?? 'In Progress';
-
                       double price = (data['totalPrice'] ?? 0.0).toDouble();
 
                       if (price == 0.0 && data['items'] is List) {
                         for (var item in (data['items'] as List)) {
                           final itemPrice = (item['price'] ?? 0).toDouble();
-
                           final itemQty = (item['quantity'] ?? 1).toDouble();
-
                           price += itemPrice * itemQty;
                         }
                       }
@@ -1600,9 +1351,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                       return ListTile(
                         contentPadding: EdgeInsets.zero,
                         leading: CircleAvatar(
-                          backgroundColor: _getStatusColor(
-                            status,
-                          ).withOpacity(0.15),
+                          backgroundColor: _getStatusColor(status).withOpacity(0.15),
                           child: Icon(
                             Icons.shopping_bag,
                             color: _getStatusColor(status),
@@ -1611,9 +1360,10 @@ class _HomeWidgetState extends State<HomeWidget> {
                         ),
                         title: Text(
                           "${"Order".tr} #${data['orderNumber'].toString()}",
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
+                            color: textPrimary,
                           ),
                         ),
                         subtitle: Text(
@@ -1626,10 +1376,10 @@ class _HomeWidgetState extends State<HomeWidget> {
                         ),
                         trailing: Text(
                           "${price.toStringAsFixed(2)} EGP",
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
-                            color: AppColors.textDark,
+                            color: textPrimary,
                           ),
                         ),
                       );
@@ -1653,14 +1403,11 @@ class _HomeWidgetState extends State<HomeWidget> {
       case 'completed':
       case 'delivered':
         return Colors.green;
-
       case 'cancelled':
         return Colors.red;
-
       case 'processing':
       case 'pending':
         return Colors.orange;
-
       default:
         return Colors.blue;
     }

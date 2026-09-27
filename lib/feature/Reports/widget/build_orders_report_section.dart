@@ -22,15 +22,20 @@ class OrdersReportSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final mobile = isMobile(context);
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+
+    final cardBackgroundColor = isDarkMode ? theme.cardColor : Colors.white;
+    final borderColor = isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200;
 
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(mobile ? 14 : 22),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardBackgroundColor,
         borderRadius: BorderRadius.circular(20),
         border: BoxBorder.all(
-          color: Colors.grey.shade200,
+          color: borderColor,
         ),
       ),
       child: FutureBuilder<List<Map<String, dynamic>>>(
@@ -63,6 +68,7 @@ class OrdersReportSection extends StatelessWidget {
                 iconColor: Colors.orange,
                 actions: [
                   buildActionButton(
+                    context: context,
                     label: "Export Excel",
                     icon: Icons.table_chart_rounded,
                     color: Colors.green,
@@ -83,10 +89,11 @@ class OrdersReportSection extends StatelessWidget {
                 total,
               ),
               const SizedBox(height: 20),
-              Divider(color: Colors.grey.shade200),
+              Divider(color: borderColor),
               const SizedBox(height: 16),
               if (allOrders.isEmpty)
                 buildEmptyState(
+                  context: context,
                   icon: Icons.shopping_bag_outlined,
                   title: "No Orders Found",
                   subtitle: "No orders match the current filters.",
@@ -94,7 +101,7 @@ class OrdersReportSection extends StatelessWidget {
               else if (mobile)
                 _buildOrdersMobileList(allOrders)
               else
-                _buildOrdersDesktopTable(allOrders),
+                _buildOrdersDesktopTable(context, allOrders),
             ],
           );
         },
@@ -111,12 +118,14 @@ class OrdersReportSection extends StatelessWidget {
 
     final cards = [
       summaryCard(
+        context: context,
         title: "Total Orders",
         value: count.toString(),
         icon: Icons.shopping_bag_outlined,
         color: Colors.blue,
       ),
       summaryCard(
+        context: context,
         title: "Orders Value",
         value: money(total),
         icon: Icons.payments_outlined,
@@ -148,27 +157,34 @@ class OrdersReportSection extends StatelessWidget {
     );
   }
 
-  Widget _buildOrdersDesktopTable(List<Map<String, dynamic>> orders) {
+  Widget _buildOrdersDesktopTable(
+      BuildContext context, List<Map<String, dynamic>> orders) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    final tableHeaderBg = isDarkMode ? Colors.grey.shade900 : AppColors.bgLight;
+    final borderColor = isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200;
+    final textColor = isDarkMode ? Colors.white : Colors.black87;
+
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
         border: BoxBorder.all(
-          color: Colors.grey.shade200,
+          color: borderColor,
         ),
       ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: DataTable(
-          headingRowColor: WidgetStateProperty.all(AppColors.bgLight),
+          headingRowColor: WidgetStateProperty.all(tableHeaderBg),
           columnSpacing: 32,
-          columns: const [
-            DataColumn(label: Text("Order ID")),
-            DataColumn(label: Text("Type")),
-            DataColumn(label: Text("Customer")),
-            DataColumn(label: Text("Total Price")),
-            DataColumn(label: Text("Date")),
-            DataColumn(label: Text("Status")),
+          columns: [
+            DataColumn(label: Text("Order ID", style: TextStyle(color: textColor, fontWeight: FontWeight.bold))),
+            DataColumn(label: Text("Type", style: TextStyle(color: textColor, fontWeight: FontWeight.bold))),
+            DataColumn(label: Text("Customer", style: TextStyle(color: textColor, fontWeight: FontWeight.bold))),
+            DataColumn(label: Text("Total Price", style: TextStyle(color: textColor, fontWeight: FontWeight.bold))),
+            DataColumn(label: Text("Date", style: TextStyle(color: textColor, fontWeight: FontWeight.bold))),
+            DataColumn(label: Text("Status", style: TextStyle(color: textColor, fontWeight: FontWeight.bold))),
           ],
           rows: orders.map((order) {
             final type = order['type']?.toString() ?? "Customer";
@@ -178,30 +194,37 @@ class OrdersReportSection extends StatelessWidget {
                 DataCell(
                   Text(
                     order['orderId'].toString(),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w700,
+                      color: textColor,
                     ),
                   ),
                 ),
-                DataCell(_buildOrderTypeChip(type)),
+                DataCell(_buildOrderTypeChip(context, type)),
                 DataCell(
-                  Text(order['userName']?.toString() ?? "N/A"),
+                  Text(
+                    order['userName']?.toString() ?? "N/A",
+                    style: TextStyle(color: textColor),
+                  ),
                 ),
                 DataCell(
                   Text(
                     money(toDouble(order['calculatedTotal'])),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w800,
+                      color: isDarkMode ? Colors.greenAccent : Colors.green.shade800,
                     ),
                   ),
                 ),
                 DataCell(
                   Text(
                     formatDateTime(order['createdAtFormatted']),
+                    style: TextStyle(color: textColor),
                   ),
                 ),
                 DataCell(
                   _buildStatusChip(
+                    context,
                     order['status']?.toString() ?? "Pending",
                   ),
                 ),
@@ -220,51 +243,62 @@ class OrdersReportSection extends StatelessWidget {
       itemCount: orders.length,
       separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
-        return _buildOrderCard(orders[index]);
+        return _buildOrderCard(orders[index], context);
       },
     );
   }
 
-  Widget _buildOrderCard(Map<String, dynamic> order) {
+  Widget _buildOrderCard(Map<String, dynamic> order, BuildContext context) {
     final type = order['type']?.toString() ?? "Customer";
+
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+
+    final cardBg = isDarkMode ? theme.cardColor : Colors.white;
+    final borderColor = isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200;
 
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardBg,
         borderRadius: BorderRadius.circular(15),
         border: BoxBorder.all(
-          color: Colors.grey.shade200,
+          color: borderColor,
         ),
       ),
       child: Column(
         children: [
           Row(
             children: [
-              _buildOrderTypeChip(type),
+              _buildOrderTypeChip(context, type),
               const Spacer(),
               _buildStatusChip(
+                context,
                 order['status']?.toString() ?? "Pending",
               ),
             ],
           ),
           const SizedBox(height: 12),
           mobileInfoRow(
+            context,
             Icons.shopping_bag_outlined,
             "Order ID",
             order['orderId'].toString(),
           ),
           mobileInfoRow(
+            context,
             Icons.person_outline_rounded,
             "Customer",
             order['userName']?.toString() ?? "N/A",
           ),
           mobileInfoRow(
+            context,
             Icons.payments_outlined,
             "Total",
             money(toDouble(order['calculatedTotal'])),
           ),
           mobileInfoRow(
+            context,
             Icons.access_time_rounded,
             "Date",
             formatDateTime(order['createdAtFormatted']),
@@ -274,9 +308,14 @@ class OrdersReportSection extends StatelessWidget {
     );
   }
 
-  Widget _buildOrderTypeChip(String type) {
+  Widget _buildOrderTypeChip(BuildContext context, String type) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final isManual = type == 'Manual';
     final color = isManual ? Colors.orange : Colors.blue;
+
+    final effectiveColor = isDarkMode
+        ? (isManual ? Colors.orangeAccent : Colors.lightBlueAccent)
+        : color;
 
     return Container(
       padding: const EdgeInsets.symmetric(
@@ -284,13 +323,13 @@ class OrdersReportSection extends StatelessWidget {
         vertical: 6,
       ),
       decoration: BoxDecoration(
-        color: color.withOpacity(.10),
+        color: effectiveColor.withOpacity(isDarkMode ? 0.20 : 0.10),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
         type,
         style: TextStyle(
-          color: color,
+          color: effectiveColor,
           fontSize: 10,
           fontWeight: FontWeight.w800,
         ),
@@ -298,25 +337,26 @@ class OrdersReportSection extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusChip(String status) {
+  Widget _buildStatusChip(BuildContext context, String status) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     Color color = Colors.orange;
 
     switch (status.toLowerCase()) {
       case 'completed':
       case 'complete':
       case 'delivered':
-        color = Colors.green;
+        color = isDarkMode ? Colors.greenAccent : Colors.green;
         break;
 
       case 'cancelled':
       case 'canceled':
       case 'rejected':
-        color = Colors.red;
+        color = isDarkMode ? Colors.redAccent : Colors.red;
         break;
 
       case 'processing':
       case 'pending':
-        color = Colors.orange;
+        color = isDarkMode ? Colors.orangeAccent : Colors.orange;
         break;
     }
 
@@ -326,7 +366,7 @@ class OrdersReportSection extends StatelessWidget {
         vertical: 6,
       ),
       decoration: BoxDecoration(
-        color: color.withOpacity(.10),
+        color: color.withOpacity(isDarkMode ? 0.20 : 0.10),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(

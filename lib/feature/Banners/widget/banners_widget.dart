@@ -44,32 +44,6 @@ class _BannersWidgetState extends State<BannersWidget> {
   }
 
   // ============================================================
-  // PICK IMAGE
-  // ============================================================
-
-  Future<void> _pickImage({
-    required void Function(Uint8List bytes, XFile file) onSuccess,
-    required void Function(String message) onError,
-  }) async {
-    try {
-      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-
-      if (image == null) return;
-
-      final Uint8List bytes = await image.readAsBytes();
-
-      if (bytes.isEmpty) {
-        onError("The selected image is empty".tr);
-        return;
-      }
-
-      onSuccess(bytes, image);
-    } catch (e) {
-      onError("${"Failed to select image".tr}: $e");
-    }
-  }
-
-  // ============================================================
   // CROP + ROTATE
   // ============================================================
 
@@ -77,6 +51,7 @@ class _BannersWidgetState extends State<BannersWidget> {
     required BuildContext context,
     required XFile imageFile,
   }) async {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     try {
       final String sourcePath = imageFile.path;
 
@@ -91,9 +66,10 @@ class _BannersWidgetState extends State<BannersWidget> {
         uiSettings: [
           AndroidUiSettings(
             toolbarTitle: 'Edit Banner'.tr,
-            toolbarColor: const Color(0xFF6C5CE7),
+            toolbarColor: isDark ? const Color(0xFF1E1E1E) : const Color(0xFF6C5CE7),
             toolbarWidgetColor: Colors.white,
             activeControlsWidgetColor: const Color(0xFF6C5CE7),
+            backgroundColor: isDark ? const Color(0xFF121212) : Colors.white,
             initAspectRatio: CropAspectRatioPreset.original,
             lockAspectRatio: false,
             aspectRatioPresets: [
@@ -178,10 +154,10 @@ class _BannersWidgetState extends State<BannersWidget> {
   // ============================================================
 
   Future<Uint8List?> _resizeImage(
-    Uint8List bytes, {
-    required int width,
-    required int height,
-  }) async {
+      Uint8List bytes, {
+        required int width,
+        required int height,
+      }) async {
     try {
       final img.Image? decoded = img.decodeImage(bytes);
 
@@ -210,9 +186,9 @@ class _BannersWidgetState extends State<BannersWidget> {
   // ============================================================
 
   Future<Uint8List?> _showResizeDialog(
-    BuildContext context,
-    Uint8List originalBytes,
-  ) async {
+      BuildContext context,
+      Uint8List originalBytes,
+      ) async {
     final img.Image? decoded = img.decodeImage(originalBytes);
 
     if (decoded == null) {
@@ -243,7 +219,10 @@ class _BannersWidgetState extends State<BannersWidget> {
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setState) {
+            final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
             return AlertDialog(
+              backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
               title: Row(
                 children: [
                   const Icon(
@@ -251,7 +230,12 @@ class _BannersWidgetState extends State<BannersWidget> {
                     color: Color(0xFF6C5CE7),
                   ),
                   const SizedBox(width: 10),
-                  Text("Resize Image".tr),
+                  Text(
+                    "Resize Image".tr,
+                    style: TextStyle(
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
                 ],
               ),
               content: SizedBox(
@@ -263,7 +247,9 @@ class _BannersWidgetState extends State<BannersWidget> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF4F3FF),
+                        color: isDark
+                            ? const Color(0xFF6C5CE7).withOpacity(0.15)
+                            : const Color(0xFFF4F3FF),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
@@ -276,9 +262,10 @@ class _BannersWidgetState extends State<BannersWidget> {
                           Expanded(
                             child: Text(
                               "${"Original size".tr}: "
-                              "$originalWidth × $originalHeight px",
-                              style: const TextStyle(
+                                  "$originalWidth × $originalHeight px",
+                              style: TextStyle(
                                 fontWeight: FontWeight.w600,
+                                color: isDark ? Colors.white70 : Colors.black87,
                               ),
                             ),
                           ),
@@ -291,11 +278,26 @@ class _BannersWidgetState extends State<BannersWidget> {
                     TextField(
                       controller: widthController,
                       keyboardType: TextInputType.number,
+                      style: TextStyle(
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
                       decoration: InputDecoration(
                         labelText: "Width".tr,
+                        labelStyle: TextStyle(
+                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
+                        ),
                         suffixText: "px",
+                        suffixStyle: TextStyle(
+                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(
+                            color: isDark ? Colors.grey.shade700 : Colors.grey.shade400,
+                          ),
                         ),
                       ),
                       onChanged: (value) {
@@ -318,7 +320,10 @@ class _BannersWidgetState extends State<BannersWidget> {
                         Expanded(
                           child: Text(
                             "Keep aspect ratio".tr,
-                            style: const TextStyle(fontWeight: FontWeight.w600),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: isDark ? Colors.white : Colors.black87,
+                            ),
                           ),
                         ),
                         Switch(
@@ -338,11 +343,26 @@ class _BannersWidgetState extends State<BannersWidget> {
                     TextField(
                       controller: heightController,
                       keyboardType: TextInputType.number,
+                      style: TextStyle(
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
                       decoration: InputDecoration(
                         labelText: "Height".tr,
+                        labelStyle: TextStyle(
+                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
+                        ),
                         suffixText: "px",
+                        suffixStyle: TextStyle(
+                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(
+                            color: isDark ? Colors.grey.shade700 : Colors.grey.shade400,
+                          ),
                         ),
                       ),
                       onChanged: (value) {
@@ -365,7 +385,12 @@ class _BannersWidgetState extends State<BannersWidget> {
                   onPressed: () {
                     Navigator.pop(dialogContext);
                   },
-                  child: Text("Cancel".tr),
+                  child: Text(
+                    "Cancel".tr,
+                    style: TextStyle(
+                      color: isDark ? Colors.grey.shade400 : Colors.grey,
+                    ),
+                  ),
                 ),
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
@@ -490,8 +515,10 @@ class _BannersWidgetState extends State<BannersWidget> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             final double screenWidth = MediaQuery.of(context).size.width;
+            final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
             return AlertDialog(
+              backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
@@ -499,6 +526,9 @@ class _BannersWidgetState extends State<BannersWidget> {
                 docId == null
                     ? "Adding a new Banar".tr
                     : "Modify the banner".tr,
+                style: TextStyle(
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
               ),
               content: SizedBox(
                 width: screenWidth > 600 ? 560 : screenWidth * 0.85,
@@ -513,45 +543,53 @@ class _BannersWidgetState extends State<BannersWidget> {
                         height: 230,
                         width: double.infinity,
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
+                          color: isDark
+                              ? const Color(0xFF2A2A2A)
+                              : Colors.grey.shade100,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey.shade300),
+                          border: Border.all(
+                            color: isDark
+                                ? Colors.grey.shade700
+                                : Colors.grey.shade300,
+                          ),
                         ),
                         child: pickedImageBytes != null
                             ? ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: Image.memory(
-                                  pickedImageBytes!,
-                                  fit: BoxFit.contain,
-                                ),
-                              )
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.memory(
+                            pickedImageBytes!,
+                            fit: BoxFit.contain,
+                          ),
+                        )
                             : (currentImageUrl != null &&
-                                  currentImageUrl!.isNotEmpty)
+                            currentImageUrl!.isNotEmpty)
                             ? ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: Image.network(
-                                  currentImageUrl!,
-                                  fit: BoxFit.contain,
-                                ),
-                              )
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.network(
+                            currentImageUrl!,
+                            fit: BoxFit.contain,
+                          ),
+                        )
                             : Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(
-                                    Icons.add_a_photo_rounded,
-                                    size: 45,
-                                    color: Color(0xFF6C5CE7),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    "Click to select a banner image".tr,
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                ],
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.add_a_photo_rounded,
+                              size: 45,
+                              color: Color(0xFF6C5CE7),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              "Click to select a banner image".tr,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isDark
+                                    ? Colors.grey.shade400
+                                    : Colors.grey,
                               ),
+                            ),
+                          ],
+                        ),
                       ),
 
                       const SizedBox(height: 12),
@@ -563,6 +601,15 @@ class _BannersWidgetState extends State<BannersWidget> {
                         children: [
                           Expanded(
                             child: OutlinedButton.icon(
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(
+                                  color: isDark
+                                      ? Colors.grey.shade700
+                                      : Colors.grey.shade400,
+                                ),
+                                foregroundColor:
+                                isDark ? Colors.white : Colors.black87,
+                              ),
                               icon: const Icon(Icons.photo_library_outlined),
                               label: Text(
                                 pickedImageBytes == null
@@ -572,17 +619,17 @@ class _BannersWidgetState extends State<BannersWidget> {
                               onPressed: isLoading
                                   ? null
                                   : () async {
-                                      await _selectAndEditImage(
-                                        context: context,
-                                        onSuccess: (bytes, file) {
-                                          setDialogState(() {
-                                            pickedImage = file;
+                                await _selectAndEditImage(
+                                  context: context,
+                                  onSuccess: (bytes, file) {
+                                    setDialogState(() {
+                                      pickedImage = file;
 
-                                            pickedImageBytes = bytes;
-                                          });
-                                        },
-                                      );
-                                    },
+                                      pickedImageBytes = bytes;
+                                    });
+                                  },
+                                );
+                              },
                             ),
                           ),
                         ],
@@ -595,33 +642,42 @@ class _BannersWidgetState extends State<BannersWidget> {
                           children: [
                             Expanded(
                               child: OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                  side: BorderSide(
+                                    color: isDark
+                                        ? Colors.grey.shade700
+                                        : Colors.grey.shade400,
+                                  ),
+                                  foregroundColor:
+                                  isDark ? Colors.white : Colors.black87,
+                                ),
                                 icon: const Icon(Icons.crop_rotate),
                                 label: Text("Edit / Crop".tr),
                                 onPressed: isLoading
                                     ? null
                                     : () async {
-                                        if (pickedImage == null) {
-                                          return;
-                                        }
+                                  if (pickedImage == null) {
+                                    return;
+                                  }
 
-                                        final edited = await _cropImage(
-                                          context: context,
-                                          imageFile: pickedImage!,
-                                        );
+                                  final edited = await _cropImage(
+                                    context: context,
+                                    imageFile: pickedImage!,
+                                  );
 
-                                        if (edited != null) {
-                                          setDialogState(() {
-                                            pickedImageBytes = edited;
+                                  if (edited != null) {
+                                    setDialogState(() {
+                                      pickedImageBytes = edited;
 
-                                            pickedImage = XFile.fromData(
-                                              edited,
-                                              name:
-                                                  'banner_${DateTime.now().millisecondsSinceEpoch}.jpg',
-                                              mimeType: 'image/jpeg',
-                                            );
-                                          });
-                                        }
-                                      },
+                                      pickedImage = XFile.fromData(
+                                        edited,
+                                        name:
+                                        'banner_${DateTime.now().millisecondsSinceEpoch}.jpg',
+                                        mimeType: 'image/jpeg',
+                                      );
+                                    });
+                                  }
+                                },
                               ),
                             ),
 
@@ -629,33 +685,42 @@ class _BannersWidgetState extends State<BannersWidget> {
 
                             Expanded(
                               child: OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                  side: BorderSide(
+                                    color: isDark
+                                        ? Colors.grey.shade700
+                                        : Colors.grey.shade400,
+                                  ),
+                                  foregroundColor:
+                                  isDark ? Colors.white : Colors.black87,
+                                ),
                                 icon: const Icon(Icons.photo_size_select_large),
                                 label: Text("Resize".tr),
                                 onPressed: isLoading
                                     ? null
                                     : () async {
-                                        if (pickedImageBytes == null) {
-                                          return;
-                                        }
+                                  if (pickedImageBytes == null) {
+                                    return;
+                                  }
 
-                                        final resized = await _showResizeDialog(
-                                          context,
-                                          pickedImageBytes!,
-                                        );
+                                  final resized = await _showResizeDialog(
+                                    context,
+                                    pickedImageBytes!,
+                                  );
 
-                                        if (resized != null) {
-                                          setDialogState(() {
-                                            pickedImageBytes = resized;
+                                  if (resized != null) {
+                                    setDialogState(() {
+                                      pickedImageBytes = resized;
 
-                                            pickedImage = XFile.fromData(
-                                              resized,
-                                              name:
-                                                  'banner_${DateTime.now().millisecondsSinceEpoch}.jpg',
-                                              mimeType: 'image/jpeg',
-                                            );
-                                          });
-                                        }
-                                      },
+                                      pickedImage = XFile.fromData(
+                                        resized,
+                                        name:
+                                        'banner_${DateTime.now().millisecondsSinceEpoch}.jpg',
+                                        mimeType: 'image/jpeg',
+                                      );
+                                    });
+                                  }
+                                },
                               ),
                             ),
                           ],
@@ -671,29 +736,35 @@ class _BannersWidgetState extends State<BannersWidget> {
                         contentPadding: EdgeInsets.zero,
                         title: Text(
                           "Clickable (OnClick)".tr,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white : Colors.black87,
                           ),
                         ),
                         subtitle: Text(
                           "Upon activation, the user will be directed to the sections."
                               .tr,
-                          style: const TextStyle(fontSize: 11),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isDark
+                                ? Colors.grey.shade400
+                                : Colors.grey.shade600,
+                          ),
                         ),
                         value: isOnClick,
                         activeColor: const Color(0xFF6C5CE7),
                         onChanged: isLoading
                             ? null
                             : (val) {
-                                setDialogState(() {
-                                  isOnClick = val;
+                          setDialogState(() {
+                            isOnClick = val;
 
-                                  if (!isOnClick) {
-                                    selectedCategoryId = null;
-                                  }
-                                });
-                              },
+                            if (!isOnClick) {
+                              selectedCategoryId = null;
+                            }
+                          });
+                        },
                       ),
 
                       const SizedBox(height: 8),
@@ -714,8 +785,21 @@ class _BannersWidgetState extends State<BannersWidget> {
                             final docs = snapshot.data!.docs;
 
                             return DropdownButtonFormField<String>(
+                              dropdownColor: isDark
+                                  ? const Color(0xFF2A2A2A)
+                                  : Colors.white,
+                              style: TextStyle(
+                                color: isDark ? Colors.white : Colors.black87,
+                              ),
                               value: selectedCategoryId,
-                              hint: Text("Select the relevant section.".tr),
+                              hint: Text(
+                                "Select the relevant section.".tr,
+                                style: TextStyle(
+                                  color: isDark
+                                      ? Colors.grey.shade400
+                                      : Colors.grey.shade600,
+                                ),
+                              ),
                               decoration: InputDecoration(
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 12,
@@ -723,6 +807,14 @@ class _BannersWidgetState extends State<BannersWidget> {
                                 ),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(10),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: BorderSide(
+                                    color: isDark
+                                        ? Colors.grey.shade700
+                                        : Colors.grey.shade400,
+                                  ),
                                 ),
                               ),
                               items: docs.map((doc) {
@@ -740,10 +832,10 @@ class _BannersWidgetState extends State<BannersWidget> {
                               onChanged: isLoading
                                   ? null
                                   : (val) {
-                                      setDialogState(() {
-                                        selectedCategoryId = val;
-                                      });
-                                    },
+                                setDialogState(() {
+                                  selectedCategoryId = val;
+                                });
+                              },
                             );
                           },
                         ),
@@ -762,7 +854,9 @@ class _BannersWidgetState extends State<BannersWidget> {
                       : () => Navigator.pop(dialogContext),
                   child: Text(
                     "cancellation".tr,
-                    style: const TextStyle(color: Colors.grey),
+                    style: TextStyle(
+                      color: isDark ? Colors.grey.shade400 : Colors.grey,
+                    ),
                   ),
                 ),
 
@@ -777,128 +871,128 @@ class _BannersWidgetState extends State<BannersWidget> {
                   onPressed: isLoading
                       ? null
                       : () async {
-                          // -----------------------------
-                          // Validate image
-                          // -----------------------------
+                    // -----------------------------
+                    // Validate image
+                    // -----------------------------
 
-                          if (pickedImage == null &&
-                              (currentImageUrl == null ||
-                                  currentImageUrl!.isEmpty)) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  "Please choose an image first".tr,
-                                ),
-                              ),
+                    if (pickedImage == null &&
+                        (currentImageUrl == null ||
+                            currentImageUrl!.isEmpty)) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            "Please choose an image first".tr,
+                          ),
+                        ),
+                      );
+
+                      return;
+                    }
+
+                    // -----------------------------
+                    // Validate category
+                    // -----------------------------
+
+                    if (isOnClick &&
+                        (selectedCategoryId == null ||
+                            selectedCategoryId!.isEmpty)) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            "Please select a section when enabling click functionality."
+                                .tr,
+                          ),
+                        ),
+                      );
+
+                      return;
+                    }
+
+                    setDialogState(() {
+                      isLoading = true;
+                    });
+
+                    try {
+                      String finalImageUrl = currentImageUrl ?? '';
+
+                      // -----------------------------
+                      // Upload new image
+                      // -----------------------------
+
+                      if (pickedImage != null) {
+                        final uploadedUrl =
+                        await CloudinaryService.uploadImage(
+                          pickedImage!,
+                        );
+
+                        if (uploadedUrl != null) {
+                          // Delete old image
+                          if (currentImageUrl != null &&
+                              currentImageUrl!.isNotEmpty) {
+                            await CloudinaryService.deleteImage(
+                              currentImageUrl!,
                             );
-
-                            return;
                           }
 
-                          // -----------------------------
-                          // Validate category
-                          // -----------------------------
+                          finalImageUrl = uploadedUrl;
+                        } else {
+                          throw Exception(
+                            "Failed to upload the image to Cloudinary.",
+                          );
+                        }
+                      }
 
-                          if (isOnClick &&
-                              (selectedCategoryId == null ||
-                                  selectedCategoryId!.isEmpty)) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  "Please select a section when enabling click functionality."
-                                      .tr,
-                                ),
-                              ),
-                            );
+                      // -----------------------------
+                      // Firestore data
+                      // -----------------------------
 
-                            return;
-                          }
+                      final Map<String, dynamic> dataToSave = {
+                        'image': finalImageUrl,
+                        'onclick': isOnClick,
+                        'category': isOnClick ? selectedCategoryId : '',
+                      };
 
-                          setDialogState(() {
-                            isLoading = true;
-                          });
+                      if (docId == null) {
+                        dataToSave['order'] =
+                            DateTime.now().millisecondsSinceEpoch;
 
-                          try {
-                            String finalImageUrl = currentImageUrl ?? '';
+                        await _bannersRef.add(dataToSave);
+                      } else {
+                        await _bannersRef.doc(docId).update(dataToSave);
+                      }
 
-                            // -----------------------------
-                            // Upload new image
-                            // -----------------------------
+                      if (context.mounted) {
+                        Navigator.pop(dialogContext);
+                      }
+                    } catch (e) {
+                      setDialogState(() {
+                        isLoading = false;
+                      });
 
-                            if (pickedImage != null) {
-                              final uploadedUrl =
-                                  await CloudinaryService.uploadImage(
-                                    pickedImage!,
-                                  );
-
-                              if (uploadedUrl != null) {
-                                // Delete old image
-                                if (currentImageUrl != null &&
-                                    currentImageUrl!.isNotEmpty) {
-                                  await CloudinaryService.deleteImage(
-                                    currentImageUrl!,
-                                  );
-                                }
-
-                                finalImageUrl = uploadedUrl;
-                              } else {
-                                throw Exception(
-                                  "Failed to upload the image to Cloudinary.",
-                                );
-                              }
-                            }
-
-                            // -----------------------------
-                            // Firestore data
-                            // -----------------------------
-
-                            final Map<String, dynamic> dataToSave = {
-                              'image': finalImageUrl,
-                              'onclick': isOnClick,
-                              'category': isOnClick ? selectedCategoryId : '',
-                            };
-
-                            if (docId == null) {
-                              dataToSave['order'] =
-                                  DateTime.now().millisecondsSinceEpoch;
-
-                              await _bannersRef.add(dataToSave);
-                            } else {
-                              await _bannersRef.doc(docId).update(dataToSave);
-                            }
-
-                            if (context.mounted) {
-                              Navigator.pop(dialogContext);
-                            }
-                          } catch (e) {
-                            setDialogState(() {
-                              isLoading = false;
-                            });
-
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    "${"Something went wrong".tr}: $e",
-                                  ),
-                                ),
-                              );
-                            }
-                          }
-                        },
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              "${"Something went wrong".tr}: $e",
+                            ),
+                          ),
+                        );
+                      }
+                    }
+                  },
                   child: isLoading
                       ? const SizedBox(
-                          height: 18,
-                          width: 18,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
+                    height: 18,
+                    width: 18,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  )
                       : Text(
-                          docId == null ? "Add".tr : "Save changes".tr,
-                          style: const TextStyle(color: Colors.white),
-                        ),
+                    docId == null ? "Add".tr : "Save changes".tr,
+                    style: const TextStyle(color: Colors.white),
+                  ),
                 ),
               ],
             );
@@ -913,17 +1007,33 @@ class _BannersWidgetState extends State<BannersWidget> {
   // ============================================================
 
   Future<void> _deleteBanner(String docId, String imageUrl) async {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text("Confirm Deletion".tr),
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        title: Text(
+          "Confirm Deletion".tr,
+          style: TextStyle(
+            color: isDark ? Colors.white : Colors.black87,
+          ),
+        ),
         content: Text(
           "Are you sure you want to permanently delete this banner?".tr,
+          style: TextStyle(
+            color: isDark ? Colors.white70 : Colors.black87,
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text("cancellation".tr),
+            child: Text(
+              "cancellation".tr,
+              style: TextStyle(
+                color: isDark ? Colors.grey.shade400 : Colors.grey,
+              ),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -955,10 +1065,10 @@ class _BannersWidgetState extends State<BannersWidget> {
   // ============================================================
 
   void _updateBannersOrder(
-    List<QueryDocumentSnapshot> docs,
-    int oldIndex,
-    int newIndex,
-  ) {
+      List<QueryDocumentSnapshot> docs,
+      int oldIndex,
+      int newIndex,
+      ) {
     final item = docs.removeAt(oldIndex);
 
     docs.insert(newIndex, item);
@@ -978,306 +1088,326 @@ class _BannersWidgetState extends State<BannersWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
     return _permision.contains("banner")
         ? Scaffold(
-            backgroundColor: const Color(0xFFF4F6F9),
+      backgroundColor:
+      isDark ? const Color(0xFF121212) : const Color(0xFFF4F6F9),
 
-            floatingActionButton: FloatingActionButton.extended(
-              backgroundColor: const Color(0xFF6C5CE7),
-              onPressed: () => _showBannerDialog(),
-              icon: const Icon(Icons.add, color: Colors.white),
-              label: Text(
-                "Add Banner".tr,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: const Color(0xFF6C5CE7),
+        onPressed: () => _showBannerDialog(),
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: Text(
+          "Add Banner".tr,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+
+      body: StreamBuilder<QuerySnapshot>(
+        stream: _bannersRef.snapshots(),
+
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: CircularProgressIndicator(color: Color(0xFF6C5CE7)),
+            );
+          }
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return Center(
+              child: Text(
+                "There are currently no banners.".tr,
+                style: TextStyle(
+                  color: isDark ? Colors.grey.shade400 : Colors.grey,
+                  fontSize: 16,
                 ),
               ),
-            ),
+            );
+          }
 
-            body: StreamBuilder<QuerySnapshot>(
-              stream: _bannersRef.snapshots(),
+          final docs = List<QueryDocumentSnapshot>.from(
+            snapshot.data!.docs,
+          );
 
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: CircularProgressIndicator(color: Color(0xFF6C5CE7)),
-                  );
-                }
+          docs.sort((a, b) {
+            final dataA = a.data() as Map<String, dynamic>;
 
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return Center(
-                    child: Text(
-                      "There are currently no banners.".tr,
-                      style: const TextStyle(color: Colors.grey, fontSize: 16),
+            final dataB = b.data() as Map<String, dynamic>;
+
+            final int orderA = dataA['order'] ?? 999999;
+
+            final int orderB = dataB['order'] ?? 999999;
+
+            return orderA.compareTo(orderB);
+          });
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.drag_indicator,
+                      color: Color(0xFF6C5CE7),
                     ),
-                  );
-                }
+                    const SizedBox(width: 8),
+                    Text(
+                      "Drag and drop banners to rearrange display order"
+                          .tr,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isDark
+                            ? Colors.grey.shade400
+                            : Colors.grey.shade600,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
 
-                final docs = List<QueryDocumentSnapshot>.from(
-                  snapshot.data!.docs,
-                );
+                const SizedBox(height: 16),
 
-                docs.sort((a, b) {
-                  final dataA = a.data() as Map<String, dynamic>;
+                ReorderableWrap(
+                  spacing: 16.0,
+                  runSpacing: 16.0,
+                  onReorder: (oldIndex, newIndex) =>
+                      _updateBannersOrder(docs, oldIndex, newIndex),
+                  children: docs.map((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
 
-                  final dataB = b.data() as Map<String, dynamic>;
+                    final String imageUrl = data['image'] ?? '';
 
-                  final int orderA = dataA['order'] ?? 999999;
+                    final bool isOnClick = data['onclick'] ?? false;
 
-                  final int orderB = dataB['order'] ?? 999999;
+                    final String categoryId = data['category'] ?? '';
 
-                  return orderA.compareTo(orderB);
-                });
-
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.drag_indicator,
-                            color: Color(0xFF6C5CE7),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            "Drag and drop banners to rearrange display order"
-                                .tr,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey.shade600,
-                              fontWeight: FontWeight.w500,
-                            ),
+                    return Container(
+                      key: ValueKey(doc.id),
+                      width: 360,
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? const Color(0xFF1E1E1E)
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: isDark
+                                ? Colors.black.withOpacity(0.3)
+                                : Colors.black.withOpacity(0.04),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
                           ),
                         ],
                       ),
-
-                      const SizedBox(height: 16),
-
-                      ReorderableWrap(
-                        spacing: 16.0,
-                        runSpacing: 16.0,
-                        onReorder: (oldIndex, newIndex) =>
-                            _updateBannersOrder(docs, oldIndex, newIndex),
-                        children: docs.map((doc) {
-                          final data = doc.data() as Map<String, dynamic>;
-
-                          final String imageUrl = data['image'] ?? '';
-
-                          final bool isOnClick = data['onclick'] ?? false;
-
-                          final String categoryId = data['category'] ?? '';
-
-                          return Container(
-                            key: ValueKey(doc.id),
-                            width: 360,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.04),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 4),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Stack(
+                            children: [
+                              ClipRRect(
+                                borderRadius: const BorderRadius.vertical(
+                                  top: Radius.circular(16),
                                 ),
-                              ],
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Stack(
-                                  children: [
-                                    ClipRRect(
-                                      borderRadius: const BorderRadius.vertical(
-                                        top: Radius.circular(16),
-                                      ),
-                                      child: AspectRatio(
-                                        aspectRatio: 16 / 8,
-                                        child: imageUrl.isNotEmpty
-                                            ? Image.network(
-                                                imageUrl,
-                                                fit: BoxFit.cover,
-                                              )
-                                            : Container(
-                                                color: Colors.grey.shade100,
-                                                child: const Icon(
-                                                  Icons.image,
-                                                  size: 40,
-                                                  color: Colors.grey,
-                                                ),
-                                              ),
-                                      ),
+                                child: AspectRatio(
+                                  aspectRatio: 16 / 8,
+                                  child: imageUrl.isNotEmpty
+                                      ? Image.network(
+                                    imageUrl,
+                                    fit: BoxFit.cover,
+                                  )
+                                      : Container(
+                                    color: isDark
+                                        ? const Color(0xFF2A2A2A)
+                                        : Colors.grey.shade100,
+                                    child: Icon(
+                                      Icons.image,
+                                      size: 40,
+                                      color: isDark
+                                          ? Colors.grey.shade600
+                                          : Colors.grey,
                                     ),
-
-                                    Positioned(
-                                      top: 10,
-                                      right: 10,
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 4,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: isOnClick
-                                              ? const Color(0xFF10B981)
-                                              : Colors.black54,
-                                          borderRadius: BorderRadius.circular(
-                                            20,
-                                          ),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(
-                                              isOnClick
-                                                  ? Icons.touch_app
-                                                  : Icons.visibility,
-                                              size: 12,
-                                              color: Colors.white,
-                                            ),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              isOnClick
-                                                  ? "Interactive".tr
-                                                  : "Display only".tr,
-                                              style: const TextStyle(
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
+                                  ),
                                 ),
+                              ),
 
-                                Padding(
-                                  padding: const EdgeInsets.all(12),
+                              Positioned(
+                                top: 10,
+                                right: 10,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isOnClick
+                                        ? const Color(0xFF10B981)
+                                        : Colors.black54,
+                                    borderRadius: BorderRadius.circular(
+                                      20,
+                                    ),
+                                  ),
                                   child: Row(
+                                    mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Expanded(
-                                        child:
-                                            isOnClick && categoryId.isNotEmpty
-                                            ? FutureBuilder<DocumentSnapshot>(
-                                                future: _categoriesRef
-                                                    .doc(categoryId)
-                                                    .get(),
-                                                builder: (context, catSnapshot) {
-                                                  String categoryName = "...";
-
-                                                  if (catSnapshot.hasData &&
-                                                      catSnapshot
-                                                          .data!
-                                                          .exists) {
-                                                    final catData =
-                                                        catSnapshot.data!.data()
-                                                            as Map<
-                                                              String,
-                                                              dynamic
-                                                            >;
-
-                                                    categoryName =
-                                                        catData['nameAr'] ??
-                                                        catData['nameEn'] ??
-                                                        'Uncategorized Section'
-                                                            .tr;
-                                                  }
-
-                                                  return Row(
-                                                    children: [
-                                                      const Icon(
-                                                        Icons.grid_view_rounded,
-                                                        size: 16,
-                                                        color: Color(
-                                                          0xFF6C5CE7,
-                                                        ),
-                                                      ),
-                                                      const SizedBox(width: 6),
-                                                      Expanded(
-                                                        child: Text(
-                                                          categoryName,
-                                                          maxLines: 1,
-                                                          overflow: TextOverflow
-                                                              .ellipsis,
-                                                          style:
-                                                              const TextStyle(
-                                                                fontSize: 12,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w600,
-                                                                color: Color(
-                                                                  0xFF2D3436,
-                                                                ),
-                                                              ),
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  );
-                                                },
-                                              )
-                                            : Row(
-                                                children: [
-                                                  Icon(
-                                                    Icons.image_outlined,
-                                                    size: 16,
-                                                    color: Colors.grey.shade400,
-                                                  ),
-                                                  const SizedBox(width: 6),
-                                                  Text(
-                                                    "Static display image".tr,
-                                                    style: TextStyle(
-                                                      fontSize: 12,
-                                                      color:
-                                                          Colors.grey.shade500,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
+                                      Icon(
+                                        isOnClick
+                                            ? Icons.touch_app
+                                            : Icons.visibility,
+                                        size: 12,
+                                        color: Colors.white,
                                       ),
-
-                                      IconButton(
-                                        constraints: const BoxConstraints(),
-                                        padding: const EdgeInsets.all(6),
-                                        icon: const Icon(
-                                          Icons.edit_outlined,
-                                          color: Color(0xFF6C5CE7),
-                                          size: 18,
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        isOnClick
+                                            ? "Interactive".tr
+                                            : "Display only".tr,
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
                                         ),
-                                        onPressed: () => _showBannerDialog(
-                                          docId: doc.id,
-                                          currentData: data,
-                                        ),
-                                      ),
-
-                                      IconButton(
-                                        constraints: const BoxConstraints(),
-                                        padding: const EdgeInsets.all(6),
-                                        icon: const Icon(
-                                          Icons.delete_outline,
-                                          color: Colors.redAccent,
-                                          size: 18,
-                                        ),
-                                        onPressed: () =>
-                                            _deleteBanner(doc.id, imageUrl),
                                       ),
                                     ],
                                   ),
                                 ),
+                              ),
+                            ],
+                          ),
+
+                          Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child:
+                                  isOnClick && categoryId.isNotEmpty
+                                      ? FutureBuilder<DocumentSnapshot>(
+                                    future: _categoriesRef
+                                        .doc(categoryId)
+                                        .get(),
+                                    builder: (context, catSnapshot) {
+                                      String categoryName = "...";
+
+                                      if (catSnapshot.hasData &&
+                                          catSnapshot
+                                              .data!
+                                              .exists) {
+                                        final catData =
+                                        catSnapshot.data!.data()
+                                        as Map<
+                                            String,
+                                            dynamic
+                                        >;
+
+                                        categoryName =
+                                            catData['nameAr'] ??
+                                                catData['nameEn'] ??
+                                                'Uncategorized Section'
+                                                    .tr;
+                                      }
+
+                                      return Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.grid_view_rounded,
+                                            size: 16,
+                                            color: Color(
+                                              0xFF6C5CE7,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Expanded(
+                                            child: Text(
+                                              categoryName,
+                                              maxLines: 1,
+                                              overflow: TextOverflow
+                                                  .ellipsis,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight:
+                                                FontWeight
+                                                    .w600,
+                                                color: isDark
+                                                    ? Colors.white
+                                                    : const Color(
+                                                  0xFF2D3436,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  )
+                                      : Row(
+                                    children: [
+                                      Icon(
+                                        Icons.image_outlined,
+                                        size: 16,
+                                        color: isDark
+                                            ? Colors.grey.shade500
+                                            : Colors.grey.shade400,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        "Static display image".tr,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: isDark
+                                              ? Colors.grey.shade400
+                                              : Colors.grey.shade500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                                IconButton(
+                                  constraints: const BoxConstraints(),
+                                  padding: const EdgeInsets.all(6),
+                                  icon: const Icon(
+                                    Icons.edit_outlined,
+                                    color: Color(0xFF6C5CE7),
+                                    size: 18,
+                                  ),
+                                  onPressed: () => _showBannerDialog(
+                                    docId: doc.id,
+                                    currentData: data,
+                                  ),
+                                ),
+
+                                IconButton(
+                                  constraints: const BoxConstraints(),
+                                  padding: const EdgeInsets.all(6),
+                                  icon: const Icon(
+                                    Icons.delete_outline,
+                                    color: Colors.redAccent,
+                                    size: 18,
+                                  ),
+                                  onPressed: () =>
+                                      _deleteBanner(doc.id, imageUrl),
+                                ),
                               ],
                             ),
-                          );
-                        }).toList(),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                );
-              },
+                    );
+                  }).toList(),
+                ),
+              ],
             ),
-          )
+          );
+        },
+      ),
+    )
         : AccessDefindView();
   }
 }

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import '../../../Core/Utils/app.colors.dart';
 
 class UserFavouriteProduct extends StatefulWidget {
   final String UserId;
@@ -58,42 +59,59 @@ class _UserFavouriteProduct extends State<UserFavouriteProduct> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+
+    final scaffoldBg = isDarkMode ? theme.scaffoldBackgroundColor : const Color(0xFFF8FAFC);
+    final appBarBg = isDarkMode ? theme.cardColor : Colors.white;
+    final textColor = isDarkMode ? Colors.white : AppColors.textDark;
+    final subtitleColor = isDarkMode ? Colors.grey.shade400 : AppColors.textMuted;
+
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
+      backgroundColor: scaffoldBg,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Favorite Products',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(fontWeight: FontWeight.bold, color: textColor),
         ),
-        elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
+        elevation: 0.5,
+        backgroundColor: appBarBg,
+        foregroundColor: textColor,
       ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: _getFavouriteProducts(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(
+              child: CircularProgressIndicator(color: AppColors.primaryPurple),
+            );
           }
 
           if (snapshot.hasError) {
             return Center(
-              child: Text('An error occurred while loading favorites:${snapshot.error}'),
+              child: Text(
+                'An error occurred while loading favorites: ${snapshot.error}',
+                style: TextStyle(color: subtitleColor),
+              ),
             );
           }
 
           final products = snapshot.data ?? [];
 
           if (products.isEmpty) {
-            return const Center(
+            return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.favorite_border, size: 70, color: Colors.grey),
-                  SizedBox(height: 12),
+                  Icon(
+                    Icons.favorite_border,
+                    size: 70,
+                    color: isDarkMode ? Colors.grey.shade600 : Colors.grey.shade400,
+                  ),
+                  const SizedBox(height: 12),
                   Text(
                     'There are no favorite products for this customer.',
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                    style: TextStyle(fontSize: 16, color: subtitleColor),
                   ),
                 ],
               ),
@@ -121,11 +139,16 @@ class _UserFavouriteProduct extends State<UserFavouriteProduct> {
               return Container(
                 margin: const EdgeInsets.only(bottom: 14),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: isDarkMode ? theme.cardColor : Colors.white,
                   borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200,
+                  ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.04),
+                      color: isDarkMode
+                          ? Colors.black.withOpacity(0.2)
+                          : Colors.black.withOpacity(0.04),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -148,15 +171,25 @@ class _UserFavouriteProduct extends State<UserFavouriteProduct> {
                               Container(
                                 width: 85,
                                 height: 85,
-                                color: Colors.grey.shade200,
-                                child: const Icon(Icons.image_not_supported),
+                                color: isDarkMode
+                                    ? Colors.grey.shade800
+                                    : Colors.grey.shade200,
+                                child: Icon(
+                                  Icons.image_not_supported,
+                                  color: subtitleColor,
+                                ),
                               ),
                         )
                             : Container(
                           width: 85,
                           height: 85,
-                          color: Colors.grey.shade200,
-                          child: const Icon(Icons.image),
+                          color: isDarkMode
+                              ? Colors.grey.shade800
+                              : Colors.grey.shade200,
+                          child: Icon(
+                            Icons.image,
+                            color: subtitleColor,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 14),
@@ -168,9 +201,10 @@ class _UserFavouriteProduct extends State<UserFavouriteProduct> {
                           children: [
                             Text(
                               title,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
+                                color: textColor,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -179,7 +213,7 @@ class _UserFavouriteProduct extends State<UserFavouriteProduct> {
                             Text(
                               description,
                               style: TextStyle(
-                                color: Colors.grey.shade600,
+                                color: subtitleColor,
                                 fontSize: 13,
                               ),
                               maxLines: 1,
@@ -192,9 +226,11 @@ class _UserFavouriteProduct extends State<UserFavouriteProduct> {
                               children: [
                                 Text(
                                   '${finalPrice.toStringAsFixed(0)} EGP',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.blue,
+                                    color: isDarkMode
+                                        ? Colors.lightBlue
+                                        : Colors.blue,
                                     fontSize: 15,
                                   ),
                                 ),
@@ -202,9 +238,11 @@ class _UserFavouriteProduct extends State<UserFavouriteProduct> {
                                   const SizedBox(width: 8),
                                   Text(
                                     '${price.toStringAsFixed(0)} EGP',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       decoration: TextDecoration.lineThrough,
-                                      color: Colors.grey,
+                                      color: isDarkMode
+                                          ? Colors.grey.shade500
+                                          : Colors.grey,
                                       fontSize: 12,
                                     ),
                                   ),
@@ -213,13 +251,17 @@ class _UserFavouriteProduct extends State<UserFavouriteProduct> {
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 6, vertical: 2),
                                     decoration: BoxDecoration(
-                                      color: Colors.red.shade50,
+                                      color: isDarkMode
+                                          ? Colors.red.withOpacity(0.2)
+                                          : Colors.red.shade50,
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: Text(
                                       '%$discount-',
                                       style: TextStyle(
-                                        color: Colors.red.shade700,
+                                        color: isDarkMode
+                                            ? Colors.redAccent
+                                            : Colors.red.shade700,
                                         fontSize: 11,
                                         fontWeight: FontWeight.bold,
                                       ),
@@ -235,7 +277,7 @@ class _UserFavouriteProduct extends State<UserFavouriteProduct> {
                       // زر إزالة المنتج من المفضلة
                       IconButton(
                         icon: const Icon(Icons.favorite, color: Colors.red),
-                        onPressed: () => {},
+                        onPressed: () {},
                         tooltip: 'Remove from favorites',
                       ),
                     ],

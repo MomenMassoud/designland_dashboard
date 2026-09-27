@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../../Core/Utils/app.colors.dart';
 import '../function/report_function.dart';
 
-
 Widget buildSectionHeader({
   required BuildContext context,
   required String title,
@@ -12,6 +11,10 @@ Widget buildSectionHeader({
   List<Widget> actions = const [],
 }) {
   final mobile = isMobile(context);
+  final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+  final titleColor = isDarkMode ? Colors.white : AppColors.textDark;
+  final subtitleColor = isDarkMode ? Colors.grey.shade400 : AppColors.textMuted;
 
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -23,7 +26,7 @@ Widget buildSectionHeader({
             width: mobile ? 42 : 46,
             height: mobile ? 42 : 46,
             decoration: BoxDecoration(
-              color: iconColor.withOpacity(.10),
+              color: iconColor.withOpacity(isDarkMode ? 0.20 : 0.10),
               borderRadius: BorderRadius.circular(13),
             ),
             child: Icon(
@@ -42,7 +45,7 @@ Widget buildSectionHeader({
                   style: TextStyle(
                     fontSize: mobile ? 17 : 20,
                     fontWeight: FontWeight.w800,
-                    color: AppColors.textDark,
+                    color: titleColor,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -50,7 +53,7 @@ Widget buildSectionHeader({
                   subtitle,
                   style: TextStyle(
                     fontSize: mobile ? 11 : 12,
-                    color: AppColors.textMuted,
+                    color: subtitleColor,
                     height: 1.35,
                   ),
                 ),

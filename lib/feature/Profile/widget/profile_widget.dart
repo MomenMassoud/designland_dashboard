@@ -28,7 +28,6 @@ class _ProfileWidgetState extends State<ProfileWidget> {
   @override
   void initState() {
     super.initState();
-    // تعبئة حقل الاسم بالاسم الحالي للمستخدم إن وجد
     if (_currentUser != null) {
       _nameController.text = _currentUser!.displayName ?? '';
     }
@@ -42,7 +41,6 @@ class _ProfileWidgetState extends State<ProfileWidget> {
     super.dispose();
   }
 
-  // دالة حفظ التعديلات
   Future<void> _updateProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -57,23 +55,22 @@ class _ProfileWidgetState extends State<ProfileWidget> {
 
       bool isUpdated = false;
 
-      // 1. تحديث الاسم إذا تم تغييره
       if (_nameController.text.trim() != (user.displayName ?? '')) {
-        await FirebaseFirestore.instance.collection('user').doc(FirebaseAuth.instance.currentUser!.uid).update({
-          'name':_nameController.text.trim()
-        });
+        await FirebaseFirestore.instance
+            .collection('user')
+            .doc(FirebaseAuth.instance.currentUser!.uid)
+            .update({'name': _nameController.text.trim()});
         await user.updateDisplayName(_nameController.text.trim());
         isUpdated = true;
       }
 
-      // 2. تحديث كلمة المرور إذا تم إدخال كلمة جديدة
       if (_passwordController.text.isNotEmpty) {
         await user.updatePassword(_passwordController.text);
         isUpdated = true;
       }
 
       if (isUpdated) {
-        await user.reload(); // إعادة تحميل بيانات المستخدم
+        await user.reload();
         _passwordController.clear();
         _confirmPasswordController.clear();
         _showSnackBar("Profile updated successfully!");
@@ -81,7 +78,6 @@ class _ProfileWidgetState extends State<ProfileWidget> {
         _showSnackBar("No changes were made.");
       }
     } on FirebaseAuthException catch (e) {
-      // في حالة طلب Firebase إعادة تسجيل الدخول لتغيير كلمة المرور (requires-recent-login)
       if (e.code == 'requires-recent-login') {
         _showSnackBar(
           "This operation is sensitive. Please re-authenticate and try again.",
@@ -113,15 +109,35 @@ class _ProfileWidgetState extends State<ProfileWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+
+    // Dynamic colors based on active theme mode
+    final backgroundColor = isDarkMode
+        ? (theme.scaffoldBackgroundColor)
+        : AppColors.bgLight;
+    final cardColor = isDarkMode
+        ? theme.cardColor
+        : Colors.white;
+    final titleTextColor = isDarkMode
+        ? theme.textTheme.titleLarge?.color ?? Colors.white
+        : AppColors.textDark;
+    final subtitleTextColor = isDarkMode
+        ? Colors.grey.shade400
+        : AppColors.textMuted;
+    final borderColor = isDarkMode
+        ? Colors.grey.shade800
+        : Colors.grey.shade300;
+
     return Scaffold(
-      backgroundColor: AppColors.bgLight,
+      backgroundColor: backgroundColor,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Header Section
-            const Column(
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
@@ -129,15 +145,15 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                   style: TextStyle(
                     fontSize: 26,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.textDark,
+                    color: titleTextColor,
                   ),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
                   "Update your name or change your password",
                   style: TextStyle(
                     fontSize: 14,
-                    color: AppColors.textMuted,
+                    color: subtitleTextColor,
                   ),
                 ),
               ],
@@ -149,15 +165,20 @@ class _ProfileWidgetState extends State<ProfileWidget> {
               child: Container(
                 padding: const EdgeInsets.all(32.0),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: cardColor,
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.04),
+                      color: isDarkMode
+                          ? Colors.black.withOpacity(0.3)
+                          : Colors.black.withOpacity(0.04),
                       blurRadius: 15,
                       offset: const Offset(0, 5),
                     ),
                   ],
+                  border: isDarkMode
+                      ? Border.all(color: Colors.grey.shade800, width: 1)
+                      : null,
                 ),
                 child: Form(
                   key: _formKey,
@@ -172,7 +193,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                             CircleAvatar(
                               radius: 45,
                               backgroundColor:
-                              AppColors.primaryPurple.withOpacity(0.1),
+                              AppColors.primaryPurple.withOpacity(0.15),
                               child: const Icon(
                                 Icons.person_rounded,
                                 size: 50,
@@ -185,18 +206,20 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                       const SizedBox(height: 32),
 
                       // Full Name Field
-                      const Text(
+                      Text(
                         "Full Name",
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: AppColors.textDark,
+                          color: titleTextColor,
                         ),
                       ),
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _nameController,
+                        style: TextStyle(color: titleTextColor),
                         decoration: InputDecoration(
                           hintText: "Enter your full name",
+                          hintStyle: TextStyle(color: subtitleTextColor),
                           prefixIcon: const Icon(Icons.person_outline,
                               color: AppColors.primaryPurple),
                           border: OutlineInputBorder(
@@ -204,8 +227,14 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide:
-                            BorderSide(color: Colors.grey.shade300),
+                            borderSide: BorderSide(color: borderColor),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: AppColors.primaryPurple,
+                              width: 2,
+                            ),
                           ),
                         ),
                         validator: (value) {
@@ -217,24 +246,24 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                       ),
                       const SizedBox(height: 24),
 
-                      const Divider(height: 1, thickness: 0.5),
+                      Divider(height: 1, thickness: 0.5, color: borderColor),
                       const SizedBox(height: 24),
 
                       // Password Fields Header
-                      const Text(
+                      Text(
                         "Change Password",
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.textDark,
+                          color: titleTextColor,
                         ),
                       ),
                       const SizedBox(height: 4),
-                      const Text(
+                      Text(
                         "Leave blank if you don't want to change it",
                         style: TextStyle(
                           fontSize: 12,
-                          color: AppColors.textMuted,
+                          color: subtitleTextColor,
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -243,8 +272,10 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                       TextFormField(
                         controller: _passwordController,
                         obscureText: _isObscurePassword,
+                        style: TextStyle(color: titleTextColor),
                         decoration: InputDecoration(
                           labelText: "New Password",
+                          labelStyle: TextStyle(color: subtitleTextColor),
                           prefixIcon: const Icon(Icons.lock_outline,
                               color: AppColors.primaryPurple),
                           suffixIcon: IconButton(
@@ -252,7 +283,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                               _isObscurePassword
                                   ? Icons.visibility_off_outlined
                                   : Icons.visibility_outlined,
-                              color: Colors.grey,
+                              color: subtitleTextColor,
                             ),
                             onPressed: () {
                               setState(() {
@@ -265,8 +296,14 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide:
-                            BorderSide(color: Colors.grey.shade300),
+                            borderSide: BorderSide(color: borderColor),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: AppColors.primaryPurple,
+                              width: 2,
+                            ),
                           ),
                         ),
                         validator: (value) {
@@ -284,8 +321,10 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                       TextFormField(
                         controller: _confirmPasswordController,
                         obscureText: _isObscureConfirmPassword,
+                        style: TextStyle(color: titleTextColor),
                         decoration: InputDecoration(
                           labelText: "Confirm New Password",
+                          labelStyle: TextStyle(color: subtitleTextColor),
                           prefixIcon: const Icon(Icons.lock_reset_outlined,
                               color: AppColors.primaryPurple),
                           suffixIcon: IconButton(
@@ -293,7 +332,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                               _isObscureConfirmPassword
                                   ? Icons.visibility_off_outlined
                                   : Icons.visibility_outlined,
-                              color: Colors.grey,
+                              color: subtitleTextColor,
                             ),
                             onPressed: () {
                               setState(() {
@@ -307,8 +346,14 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide:
-                            BorderSide(color: Colors.grey.shade300),
+                            borderSide: BorderSide(color: borderColor),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: AppColors.primaryPurple,
+                              width: 2,
+                            ),
                           ),
                         ),
                         validator: (value) {

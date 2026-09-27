@@ -70,9 +70,13 @@ class _ReportWidgetState extends State<ReportWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+
     if (_permissionsLoading) {
-      return const Scaffold(
-        body: Center(
+      return Scaffold(
+        backgroundColor: isDarkMode ? theme.scaffoldBackgroundColor : AppColors.bgLight,
+        body: const Center(
           child: CircularProgressIndicator(),
         ),
       );
@@ -85,7 +89,7 @@ class _ReportWidgetState extends State<ReportWidget> {
     final mobile = isMobile(context);
 
     return Scaffold(
-      backgroundColor: AppColors.bgLight,
+      backgroundColor: isDarkMode ? theme.scaffoldBackgroundColor : AppColors.bgLight,
       appBar: buildAppBar(context),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -111,6 +115,21 @@ class _ReportWidgetState extends State<ReportWidget> {
                     firstDate: DateTime(2020),
                     lastDate: DateTime.now(),
                     initialDateRange: _selectedDateRange,
+                    builder: (context, child) {
+                      return Theme(
+                        data: Theme.of(context).copyWith(
+                          colorScheme: isDarkMode
+                              ? const ColorScheme.dark(
+                            primary: AppColors.primaryPurple,
+                            onPrimary: Colors.white,
+                            surface: Color(0xFF1E1E1E),
+                            onSurface: Colors.white,
+                          )
+                              : Theme.of(context).colorScheme,
+                        ),
+                        child: child!,
+                      );
+                    },
                   );
 
                   if (picked != null && mounted) {

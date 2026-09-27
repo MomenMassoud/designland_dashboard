@@ -85,20 +85,27 @@ class _StaffWidgetState extends State<StaffWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+
+    final scaffoldBg = isDarkMode ? theme.scaffoldBackgroundColor : Colors.grey.shade100;
+    final appBarBg = isDarkMode ? theme.cardColor : Colors.white;
+    final appBarTextColor = isDarkMode ? Colors.white : Colors.black87;
+
     return _permision.contains("staff")
         ? Scaffold(
-      backgroundColor: Colors.grey.shade100,
+      backgroundColor: scaffoldBg,
       appBar: AppBar(
         title: Text(
           _isFormOpen
               ? (_editingDocId != null ? "Modifying an employee's powers" : 'Add a new employee')
               : 'Staff Management',
-          style: const TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(fontWeight: FontWeight.bold, color: appBarTextColor),
         ),
         centerTitle: true,
         elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
+        backgroundColor: appBarBg,
+        foregroundColor: appBarTextColor,
         leading: _isFormOpen
             ? IconButton(
           icon: const Icon(Icons.arrow_back_ios_new),
@@ -124,11 +131,18 @@ class _StaffWidgetState extends State<StaffWidget> {
         child: _isFormOpen ? _buildStaffForm() : _buildStaffList(),
       ),
     )
-        :  AccessDefindView();
+        : AccessDefindView();
   }
 
   // --- 1. قائمة الموظفين ---
   Widget _buildStaffList() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+
+    final cardBg = isDarkMode ? theme.cardColor : Colors.white;
+    final titleTextColor = isDarkMode ? Colors.white : Colors.black87;
+    final subtitleTextColor = isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600;
+
     return StreamBuilder<QuerySnapshot>(
       key: const ValueKey('StaffList'),
       stream: _firestore
@@ -147,15 +161,15 @@ class _StaffWidgetState extends State<StaffWidget> {
         final staffDocs = snapshot.data?.docs ?? [];
 
         if (staffDocs.isEmpty) {
-          return const Center(
+          return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.badge_outlined, size: 70, color: Colors.grey),
-                SizedBox(height: 12),
+                Icon(Icons.badge_outlined, size: 70, color: Colors.grey.shade500),
+                const SizedBox(height: 12),
                 Text(
                   "There are currently no employees.",
-                  style: TextStyle(fontSize: 18, color: Colors.grey),
+                  style: TextStyle(fontSize: 18, color: Colors.grey.shade500),
                 ),
               ],
             ),
@@ -176,11 +190,13 @@ class _StaffWidgetState extends State<StaffWidget> {
             return Container(
               margin: const EdgeInsets.only(bottom: 12),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: cardBg,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
+                    color: isDarkMode
+                        ? Colors.black.withOpacity(0.3)
+                        : Colors.black.withOpacity(0.04),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -190,7 +206,7 @@ class _StaffWidgetState extends State<StaffWidget> {
                 contentPadding: const EdgeInsets.all(16),
                 leading: CircleAvatar(
                   radius: 26,
-                  backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
+                  backgroundColor: Theme.of(context).primaryColor.withOpacity(0.15),
                   child: Text(
                     name.isNotEmpty ? name[0].toUpperCase() : 'S',
                     style: TextStyle(
@@ -202,13 +218,20 @@ class _StaffWidgetState extends State<StaffWidget> {
                 ),
                 title: Text(
                   name,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: titleTextColor,
+                  ),
                 ),
                 subtitle: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 4),
-                    Text(email, style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                    Text(
+                      email,
+                      style: TextStyle(color: subtitleTextColor, fontSize: 13),
+                    ),
                     const SizedBox(height: 10),
                     Wrap(
                       spacing: 6,
@@ -217,13 +240,22 @@ class _StaffWidgetState extends State<StaffWidget> {
                         return Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: Colors.blue.shade50,
+                            color: isDarkMode
+                                ? Colors.blue.shade900.withOpacity(0.3)
+                                : Colors.blue.shade50,
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: Colors.blue.shade100),
+                            border: Border.all(
+                              color: isDarkMode
+                                  ? Colors.blue.shade700.withOpacity(0.5)
+                                  : Colors.blue.shade100,
+                            ),
                           ),
                           child: Text(
                             p.toString(),
-                            style: TextStyle(fontSize: 11, color: Colors.blue.shade800),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isDarkMode ? Colors.blue.shade200 : Colors.blue.shade800,
+                            ),
                           ),
                         );
                       }).toList(),
@@ -232,6 +264,7 @@ class _StaffWidgetState extends State<StaffWidget> {
                 ),
                 trailing: PopupMenuButton<String>(
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  color: cardBg,
                   onSelected: (value) {
                     if (value == 'edit') {
                       _openForm(
@@ -245,23 +278,29 @@ class _StaffWidgetState extends State<StaffWidget> {
                     }
                   },
                   itemBuilder: (context) => [
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'edit',
                       child: Row(
                         children: [
-                          Icon(Icons.edit, color: Colors.blue, size: 20),
-                          SizedBox(width: 8),
-                          Text('Modify permissions'),
+                          const Icon(Icons.edit, color: Colors.blue, size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Modify permissions',
+                            style: TextStyle(color: titleTextColor),
+                          ),
                         ],
                       ),
                     ),
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'delete',
                       child: Row(
                         children: [
-                          Icon(Icons.delete, color: Colors.red, size: 20),
-                          SizedBox(width: 8),
-                          Text('Delete employee'),
+                          const Icon(Icons.delete, color: Colors.red, size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Delete employee',
+                            style: TextStyle(color: titleTextColor),
+                          ),
                         ],
                       ),
                     ),
@@ -278,6 +317,12 @@ class _StaffWidgetState extends State<StaffWidget> {
   // --- 2. واجهة صفحة الإضافة والتعديل ---
   Widget _buildStaffForm() {
     final isEdit = _editingDocId != null;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+
+    final cardBg = isDarkMode ? theme.cardColor : Colors.white;
+    final titleTextColor = isDarkMode ? Colors.white : Colors.black87;
+    final inputBorderColor = isDarkMode ? Colors.grey.shade700 : Colors.grey.shade400;
 
     return SingleChildScrollView(
       key: const ValueKey('StaffForm'),
@@ -290,11 +335,13 @@ class _StaffWidgetState extends State<StaffWidget> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: cardBg,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
+                    color: isDarkMode
+                        ? Colors.black.withOpacity(0.3)
+                        : Colors.black.withOpacity(0.04),
                     blurRadius: 10,
                   ),
                 ],
@@ -302,17 +349,30 @@ class _StaffWidgetState extends State<StaffWidget> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Basic Data',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: titleTextColor,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _nameController,
+                    style: TextStyle(color: titleTextColor),
                     decoration: InputDecoration(
                       labelText: 'Employee Name',
+                      labelStyle: TextStyle(color: isDarkMode ? Colors.grey.shade400 : null),
                       prefixIcon: const Icon(Icons.person_outline),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: inputBorderColor),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: inputBorderColor),
+                      ),
                     ),
                     validator: (v) => v == null || v.isEmpty ? 'Please enter the name.' : null,
                   ),
@@ -321,10 +381,19 @@ class _StaffWidgetState extends State<StaffWidget> {
                     controller: _emailController,
                     enabled: !isEdit,
                     keyboardType: TextInputType.emailAddress,
+                    style: TextStyle(color: titleTextColor),
                     decoration: InputDecoration(
                       labelText: 'e-mail',
+                      labelStyle: TextStyle(color: isDarkMode ? Colors.grey.shade400 : null),
                       prefixIcon: const Icon(Icons.email_outlined),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: inputBorderColor),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: inputBorderColor),
+                      ),
                     ),
                     validator: (v) => v == null || v.isEmpty ? 'Please enter your email address.' : null,
                   ),
@@ -333,14 +402,23 @@ class _StaffWidgetState extends State<StaffWidget> {
                     TextFormField(
                       controller: _passwordController,
                       obscureText: _isObscure,
+                      style: TextStyle(color: titleTextColor),
                       decoration: InputDecoration(
                         labelText: 'password',
+                        labelStyle: TextStyle(color: isDarkMode ? Colors.grey.shade400 : null),
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
                           icon: Icon(_isObscure ? Icons.visibility_off : Icons.visibility),
                           onPressed: () => setState(() => _isObscure = !_isObscure),
                         ),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: inputBorderColor),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: inputBorderColor),
+                        ),
                       ),
                       validator: (v) {
                         if (v == null || v.isEmpty) return 'Please enter the password.';
@@ -358,11 +436,13 @@ class _StaffWidgetState extends State<StaffWidget> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: cardBg,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
+                    color: isDarkMode
+                        ? Colors.black.withOpacity(0.3)
+                        : Colors.black.withOpacity(0.04),
                     blurRadius: 10,
                   ),
                 ],
@@ -370,9 +450,13 @@ class _StaffWidgetState extends State<StaffWidget> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Page access permissions',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: titleTextColor,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Wrap(
@@ -386,14 +470,16 @@ class _StaffWidgetState extends State<StaffWidget> {
                           child: Text(
                             perm,
                             style: TextStyle(
-                              color: isSelected ? Colors.white : Colors.black87,
+                              color: isSelected
+                                  ? Colors.white
+                                  : (isDarkMode ? Colors.grey.shade300 : Colors.black87),
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
                         selected: isSelected,
                         selectedColor: Theme.of(context).primaryColor,
-                        backgroundColor: Colors.grey.shade100,
+                        backgroundColor: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade100,
                         onSelected: (selected) {
                           setState(() {
                             if (selected) {
@@ -434,6 +520,7 @@ class _StaffWidgetState extends State<StaffWidget> {
       ),
     );
   }
+
   Future<void> _saveStaffData() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -490,9 +577,12 @@ class _StaffWidgetState extends State<StaffWidget> {
       if (mounted) setState(() => _isLoading = false);
     }
   }
+
   // --- 4. حذف الموظف عبر Backend API ---
   Future<void> _deleteStaff(String docId, String name) async {
     bool isDeleting = false;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
 
     showDialog(
       context: context,
@@ -500,6 +590,7 @@ class _StaffWidgetState extends State<StaffWidget> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
+              backgroundColor: isDarkMode ? theme.cardColor : Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               title: const Row(
                 children: [
@@ -510,6 +601,7 @@ class _StaffWidgetState extends State<StaffWidget> {
               ),
               content: Text(
                 'Are you sure you want to delete the employee?"$name" Permanently? It will be deleted from Firebase Auth و Firestore.',
+                style: TextStyle(color: isDarkMode ? Colors.grey.shade300 : Colors.black87),
               ),
               actions: [
                 TextButton(

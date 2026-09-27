@@ -10,19 +10,22 @@ import 'build_empty_state.dart';
 import 'build_mobile_info_row.dart';
 import 'build_section_header.dart';
 
-
-
-Widget buildUsersReportSection(BuildContext context,_searchQuery) {
+Widget buildUsersReportSection(BuildContext context, dynamic _searchQuery) {
   final mobile = isMobile(context);
+  final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+  final theme = Theme.of(context);
+
+  final cardBackgroundColor = isDarkMode ? theme.cardColor : Colors.white;
+  final borderColor = isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200;
 
   return Container(
     width: double.infinity,
     padding: EdgeInsets.all(mobile ? 14 : 22),
     decoration: BoxDecoration(
-      color: Colors.white,
+      color: cardBackgroundColor,
       borderRadius: BorderRadius.circular(20),
       border: BoxBorder.all(
-        color: Colors.grey.shade200,
+        color: borderColor,
       ),
     ),
     child: StreamBuilder<QuerySnapshot>(
@@ -54,7 +57,7 @@ Widget buildUsersReportSection(BuildContext context,_searchQuery) {
             name.toString(),
             email.toString(),
             phone.toString(),
-          ],_searchQuery)) {
+          ], _searchQuery)) {
             continue;
           }
 
@@ -78,6 +81,7 @@ Widget buildUsersReportSection(BuildContext context,_searchQuery) {
               iconColor: AppColors.primaryPurple,
               actions: [
                 buildActionButton(
+                  context: context,
                   label: "Export Excel",
                   icon: Icons.table_chart_rounded,
                   color: Colors.green,
@@ -92,24 +96,26 @@ Widget buildUsersReportSection(BuildContext context,_searchQuery) {
             ),
             const SizedBox(height: 20),
             summaryCard(
+              context: context,
               title: "Registered Users",
               value: users.length.toString(),
               icon: Icons.people_outline_rounded,
               color: AppColors.primaryPurple,
             ),
             const SizedBox(height: 20),
-            Divider(color: Colors.grey.shade200),
+            Divider(color: borderColor),
             const SizedBox(height: 16),
             if (users.isEmpty)
               buildEmptyState(
+                context: context,
                 icon: Icons.people_outline_rounded,
                 title: "No Users Found",
                 subtitle: "No users match the current search.",
               )
             else if (mobile)
-              _buildUsersMobileList(users)
+              _buildUsersMobileList(context, users)
             else
-              _buildUsersDesktopTable(users),
+              _buildUsersDesktopTable(context, users),
           ],
         );
       },
@@ -117,24 +123,46 @@ Widget buildUsersReportSection(BuildContext context,_searchQuery) {
   );
 }
 
-Widget _buildUsersDesktopTable(List<Map<String, dynamic>> users) {
+Widget _buildUsersDesktopTable(
+    BuildContext context, List<Map<String, dynamic>> users) {
+  final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+  final tableHeaderBg = isDarkMode ? Colors.grey.shade900 : AppColors.bgLight;
+  final borderColor = isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200;
+  final textColor = isDarkMode ? Colors.white : Colors.black87;
+
   return Container(
     width: double.infinity,
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(14),
       border: BoxBorder.all(
-        color: Colors.grey.shade200,
+        color: borderColor,
       ),
     ),
     child: SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: DataTable(
-        headingRowColor: WidgetStateProperty.all(AppColors.bgLight),
+        headingRowColor: WidgetStateProperty.all(tableHeaderBg),
         columnSpacing: 45,
-        columns: const [
-          DataColumn(label: Text("Name")),
-          DataColumn(label: Text("Email")),
-          DataColumn(label: Text("Phone")),
+        columns: [
+          DataColumn(
+            label: Text(
+              "Name",
+              style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
+            ),
+          ),
+          DataColumn(
+            label: Text(
+              "Email",
+              style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
+            ),
+          ),
+          DataColumn(
+            label: Text(
+              "Phone",
+              style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
+            ),
+          ),
         ],
         rows: users.map((user) {
           return DataRow(
@@ -142,13 +170,24 @@ Widget _buildUsersDesktopTable(List<Map<String, dynamic>> users) {
               DataCell(
                 Text(
                   user['name'].toString(),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w700,
+                    color: textColor,
                   ),
                 ),
               ),
-              DataCell(Text(user['email'].toString())),
-              DataCell(Text(user['phone'].toString())),
+              DataCell(
+                Text(
+                  user['email'].toString(),
+                  style: TextStyle(color: textColor),
+                ),
+              ),
+              DataCell(
+                Text(
+                  user['phone'].toString(),
+                  style: TextStyle(color: textColor),
+                ),
+              ),
             ],
           );
         }).toList(),
@@ -157,7 +196,16 @@ Widget _buildUsersDesktopTable(List<Map<String, dynamic>> users) {
   );
 }
 
-Widget _buildUsersMobileList(List<Map<String, dynamic>> users) {
+Widget _buildUsersMobileList(
+    BuildContext context, List<Map<String, dynamic>> users) {
+  final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+  final theme = Theme.of(context);
+
+  final cardBg = isDarkMode ? theme.cardColor : Colors.white;
+  final borderColor = isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200;
+  final textColor = isDarkMode ? Colors.white : Colors.black87;
+  final idColor = isDarkMode ? Colors.grey.shade400 : Colors.grey.shade500;
+
   return ListView.separated(
     shrinkWrap: true,
     physics: const NeverScrollableScrollPhysics(),
@@ -169,10 +217,10 @@ Widget _buildUsersMobileList(List<Map<String, dynamic>> users) {
       return Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: cardBg,
           borderRadius: BorderRadius.circular(15),
           border: BoxBorder.all(
-            color: Colors.grey.shade200,
+            color: borderColor,
           ),
         ),
         child: Column(
@@ -183,7 +231,8 @@ Widget _buildUsersMobileList(List<Map<String, dynamic>> users) {
                   width: 42,
                   height: 42,
                   decoration: BoxDecoration(
-                    color: AppColors.primaryPurple.withOpacity(.10),
+                    color: AppColors.primaryPurple
+                        .withOpacity(isDarkMode ? 0.20 : 0.10),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -197,9 +246,10 @@ Widget _buildUsersMobileList(List<Map<String, dynamic>> users) {
                     user['name'].toString(),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w800,
                       fontSize: 14,
+                      color: textColor,
                     ),
                   ),
                 ),
@@ -207,11 +257,13 @@ Widget _buildUsersMobileList(List<Map<String, dynamic>> users) {
             ),
             const SizedBox(height: 13),
             mobileInfoRow(
+              context,
               Icons.email_outlined,
               "Email",
               user['email'].toString(),
             ),
             mobileInfoRow(
+              context,
               Icons.phone_outlined,
               "Phone",
               user['phone'].toString(),
@@ -222,7 +274,7 @@ Widget _buildUsersMobileList(List<Map<String, dynamic>> users) {
                 "ID: ${shortId(user['id'])}",
                 style: TextStyle(
                   fontSize: 10,
-                  color: Colors.grey.shade500,
+                  color: idColor,
                 ),
               ),
             ),
@@ -232,4 +284,3 @@ Widget _buildUsersMobileList(List<Map<String, dynamic>> users) {
     },
   );
 }
-

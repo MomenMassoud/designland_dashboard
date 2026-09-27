@@ -14,12 +14,25 @@ class UserProductDetailsWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final String cleanProductId = productId.trim();
 
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+
+    final scaffoldBg = isDarkMode ? theme.scaffoldBackgroundColor : AppColors.bgLight;
+    final appBarBg = isDarkMode ? theme.cardColor : Colors.white;
+    final textColor = isDarkMode ? Colors.white : AppColors.textDark;
+    final subtitleColor = isDarkMode ? Colors.grey.shade400 : AppColors.textMuted;
+    final cardBg = isDarkMode ? theme.cardColor : Colors.white;
+    final borderColor = isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200;
+
     return Scaffold(
-      backgroundColor: AppColors.bgLight,
+      backgroundColor: scaffoldBg,
       appBar: AppBar(
-        title: const Text("Product Details"),
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.textDark,
+        title: Text(
+          "Product Details",
+          style: TextStyle(color: textColor),
+        ),
+        backgroundColor: appBarBg,
+        foregroundColor: textColor,
         elevation: 0.5,
       ),
       body: FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
@@ -38,7 +51,10 @@ class UserProductDetailsWidget extends StatelessWidget {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: Text("Error: ${snapshot.error}"),
+                child: Text(
+                  "Error: ${snapshot.error}",
+                  style: TextStyle(color: subtitleColor),
+                ),
               ),
             );
           }
@@ -53,12 +69,19 @@ class UserProductDetailsWidget extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.remove_shopping_cart_outlined, size: 64, color: AppColors.textMuted),
+                    Icon(
+                      Icons.remove_shopping_cart_outlined,
+                      size: 64,
+                      color: isDarkMode ? Colors.grey.shade600 : AppColors.textMuted,
+                    ),
                     const SizedBox(height: 12),
                     Text(
                       "Product with ID '$cleanProductId' does not exist in Firestore.",
                       textAlign: TextAlign.center,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: textColor,
+                      ),
                     ),
                   ],
                 ),
@@ -89,9 +112,9 @@ class UserProductDetailsWidget extends StatelessWidget {
                   height: 250,
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: cardBg,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.grey.shade200),
+                    border: Border.all(color: borderColor),
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
@@ -99,13 +122,17 @@ class UserProductDetailsWidget extends StatelessWidget {
                         ? Image.network(
                       mainImage,
                       fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) => const Icon(
+                      errorBuilder: (context, error, stackTrace) => Icon(
                         Icons.broken_image_outlined,
                         size: 64,
-                        color: Colors.grey,
+                        color: subtitleColor,
                       ),
                     )
-                        : const Icon(Icons.image_not_supported_outlined, size: 64, color: Colors.grey),
+                        : Icon(
+                      Icons.image_not_supported_outlined,
+                      size: 64,
+                      color: subtitleColor,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -114,9 +141,9 @@ class UserProductDetailsWidget extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: cardBg,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.grey.shade200),
+                    border: Border.all(color: borderColor),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -126,15 +153,20 @@ class UserProductDetailsWidget extends StatelessWidget {
                         children: [
                           Chip(
                             label: Text("Discount: $discount%"),
-                            backgroundColor: Colors.orange.shade50,
-                            labelStyle: const TextStyle(color: Colors.deepOrange, fontWeight: FontWeight.bold),
+                            backgroundColor: isDarkMode
+                                ? Colors.deepOrange.withOpacity(0.2)
+                                : Colors.orange.shade50,
+                            labelStyle: TextStyle(
+                              color: isDarkMode ? Colors.orangeAccent : Colors.deepOrange,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                           Text(
                             "\$$price",
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.bold,
-                              color: Colors.green,
+                              color: isDarkMode ? Colors.greenAccent : Colors.green,
                             ),
                           ),
                         ],
@@ -142,23 +174,31 @@ class UserProductDetailsWidget extends StatelessWidget {
                       const SizedBox(height: 12),
                       Text(
                         title,
-                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textDark),
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: textColor,
+                        ),
                       ),
-                      const Divider(height: 24),
-                      const Text(
+                      Divider(height: 24, color: borderColor),
+                      Text(
                         "Description",
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: textColor,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         description,
-                        style: const TextStyle(color: AppColors.textMuted, height: 1.5),
+                        style: TextStyle(color: subtitleColor, height: 1.5),
                       ),
-                      const Divider(height: 24),
-                      _buildMetaRow("Product ID", cleanProductId),
-                      _buildMetaRow("Category ID", categoryId),
-                      _buildMetaRow("Subcategory ID", subcategoryId),
-                      _buildMetaRow("Average Rating", (data['avgRating'] ?? 0).toString()),
+                      Divider(height: 24, color: borderColor),
+                      _buildMetaRow("Product ID", cleanProductId, subtitleColor, textColor),
+                      _buildMetaRow("Category ID", categoryId, subtitleColor, textColor),
+                      _buildMetaRow("Subcategory ID", subcategoryId, subtitleColor, textColor),
+                      _buildMetaRow("Average Rating", (data['avgRating'] ?? 0).toString(), subtitleColor, textColor),
                     ],
                   ),
                 ),
@@ -170,14 +210,14 @@ class UserProductDetailsWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildMetaRow(String label, String value) {
+  Widget _buildMetaRow(String label, String value, Color labelColor, Color valueColor) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: AppColors.textMuted, fontSize: 13)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+          Text(label, style: TextStyle(color: labelColor, fontSize: 13)),
+          Text(value, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: valueColor)),
         ],
       ),
     );

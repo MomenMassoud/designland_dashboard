@@ -8,11 +8,10 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:universal_html/html.dart' as html;
 
 class AnalyticsWidget extends StatefulWidget {
-  const AnalyticsWidget({Key? key}) : super(key: key);
-
   @override
   State<AnalyticsWidget> createState() => _AnalyticsWidgetState();
 }
@@ -21,6 +20,12 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
   String role = "staff";
   bool isLoadingRole = true;
   String selectedPeriod = "7days"; // 'today', '7days', 'all'
+
+  // AI Analysis State
+  bool _isAnalyzingAi = false;
+  String? _aiAnalysisResult;
+
+  String _geminiApiKey = "YOUR_GEMINI_API_KEY_HERE";
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -31,8 +36,24 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
     _start();
   }
 
+  Future<void> _GetGeminiApi() async {
+    try {
+      final docSnapshot = await _firestore.collection('app_info').doc("const").get();
+      if (docSnapshot.exists && docSnapshot.data() != null) {
+        setState(() {
+          _geminiApiKey = docSnapshot.get('gemini') ?? '';
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        showErrorDialog(context, "Error", e.toString());
+      }
+    }
+  }
+
   Future<void> _start() async {
     try {
+      await _GetGeminiApi();
       final userDoc = await _firestore
           .collection('user')
           .doc(_auth.currentUser?.uid)
@@ -54,7 +75,213 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
     }
   }
 
-  // دالة إنشاء وحفظ ملف Excel بدون استخدام path_provider
+  // -------------------------------------------------------------
+  // Gemini AI Analysis Integration (Inline Screen Output)
+  // -------------------------------------------------------------
+  Future<void> _analyzeWithGemini({
+    required int totalSessions,
+    required int guestSessions,
+    required int userSessions,
+    required int totalSearches,
+    required int guestSearches,
+    required int userSearches,
+    required double avgDuration,
+    required int peakHour,
+    required Map<String, int> searchQueries,
+    required Map<String, int> platformCount,
+    required List<Map<String, dynamic>> liveProducts,
+  }) async {
+    setState(() {
+      _isAnalyzingAi = true;
+      _aiAnalysisResult = null;
+    });
+
+    try {
+      StringBuffer dataSummary = StringBuffer();
+      dataSummary.writeln("=== E-COMMERCE LIVE METRICS & ANALYTICS DATA ===");
+      dataSummary.writeln("Selected Time Filter: $selectedPeriod");
+      dataSummary.writeln("• Total Traffic Sessions: $totalSessions (Registered Users: $userSessions, Guest Visitors: $guestSessions)");
+      dataSummary.writeln("• Total Internal Searches: $totalSearches (User Searches: $userSearches, Guest Searches: $guestSearches)");
+      dataSummary.writeln("• Average Dwell/Session Duration: ${avgDuration.toStringAsFixed(2)} minutes");
+      dataSummary.writeln("• Peak Traffic Window: $peakHour:00 UTC/Local");
+
+      dataSummary.writeln("\n=== DEVICE & PLATFORM DISTRIBUTION ===");
+      if (platformCount.isEmpty) {
+        dataSummary.writeln("No platform data recorded.");
+      } else {
+        platformCount.forEach((platform, count) {
+          dataSummary.writeln("- $platform: $count sessions");
+        });
+      }
+
+      dataSummary.writeln("\n=== TOP USER SEARCH QUERIES (CUSTOMER INTENT) ===");
+      if (searchQueries.isEmpty) {
+        dataSummary.writeln("- No search queries recorded for this period.");
+      } else {
+        searchQueries.forEach((term, count) {
+          dataSummary.writeln("- Query: '$term' | Volume: $count");
+        });
+      }
+
+      dataSummary.writeln("\n=== PRODUCT PERFORMANCE & ENGAGEMENT METRICS ===");
+      if (liveProducts.isEmpty) {
+        dataSummary.writeln("- No product view activity recorded.");
+      } else {
+        for (var prod in liveProducts) {
+          String title = prod['rawItem']['title'] ?? prod['id'];
+          int views = prod['views'] ?? 0;
+          dataSummary.writeln("- Item: '$title' | Engagement Views: $views");
+        }
+      }
+
+      final prompt = """
+You are an expert Senior E-Commerce Growth Consultant & Business Intelligence Specialist.
+Analyze the following store data completely and deeply, acting as an executive advisor to the platform Admin:
+
+$dataSummary
+
+### YOUR GOAL:
+Deliver a high-impact, actionable Executive Advisory Report to optimize inventory, pricing, promotions, user retention, and overall platform revenue.
+
+### REQUIRED ANALYSIS STRUCTURE:
+
+1. **Executive Performance Diagnosis**:
+   - Provide a concise assessment of visitor activity, registration conversion rate (Guests vs. Registered), and platform engagement efficiency.
+
+2. **Customer Intent & Search Gap Analysis (Critical)**:
+   - Cross-analyze what users are searching for against product engagement.
+   - Highlight high-demand search terms that lack adequate inventory or visibility.
+   - Recommend specific **NEW PRODUCTS** or categories the admin must stock/add immediately to capture unmet demand.
+
+3. **Merchandising, Pricing & Discount Strategy**:
+   - Identify high-view products vs. lower-demand products.
+   - Recommend targeted **DISCOUNTS**, bundle deals, flash sales, or price adjustments to boost conversion rates on trending products.
+   - Suggest cross-selling or up-selling strategies based on current product view patterns.
+
+4. **Marketing & Conversion Rate Optimization (CRO)**:
+   - Leverage the Peak Activity Hour ($peakHour:00) to recommend timing for push notifications, promotional email campaigns, and ad spend allocation.
+   - Address guest visitor retention: how to convert high guest session volumes into registered buying users.
+
+5. **Actionable Executive Checklist**:
+   - 4 to 5 highly prioritized, bulleted action items for the Admin to execute today.
+
+### RESPONSE FORMAT & CONSTRAINTS:
+- **STRICT REQUIREMENT**: Respond STRICTLY AND ENTIRELY IN ENGLISH. Do NOT use any Arabic characters or words.
+- Use professional executive formatting (bold headers, bullet points, clean structure).
+- Be quantitative, clear, and business-driven in your advice.
+""";
+
+      final model = GenerativeModel(
+        model: 'gemini-3.8-flash',
+        apiKey: _geminiApiKey,
+      );
+
+      final response = await model.generateContent([Content.text(prompt)]);
+
+      if (mounted) {
+        setState(() {
+          _isAnalyzingAi = false;
+          _aiAnalysisResult = response.text ?? "No analysis generated from Gemini.";
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isAnalyzingAi = false;
+        });
+        showErrorDialog(context, "AI Analysis Error", e.toString());
+      }
+    }
+  }
+
+  Widget _buildAiAnalysisCard(bool isDark) {
+    if (!_isAnalyzingAi && _aiAnalysisResult == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isDark
+              ? [Colors.deepPurple.shade900, Colors.indigo.shade900]
+              : [Colors.deepPurple.shade900, Colors.deepPurple.shade600],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.deepPurple.withOpacity(isDark ? 0.5 : 0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.auto_awesome, color: Colors.amberAccent, size: 24),
+                  SizedBox(width: 10),
+                  Text(
+                    'Gemini AI Executive Insights',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+              IconButton(
+                icon: const Icon(Icons.close, color: Colors.white70),
+                onPressed: () {
+                  setState(() {
+                    _aiAnalysisResult = null;
+                  });
+                },
+              ),
+            ],
+          ),
+          const Divider(color: Colors.white24, height: 20),
+          if (_isAnalyzingAi)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: Column(
+                  children: [
+                    CircularProgressIndicator(color: Colors.amberAccent),
+                    SizedBox(height: 12),
+                    Text(
+                      "Analyzing platform analytics with Gemini AI...",
+                      style: TextStyle(color: Colors.white70, fontSize: 14),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else if (_aiAnalysisResult != null)
+            SelectableText(
+              _aiAnalysisResult!,
+              style: const TextStyle(
+                fontSize: 14,
+                height: 1.6,
+                color: Colors.white,
+                fontFamily: 'Roboto',
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _exportToExcel({
     required int totalSessions,
     required int guestSessions,
@@ -69,7 +296,6 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
     try {
       var excel = import_excel.Excel.createExcel();
 
-      // 1. شيت الملخص العام للمؤشرات
       import_excel.Sheet summarySheet = excel['Executive Summary'];
       excel.setDefaultSheet('Executive Summary');
 
@@ -107,7 +333,6 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
             double.parse(avgDuration.toStringAsFixed(2))),
       ]);
 
-      // 2. شيت الأكثر بحثاً
       import_excel.Sheet searchesSheet = excel['Most searched wordsً'];
       searchesSheet.appendRow([
         import_excel.TextCellValue('Search term'),
@@ -121,7 +346,6 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
         ]);
       });
 
-      // 3. شيت مشاهدات المنتجات
       import_excel.Sheet productsSheet = excel['Product Views'];
       productsSheet.appendRow([
         import_excel.TextCellValue('Title / Identifier'),
@@ -137,13 +361,11 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
         ]);
       }
 
-      // تحويل البيانات لـ Bytes
       List<int>? fileBytes = excel.save();
       if (fileBytes != null) {
         final fileName = "Analytics_Report_${DateTime.now().millisecondsSinceEpoch}.xlsx";
 
         if (kIsWeb) {
-          // حفظ وتنزيل الملف في منصات الويب (Web)
           final blob = html.Blob([fileBytes], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
           final url = html.Url.createObjectUrlFromBlob(blob);
           final anchor = html.AnchorElement(href: url)
@@ -151,7 +373,6 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
             ..click();
           html.Url.revokeObjectUrl(url);
         } else {
-          // حفظ الملف في بيئة التطبيقات الجوالة عبر الدليل الحالي بدون path_provider
           final file = File(fileName);
           await file.writeAsBytes(fileBytes);
         }
@@ -171,6 +392,11 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = Get.isDarkMode;
+    final Color cardBgColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final Color textPrimaryColor = isDark ? Colors.white : Colors.black87;
+    final Color textSecondaryColor = isDark ? Colors.grey.shade400 : Colors.grey;
+
     if (isLoadingRole) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
@@ -210,7 +436,6 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
 
             var searchDocs = searchSnap.data?.docs ?? [];
 
-            // فلترة الجلسات
             DateTime now = DateTime.now();
             sessionDocs = sessionDocs.where((doc) {
               final data = doc.data() as Map<String, dynamic>;
@@ -228,7 +453,6 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
               return true;
             }).toList();
 
-            // فلترة أبحاث الزوار
             searchDocs = searchDocs.where((doc) {
               final data = doc.data() as Map<String, dynamic>;
               Timestamp? createTs = data['createdAt'] as Timestamp?;
@@ -363,24 +587,60 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
             );
 
             return Scaffold(
-              backgroundColor: Colors.grey.shade100,
+              backgroundColor: isDark ? const Color(0xFF121212) : Colors.grey.shade100,
               appBar: AppBar(
                 title: Text(
                   'Analytics and Business Management Center'.tr,
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    color: textPrimaryColor,
+                  ),
                 ),
                 centerTitle: true,
                 elevation: 0,
-                backgroundColor: Colors.white,
-                foregroundColor: Colors.black87,
+                backgroundColor: cardBgColor,
+                foregroundColor: textPrimaryColor,
                 actions: [
+                  ElevatedButton.icon(
+                    onPressed: _isAnalyzingAi
+                        ? null
+                        : () {
+                      _analyzeWithGemini(
+                        totalSessions: totalSessions,
+                        guestSessions: guestSessions,
+                        userSessions: userSessions,
+                        totalSearches: totalSearches,
+                        guestSearches: guestSearches,
+                        userSearches: userSearches,
+                        avgDuration: avgSessionDuration,
+                        peakHour: peakHour,
+                        searchQueries: searchQueriesCount,
+                        platformCount: platformCount,
+                        liveProducts: productStatsMap.values.toList(),
+                      );
+                    },
+                    icon: const Icon(Icons.auto_awesome, size: 16, color: Colors.white),
+                    label: const Text(
+                      'Ask AI',
+                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.deepPurple,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   IconButton(
                     icon: const Icon(Icons.table_chart_outlined,
                         color: Colors.green),
                     tooltip: 'Export to Excel'.tr,
                     onPressed: () async {
                       ScaffoldMessenger.of(context).showSnackBar(
-                         SnackBar(
+                        SnackBar(
                             content: Text('Preparing and saving the Excel file...'.tr)),
                       );
 
@@ -404,17 +664,19 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildTimeFilterBar(),
+                    _buildTimeFilterBar(isDark, cardBgColor, textPrimaryColor),
                     const SizedBox(height: 16),
 
+                    _buildAiAnalysisCard(isDark),
+
                     if (recommendations.isNotEmpty) ...[
-                      _buildSectionHeader('Business Growth Recommendations and Analyses 🚀'.tr),
+                      _buildSectionHeader('Business Growth Recommendations and Analyses 🚀'.tr, textPrimaryColor),
                       const SizedBox(height: 12),
-                      _buildRecommendationsSection(recommendations),
+                      _buildRecommendationsSection(recommendations, isDark),
                       const SizedBox(height: 24),
                     ],
 
-                    _buildSectionHeader('Key Performance Indicators (KPIs)'.tr),
+                    _buildSectionHeader('Key Performance Indicators (KPIs)'.tr, textPrimaryColor),
                     const SizedBox(height: 12),
                     GridView.count(
                       crossAxisCount:
@@ -432,6 +694,9 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                           '${"guests".tr}: $guestSessions | ${"Registered".tr}: $userSessions',
                           icon: Icons.bar_chart_rounded,
                           color: Colors.blue,
+                          cardBgColor: cardBgColor,
+                          textPrimaryColor: textPrimaryColor,
+                          textSecondaryColor: textSecondaryColor,
                         ),
                         _buildKpiCard(
                           title: 'Total searches'.tr,
@@ -439,6 +704,9 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                           subtitle: '${"Guest Research:".tr}$guestSearches',
                           icon: Icons.search_rounded,
                           color: Colors.orange,
+                          cardBgColor: cardBgColor,
+                          textPrimaryColor: textPrimaryColor,
+                          textSecondaryColor: textSecondaryColor,
                         ),
                         _buildKpiCard(
                           title: 'Average dwell time'.tr,
@@ -447,6 +715,9 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                           subtitle: 'Reaction rate'.tr,
                           icon: Icons.timer_outlined,
                           color: Colors.purple,
+                          cardBgColor: cardBgColor,
+                          textPrimaryColor: textPrimaryColor,
+                          textSecondaryColor: textSecondaryColor,
                         ),
                         _buildKpiCard(
                           title: 'Peak hour'.tr,
@@ -454,46 +725,49 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                           subtitle: '$maxHourCount${"Visitor at this time".tr}',
                           icon: Icons.access_time_filled_sharp,
                           color: Colors.deepOrange,
+                          cardBgColor: cardBgColor,
+                          textPrimaryColor: textPrimaryColor,
+                          textSecondaryColor: textSecondaryColor,
                         ),
                       ],
                     ),
                     const SizedBox(height: 24),
 
-                    _buildSectionHeader('Most searched terms and categories 🔍'.tr),
+                    _buildSectionHeader('Most searched terms and categories 🔍'.tr, textPrimaryColor),
                     const SizedBox(height: 12),
-                    _buildTopSearchesCard(searchQueriesCount),
+                    _buildTopSearchesCard(searchQueriesCount, isDark, cardBgColor, textSecondaryColor),
                     const SizedBox(height: 24),
 
-                    _buildSectionHeader('Recent visitor and user search log'.tr),
+                    _buildSectionHeader('Recent visitor and user search log'.tr, textPrimaryColor),
                     const SizedBox(height: 12),
-                    _buildRecentSearchesList(searchDocs),
-                    const SizedBox(height: 24),
-
-                    _buildSectionHeader(
-                        'Visitor activity by time of day (Peak Hours)'.tr),
-                    const SizedBox(height: 12),
-                    _buildHourlyActivityChart(hourlyActivity),
-                    const SizedBox(height: 24),
-
-                    _buildSectionHeader('Distribution of Platforms and Devices (Pie Chart)'.tr),
-                    const SizedBox(height: 12),
-                    _buildPieChartCard(platformCount, totalSessions),
+                    _buildRecentSearchesList(searchDocs, cardBgColor, textPrimaryColor, textSecondaryColor),
                     const SizedBox(height: 24),
 
                     _buildSectionHeader(
-                        'Bar chart of most-viewed products'.tr),
+                        'Visitor activity by time of day (Peak Hours)'.tr, textPrimaryColor),
                     const SizedBox(height: 12),
-                    _buildProductBarChartCard(productViewsCount),
+                    _buildHourlyActivityChart(hourlyActivity, isDark, cardBgColor, textSecondaryColor),
                     const SizedBox(height: 24),
 
-                    _buildSectionHeader('Product performance using live data'.tr),
+                    _buildSectionHeader('Distribution of Platforms and Devices (Pie Chart)'.tr, textPrimaryColor),
                     const SizedBox(height: 12),
-                    _buildLiveProductsGrid(productStatsMap.values.toList()),
+                    _buildPieChartCard(platformCount, totalSessions, cardBgColor, textPrimaryColor),
                     const SizedBox(height: 24),
 
-                    _buildSectionHeader('Recent session log and details'.tr),
+                    _buildSectionHeader(
+                        'Bar chart of most-viewed products'.tr, textPrimaryColor),
                     const SizedBox(height: 12),
-                    _buildRecentSessionsList(sessionDocs),
+                    _buildProductBarChartCard(productViewsCount, isDark, cardBgColor, textSecondaryColor),
+                    const SizedBox(height: 24),
+
+                    _buildSectionHeader('Product performance using live data'.tr, textPrimaryColor),
+                    const SizedBox(height: 12),
+                    _buildLiveProductsGrid(productStatsMap.values.toList(), isDark, cardBgColor, textPrimaryColor, textSecondaryColor),
+                    const SizedBox(height: 24),
+
+                    _buildSectionHeader('Recent session log and details'.tr, textPrimaryColor),
+                    const SizedBox(height: 12),
+                    _buildRecentSessionsList(sessionDocs, cardBgColor, textPrimaryColor, textSecondaryColor),
                   ],
                 ),
               ),
@@ -504,17 +778,17 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
     );
   }
 
-  Widget _buildTopSearchesCard(Map<String, int> searchQueries) {
+  Widget _buildTopSearchesCard(Map<String, int> searchQueries, bool isDark, Color cardBgColor, Color textSecondaryColor) {
     if (searchQueries.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: cardBgColor,
           borderRadius: BorderRadius.circular(16),
         ),
-        child:  Center(
+        child: Center(
           child: Text('There are no recorded searches for this period.'.tr,
-              style: TextStyle(color: Colors.grey)),
+              style: TextStyle(color: textSecondaryColor)),
         ),
       );
     }
@@ -526,10 +800,10 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardBgColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10)
+          BoxShadow(color: Colors.black.withOpacity(isDark ? 0.2 : 0.03), blurRadius: 10)
         ],
       ),
       child: Wrap(
@@ -543,20 +817,24 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
             ),
             label: Text(
               '${e.key} (${e.value})',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+                color: isDark ? Colors.orange.shade100 : Colors.orange.shade900,
+              ),
             ),
-            backgroundColor: Colors.orange.shade50,
-            side: BorderSide(color: Colors.orange.shade200),
+            backgroundColor: isDark ? Colors.orange.shade900.withOpacity(0.3) : Colors.orange.shade50,
+            side: BorderSide(color: isDark ? Colors.orange.shade700 : Colors.orange.shade200),
           );
         }).toList(),
       ),
     );
   }
 
-  Widget _buildRecentSearchesList(List<QueryDocumentSnapshot> docs) {
+  Widget _buildRecentSearchesList(List<QueryDocumentSnapshot> docs, Color cardBgColor, Color textPrimaryColor, Color textSecondaryColor) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardBgColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10)
@@ -566,7 +844,7 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         itemCount: docs.length > 5 ? 5 : docs.length,
-        separatorBuilder: (context, index) => const Divider(height: 1),
+        separatorBuilder: (context, index) => Divider(height: 1, color: textSecondaryColor.withOpacity(0.2)),
         itemBuilder: (context, index) {
           final data = docs[index].data() as Map<String, dynamic>;
           bool isGuest = data['gust'] ?? data['isGuest'] ?? false;
@@ -586,13 +864,12 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
               ),
               title: Text(
                 '"$query"',
-                style:
-                const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: textPrimaryColor),
               ),
-              subtitle:  Text('Source: Guest'.tr),
+              subtitle: Text('Source: Guest'.tr, style: TextStyle(color: textSecondaryColor)),
               trailing: Text(
                 timeStr,
-                style: const TextStyle(color: Colors.grey, fontSize: 12),
+                style: TextStyle(color: textSecondaryColor, fontSize: 12),
               ),
             );
           }
@@ -617,13 +894,13 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                 ),
                 title: Text(
                   '"$query"',
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 14),
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 14, color: textPrimaryColor),
                 ),
-                subtitle: Text('${"user:".tr}$userName'),
+                subtitle: Text('${"user:".tr}$userName', style: TextStyle(color: textSecondaryColor)),
                 trailing: Text(
                   timeStr,
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  style: TextStyle(color: textSecondaryColor, fontSize: 12),
                 ),
               );
             },
@@ -684,30 +961,30 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
     return list;
   }
 
-  Widget _buildTimeFilterBar() {
+  Widget _buildTimeFilterBar(bool isDark, Color cardBgColor, Color textPrimaryColor) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardBgColor,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 8),
+          BoxShadow(color: Colors.black.withOpacity(isDark ? 0.2 : 0.02), blurRadius: 8),
         ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-           Text(
+          Text(
             'Timeframe:'.tr,
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: textPrimaryColor),
           ),
           Row(
             children: [
-              _buildFilterChip('today', 'today'),
+              _buildFilterChip('today', 'today', isDark),
               const SizedBox(width: 8),
-              _buildFilterChip('7days', '7days'),
+              _buildFilterChip('7days', '7days', isDark),
               const SizedBox(width: 8),
-              _buildFilterChip('all', 'all'),
+              _buildFilterChip('all', 'all', isDark),
             ],
           )
         ],
@@ -715,14 +992,17 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
     );
   }
 
-  Widget _buildFilterChip(String label, String value) {
+  Widget _buildFilterChip(String label, String value, bool isDark) {
     bool isSelected = selectedPeriod == value;
     return ChoiceChip(
       label: Text(label),
       selected: isSelected,
       selectedColor: Colors.blue,
+      backgroundColor: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
       labelStyle: TextStyle(
-        color: isSelected ? Colors.white : Colors.black87,
+        color: isSelected
+            ? Colors.white
+            : (isDark ? Colors.grey.shade300 : Colors.black87),
         fontWeight: FontWeight.bold,
         fontSize: 12,
       ),
@@ -732,34 +1012,35 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
     );
   }
 
-  Widget _buildSectionHeader(String title) {
+  Widget _buildSectionHeader(String title, Color textPrimaryColor) {
     return Text(
       title,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 17,
         fontWeight: FontWeight.bold,
-        color: Colors.black87,
+        color: textPrimaryColor,
       ),
     );
   }
 
   Widget _buildRecommendationsSection(
-      List<Map<String, dynamic>> recommendations) {
+      List<Map<String, dynamic>> recommendations, bool isDark) {
     return Column(
       children: recommendations.map((rec) {
+        final Color recColor = rec['color'] as Color;
         return Container(
           margin: const EdgeInsets.only(bottom: 10),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: (rec['color'] as Color).withOpacity(0.08),
+            color: recColor.withOpacity(isDark ? 0.2 : 0.08),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: (rec['color'] as Color).withOpacity(0.3)),
+            border: Border.all(color: recColor.withOpacity(0.4)),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               CircleAvatar(
-                backgroundColor: rec['color'],
+                backgroundColor: recColor,
                 radius: 20,
                 child: Icon(rec['icon'], color: Colors.white, size: 20),
               ),
@@ -773,14 +1054,13 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 15,
-                        color: rec['color'],
+                        color: isDark ? Colors.amber.shade300 : recColor,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       rec['desc'],
-                      style:
-                      const TextStyle(fontSize: 13, color: Colors.black87),
+                      style: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : Colors.black87),
                     ),
                   ],
                 ),
@@ -792,22 +1072,22 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
     );
   }
 
-  Widget _buildHourlyActivityChart(Map<int, int> hourlyActivity) {
+  Widget _buildHourlyActivityChart(Map<int, int> hourlyActivity, bool isDark, Color cardBgColor, Color textSecondaryColor) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardBgColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10)
+          BoxShadow(color: Colors.black.withOpacity(isDark ? 0.2 : 0.03), blurRadius: 10)
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-           Text(
+          Text(
             'Visits are distributed throughout the 24-hour period.'.tr,
-            style: TextStyle(fontSize: 13, color: Colors.grey),
+            style: TextStyle(fontSize: 13, color: textSecondaryColor),
           ),
           const SizedBox(height: 16),
           SizedBox(
@@ -831,7 +1111,7 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                         int hour = val.toInt();
                         if (hour % 4 == 0) {
                           return Text('$hour:00',
-                              style: const TextStyle(fontSize: 9));
+                              style: TextStyle(fontSize: 9, color: textSecondaryColor));
                         }
                         return const SizedBox();
                       },
@@ -855,7 +1135,7 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                         toY: count.toDouble(),
                         color: count > 0
                             ? Colors.deepOrangeAccent
-                            : Colors.grey.shade300,
+                            : (isDark ? Colors.grey.shade800 : Colors.grey.shade300),
                         width: 8,
                         borderRadius: BorderRadius.circular(4),
                       ),
@@ -870,17 +1150,17 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
     );
   }
 
-  Widget _buildLiveProductsGrid(List<Map<String, dynamic>> productStatsList) {
+  Widget _buildLiveProductsGrid(List<Map<String, dynamic>> productStatsList, bool isDark, Color cardBgColor, Color textPrimaryColor, Color textSecondaryColor) {
     if (productStatsList.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: cardBgColor,
           borderRadius: BorderRadius.circular(16),
         ),
-        child:  Center(
+        child: Center(
           child: Text('No products have been viewed yet during this period.'.tr,
-              style: TextStyle(color: Colors.grey)),
+              style: TextStyle(color: textSecondaryColor)),
         ),
       );
     }
@@ -930,11 +1210,11 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
 
             return Container(
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: cardBgColor,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
+                    color: Colors.black.withOpacity(isDark ? 0.3 : 0.04),
                     blurRadius: 10,
                     offset: const Offset(0, 3),
                   ),
@@ -951,17 +1231,17 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                         child: Container(
                           height: 130,
                           width: double.infinity,
-                          color: Colors.grey.shade100,
+                          color: isDark ? Colors.grey.shade900 : Colors.grey.shade100,
                           child: imageUrl.isNotEmpty
                               ? Image.network(
                             imageUrl,
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) =>
-                            const Icon(Icons.image_not_supported,
-                                color: Colors.grey),
+                                Icon(Icons.image_not_supported,
+                                    color: textSecondaryColor),
                           )
-                              : const Icon(Icons.shopping_bag_outlined,
-                              color: Colors.grey, size: 40),
+                              : Icon(Icons.shopping_bag_outlined,
+                              color: textSecondaryColor, size: 40),
                         ),
                       ),
                       Positioned(
@@ -1000,10 +1280,10 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                                 title,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 13,
-                                  color: Colors.black87,
+                                  color: textPrimaryColor,
                                 ),
                               ),
                               const SizedBox(height: 4),
@@ -1037,17 +1317,17 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                                       const SizedBox(width: 2),
                                       Text(
                                         '${avgRating.toStringAsFixed(1)} ',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.bold,
-                                          color: Colors.black87,
+                                          color: textPrimaryColor,
                                         ),
                                       ),
                                       Text(
                                         '($reviewsCount)',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 10,
-                                          color: Colors.grey,
+                                          color: textSecondaryColor,
                                         ),
                                       ),
                                     ],
@@ -1084,17 +1364,17 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
     );
   }
 
-  Widget _buildProductBarChartCard(Map<String, int> productViews) {
+  Widget _buildProductBarChartCard(Map<String, int> productViews, bool isDark, Color cardBgColor, Color textSecondaryColor) {
     if (productViews.isEmpty) {
       return Container(
         height: 120,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: cardBgColor,
           borderRadius: BorderRadius.circular(16),
         ),
-        child:  Center(
+        child: Center(
           child: Text('There are no product views yet to generate a graph.'.tr,
-              style: TextStyle(color: Colors.grey)),
+              style: TextStyle(color: textSecondaryColor)),
         ),
       );
     }
@@ -1111,11 +1391,11 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardBgColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withOpacity(isDark ? 0.2 : 0.03),
             blurRadius: 10,
           ),
         ],
@@ -1128,7 +1408,7 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
             maxY: maxY + 2,
             barTouchData: BarTouchData(
               touchTooltipData: BarTouchTooltipData(
-                getTooltipColor: (_) => Colors.blueGrey,
+                getTooltipColor: (_) => isDark ? Colors.grey.shade800 : Colors.blueGrey,
                 getTooltipItem: (group, groupIndex, rod, rodIndex) {
                   return BarTooltipItem(
                     '${topProducts[groupIndex].key}\n${rod.toY.toInt()}${"Views".tr}',
@@ -1154,8 +1434,8 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                         padding: const EdgeInsets.only(top: 8.0),
                         child: Text(
                           title,
-                          style: const TextStyle(
-                              fontSize: 10, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                              fontSize: 10, fontWeight: FontWeight.bold, color: textSecondaryColor),
                         ),
                       );
                     }
@@ -1172,7 +1452,7 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                       return Text(
                         value.toInt().toString(),
                         style:
-                        const TextStyle(fontSize: 10, color: Colors.grey),
+                        TextStyle(fontSize: 10, color: textSecondaryColor),
                       );
                     }
                     return const SizedBox();
@@ -1188,7 +1468,7 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
               show: true,
               drawVerticalLine: false,
               getDrawingHorizontalLine: (value) => FlLine(
-                color: Colors.grey.shade200,
+                color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
                 strokeWidth: 1,
               ),
             ),
@@ -1218,7 +1498,7 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
     );
   }
 
-  Widget _buildPieChartCard(Map<String, int> platforms, int total) {
+  Widget _buildPieChartCard(Map<String, int> platforms, int total, Color cardBgColor, Color textPrimaryColor) {
     if (platforms.isEmpty || total == 0) {
       return const SizedBox();
     }
@@ -1253,7 +1533,7 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardBgColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -1297,8 +1577,8 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                       const SizedBox(width: 8),
                       Text(
                         '${e.key}: ${e.value}${"session".tr}',
-                        style: const TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.w500),
+                        style: TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w500, color: textPrimaryColor),
                       ),
                     ],
                   ),
@@ -1317,11 +1597,14 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
     required String subtitle,
     required IconData icon,
     required Color color,
+    required Color cardBgColor,
+    required Color textPrimaryColor,
+    required Color textSecondaryColor,
   }) {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardBgColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -1343,12 +1626,12 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  style: TextStyle(fontSize: 12, color: textSecondaryColor),
                 ),
               ),
               CircleAvatar(
                 radius: 16,
-                backgroundColor: color.withOpacity(0.1),
+                backgroundColor: color.withOpacity(0.15),
                 child: Icon(icon, color: color, size: 18),
               ),
             ],
@@ -1358,15 +1641,15 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
             children: [
               Text(
                 value,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  color: textPrimaryColor,
                 ),
               ),
               Text(
                 subtitle,
-                style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
+                style: TextStyle(fontSize: 10, color: textSecondaryColor),
               ),
             ],
           ),
@@ -1375,10 +1658,10 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
     );
   }
 
-  Widget _buildRecentSessionsList(List<QueryDocumentSnapshot> docs) {
+  Widget _buildRecentSessionsList(List<QueryDocumentSnapshot> docs, Color cardBgColor, Color textPrimaryColor, Color textSecondaryColor) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardBgColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -1391,7 +1674,7 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         itemCount: docs.length > 5 ? 5 : docs.length,
-        separatorBuilder: (context, index) => const Divider(height: 1),
+        separatorBuilder: (context, index) => Divider(height: 1, color: textSecondaryColor.withOpacity(0.2)),
         itemBuilder: (context, index) {
           final data = docs[index].data() as Map<String, dynamic>;
           bool isGuest = data['isGuest'] ?? true;
@@ -1410,15 +1693,15 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                 backgroundColor: Colors.orangeAccent,
                 child: Icon(Icons.person_outline, color: Colors.white),
               ),
-              title:  Text(
+              title: Text(
                 'Guest Visitor (Guest)'.tr,
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: textPrimaryColor),
               ),
               subtitle:
-              Text('${"Platform:".tr}$platform | ${"Views:".tr} ${viewedProducts.length}'),
+              Text('${"Platform:".tr}$platform | ${"Views:".tr} ${viewedProducts.length}', style: TextStyle(color: textSecondaryColor)),
               trailing: Text(
                 '${"It began".tr}$timeStr',
-                style: const TextStyle(color: Colors.grey, fontSize: 12),
+                style: TextStyle(color: textSecondaryColor, fontSize: 12),
               ),
             );
           }
@@ -1447,15 +1730,16 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
                 ),
                 title: Text(
                   displayName,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 14),
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 14, color: textPrimaryColor),
                 ),
                 subtitle: Text(
                   '${userEmail.isNotEmpty ? "$userEmail | " : ""}${"Platform:".tr} $platform | ${"Views".tr} ${viewedProducts.length}',
+                  style: TextStyle(color: textSecondaryColor),
                 ),
                 trailing: Text(
                   '${"It began".tr} $timeStr',
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  style: TextStyle(color: textSecondaryColor, fontSize: 12),
                 ),
               );
             },

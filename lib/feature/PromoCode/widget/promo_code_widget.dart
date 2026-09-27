@@ -62,13 +62,22 @@ class _PromoCodeWidgetState extends State<PromoCodeWidget> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
+            final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+            final theme = Theme.of(context);
+            final titleTextColor = isDarkMode ? Colors.white : Colors.black87;
+            final subtitleTextColor = isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600;
+
             return AlertDialog(
+              backgroundColor: isDarkMode ? theme.cardColor : Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: const Row(
+              title: Row(
                 children: [
-                  Icon(Icons.local_offer_outlined, color: Colors.blue),
-                  SizedBox(width: 8),
-                  Text('Create a new promo code'),
+                  const Icon(Icons.local_offer_outlined, color: Colors.blue),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Create a new promo code',
+                    style: TextStyle(color: titleTextColor, fontSize: 18),
+                  ),
                 ],
               ),
               content: Column(
@@ -77,27 +86,36 @@ class _PromoCodeWidgetState extends State<PromoCodeWidget> {
                   TextField(
                     controller: discountController,
                     keyboardType: TextInputType.number,
+                    style: TextStyle(color: titleTextColor),
                     decoration: InputDecoration(
                       labelText: 'Discount rate (%)',
+                      labelStyle: TextStyle(color: subtitleTextColor),
                       hintText: 'Example: 15',
+                      hintStyle: TextStyle(color: subtitleTextColor),
                       prefixIcon: const Icon(Icons.percent),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade400),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
                   ListTile(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(color: Colors.grey.shade400),
+                      side: BorderSide(
+                        color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade400,
+                      ),
                     ),
-                    leading: const Icon(Icons.calendar_today),
+                    leading: Icon(Icons.calendar_today, color: isDarkMode ? Colors.lightBlue : null),
                     title: Text(
                       selectedDate == null
                           ? 'Select the end date and time.'
                           : DateFormat('yyyy/MM/dd  hh:mm a').format(selectedDate!),
                       style: TextStyle(
                         fontSize: 14,
-                        color: selectedDate == null ? Colors.grey.shade600 : Colors.black,
+                        color: selectedDate == null ? subtitleTextColor : titleTextColor,
                       ),
                     ),
                     onTap: () async {
@@ -106,12 +124,42 @@ class _PromoCodeWidgetState extends State<PromoCodeWidget> {
                         initialDate: DateTime.now().add(const Duration(days: 1)),
                         firstDate: DateTime.now(),
                         lastDate: DateTime(2030),
+                        builder: (context, child) {
+                          return Theme(
+                            data: isDarkMode
+                                ? ThemeData.dark().copyWith(
+                              colorScheme: ColorScheme.dark(
+                                primary: Colors.blue,
+                                onPrimary: Colors.white,
+                                surface: theme.cardColor,
+                                onSurface: Colors.white,
+                              ),
+                            )
+                                : ThemeData.light(),
+                            child: child!,
+                          );
+                        },
                       );
 
                       if (pickedDate != null) {
                         TimeOfDay? pickedTime = await showTimePicker(
                           context: context,
                           initialTime: const TimeOfDay(hour: 23, minute: 59),
+                          builder: (context, child) {
+                            return Theme(
+                              data: isDarkMode
+                                  ? ThemeData.dark().copyWith(
+                                colorScheme: ColorScheme.dark(
+                                  primary: Colors.blue,
+                                  onPrimary: Colors.white,
+                                  surface: theme.cardColor,
+                                  onSurface: Colors.white,
+                                ),
+                              )
+                                  : ThemeData.light(),
+                              child: child!,
+                            );
+                          },
                         );
 
                         if (pickedTime != null) {
@@ -133,10 +181,12 @@ class _PromoCodeWidgetState extends State<PromoCodeWidget> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text('cancel'),
+                  child: Text('cancel', style: TextStyle(color: isDarkMode ? Colors.grey.shade400 : null)),
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                   onPressed: _isLoading
@@ -162,7 +212,6 @@ class _PromoCodeWidgetState extends State<PromoCodeWidget> {
                     Navigator.pop(ctx);
 
                     try {
-                      // إنشاء كود مميز عشوائي
                       String generatedCode = await _generateUniquePromoCode();
 
                       await _db.collection('promo_codes').doc(generatedCode).set({
@@ -201,18 +250,31 @@ class _PromoCodeWidgetState extends State<PromoCodeWidget> {
   Future<void> _deletePromoCode(String docId) async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Confirm Deletion'),
-        content: const Text('Are you sure you want to delete this promo code?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+      builder: (ctx) {
+        final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+        return AlertDialog(
+          backgroundColor: isDarkMode ? Theme.of(context).cardColor : Colors.white,
+          title: Text(
+            'Confirm Deletion',
+            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
           ),
-        ],
-      ),
+          content: Text(
+            'Are you sure you want to delete this promo code?',
+            style: TextStyle(color: isDarkMode ? Colors.grey.shade300 : Colors.black87),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text('Cancel', style: TextStyle(color: isDarkMode ? Colors.grey.shade400 : null)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Delete', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
     );
 
     if (confirm == true) {
@@ -225,14 +287,22 @@ class _PromoCodeWidgetState extends State<PromoCodeWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+
+    final backgroundColor = isDarkMode ? theme.scaffoldBackgroundColor : Colors.grey.shade100;
+    final cardColor = isDarkMode ? theme.cardColor : Colors.white;
+    final titleTextColor = isDarkMode ? Colors.white : Colors.black87;
+    final subtitleTextColor = isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600;
+
     return _permision.contains("promo")
         ? Scaffold(
-      backgroundColor: Colors.grey.shade100,
+      backgroundColor: backgroundColor,
       appBar: AppBar(
         title: const Text('Promo Code and Discount Management'),
         centerTitle: true,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
+        backgroundColor: isDarkMode ? theme.cardColor : Colors.white,
+        foregroundColor: titleTextColor,
         elevation: 0,
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -248,21 +318,33 @@ class _PromoCodeWidgetState extends State<PromoCodeWidget> {
           }
 
           if (snapshot.hasError) {
-            return Center(child: Text('An error occurred:${snapshot.error}'));
+            return Center(
+              child: Text(
+                'An error occurred:${snapshot.error}',
+                style: TextStyle(color: titleTextColor),
+              ),
+            );
           }
 
           final docs = snapshot.data?.docs ?? [];
 
           if (docs.isEmpty) {
-            return const Center(
+            return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.card_giftcard, size: 70, color: Colors.grey),
-                  SizedBox(height: 12),
+                  Icon(
+                    Icons.card_giftcard,
+                    size: 70,
+                    color: isDarkMode ? Colors.grey.shade600 : Colors.grey,
+                  ),
+                  const SizedBox(height: 12),
                   Text(
                     "There are currently no discount codes available.",
-                    style: TextStyle(fontSize: 18, color: Colors.grey),
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: isDarkMode ? Colors.grey.shade400 : Colors.grey,
+                    ),
                   ),
                 ],
               ),
@@ -286,50 +368,60 @@ class _PromoCodeWidgetState extends State<PromoCodeWidget> {
               return Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: cardColor,
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.04),
+                      color: isDarkMode ? Colors.black.withOpacity(0.3) : Colors.black.withOpacity(0.04),
                       blurRadius: 10,
                     ),
                   ],
+                  border: isDarkMode ? Border.all(color: Colors.grey.shade800, width: 1) : null,
                 ),
                 child: ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   leading: Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: isExpired ? Colors.red.shade50 : Colors.green.shade50,
+                      color: isExpired
+                          ? (isDarkMode ? Colors.red.shade900.withOpacity(0.3) : Colors.red.shade50)
+                          : (isDarkMode ? Colors.green.shade900.withOpacity(0.3) : Colors.green.shade50),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
                       Icons.confirmation_number_outlined,
-                      color: isExpired ? Colors.red : Colors.green,
+                      color: isExpired
+                          ? (isDarkMode ? Colors.redAccent : Colors.red)
+                          : (isDarkMode ? Colors.greenAccent : Colors.green),
                     ),
                   ),
                   title: Row(
                     children: [
                       Text(
                         code,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 18,
                           letterSpacing: 1.5,
+                          color: titleTextColor,
                         ),
                       ),
                       const SizedBox(width: 10),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: isExpired ? Colors.red.shade100 : Colors.green.shade100,
+                          color: isExpired
+                              ? (isDarkMode ? Colors.red.shade900.withOpacity(0.5) : Colors.red.shade100)
+                              : (isDarkMode ? Colors.green.shade900.withOpacity(0.5) : Colors.green.shade100),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           isExpired ? 'finished' : 'active',
                           style: TextStyle(
                             fontSize: 11,
-                            color: isExpired ? Colors.red.shade900 : Colors.green.shade900,
+                            color: isExpired
+                                ? (isDarkMode ? Colors.red.shade200 : Colors.red.shade900)
+                                : (isDarkMode ? Colors.green.shade200 : Colors.green.shade900),
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -340,18 +432,21 @@ class _PromoCodeWidgetState extends State<PromoCodeWidget> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: 6),
-                      Text('Discount rate: %$discount', style: const TextStyle(fontWeight: FontWeight.w600)),
+                      Text(
+                        'Discount rate: %$discount',
+                        style: TextStyle(fontWeight: FontWeight.w600, color: titleTextColor),
+                      ),
                       const SizedBox(height: 2),
                       Text(
                         expiresAt != null
                             ? 'Ends on:${DateFormat('yyyy/MM/dd  hh:mm a').format(expiresAt)}'
                             : 'No expiration date',
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                        style: TextStyle(fontSize: 12, color: subtitleTextColor),
                       ),
                     ],
                   ),
                   trailing: IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                    icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
                     onPressed: () => _deletePromoCode(doc.id),
                   ),
                 ),
@@ -361,6 +456,6 @@ class _PromoCodeWidgetState extends State<PromoCodeWidget> {
         },
       ),
     )
-        :  AccessDefindView();
+        : AccessDefindView();
   }
 }

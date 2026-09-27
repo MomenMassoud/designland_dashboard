@@ -102,28 +102,38 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = Get.isDarkMode;
+
     return _permision.contains("about")
         ? Scaffold(
-      backgroundColor: Colors.grey.shade100,
+      backgroundColor: isDark
+          ? Theme.of(context).scaffoldBackgroundColor
+          : Colors.grey.shade100,
       appBar: AppBar(
-        title:Text('Managing "About Us" and FAQs'.tr),
+        backgroundColor: isDark ? Theme.of(context).cardColor : null,
+        title: Text(
+          'Managing "About Us" and FAQs'.tr,
+          style: TextStyle(
+            color: isDark ? Colors.white : Colors.black87,
+          ),
+        ),
         centerTitle: true,
         bottom: TabBar(
           controller: _tabController,
-          labelColor: Theme.of(context).primaryColor,
-          unselectedLabelColor: Colors.grey,
+          labelColor: isDark? Colors.white:Colors.black,
+          unselectedLabelColor: isDark ? Colors.white : Colors.white,
           indicatorColor: Theme.of(context).primaryColor,
-          tabs:[
-            Tab(icon: Icon(Icons.info_outline), text: 'Basic Information'.tr),
-            Tab(icon: Icon(Icons.quiz_outlined), text: 'Frequently Asked Questions (FAQ)'.tr),
+          tabs: [
+            Tab(icon: const Icon(Icons.info_outline), text: 'Basic Information'.tr,),
+            Tab(icon: const Icon(Icons.quiz_outlined), text: 'Frequently Asked Questions (FAQ)'.tr),
           ],
         ),
       ),
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildInfoTab(),
-          _buildFaqTab(),
+          _buildInfoTab(isDark),
+          _buildFaqTab(isDark),
         ],
       ),
     )
@@ -131,10 +141,12 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
   }
 
   // --- 1. تبويب المعلومات الأساسية والتواصل ---
-  Widget _buildInfoTab() {
+  Widget _buildInfoTab(bool isDark) {
     if (_isLoadingInfo) {
       return const Center(child: CircularProgressIndicator());
     }
+
+    final cardBgColor = isDark ? Theme.of(context).cardColor : Colors.white;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -144,11 +156,11 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: cardBgColor,
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.03),
+                  color: Colors.black.withOpacity(isDark ? 0.2 : 0.03),
                   blurRadius: 10,
                 )
               ],
@@ -158,14 +170,20 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
               children: [
                 Text(
                   'About the App / Who We Are'.tr,
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _aboutController,
                   maxLines: 4,
+                  style: TextStyle(color: isDark ? Colors.white : Colors.black87),
                   decoration: InputDecoration(
                     hintText: 'Enter the description that appears to the user here...'.tr,
+                    hintStyle: TextStyle(color: isDark ? Colors.white38 : Colors.black38),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -180,11 +198,11 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: cardBgColor,
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.03),
+                  color: Colors.black.withOpacity(isDark ? 0.2 : 0.03),
                   blurRadius: 10,
                 )
               ],
@@ -192,54 +210,48 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                 Text(
+                Text(
                   'Contact and Social Media Details'.tr,
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                _buildCustomTextField(
                   controller: _whatsappController,
-                  decoration: InputDecoration(
-                    labelText: 'WhatsApp number'.tr,
-                    prefixIcon: const Icon(Icons.wechat, color: Color(0xFF25D366)),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
+                  labelText: 'WhatsApp number'.tr,
+                  icon: const Icon(Icons.wechat, color: Color(0xFF25D366)),
+                  isDark: isDark,
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                _buildCustomTextField(
                   controller: _phoneController,
-                  decoration: InputDecoration(
-                    labelText: 'Contact number'.tr,
-                    prefixIcon: const Icon(Icons.phone),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
+                  labelText: 'Contact number'.tr,
+                  icon: Icon(Icons.phone, color: isDark ? Colors.white70 : Colors.grey[700]),
+                  isDark: isDark,
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                _buildCustomTextField(
                   controller: _emailController,
-                  decoration: InputDecoration(
-                    labelText: 'e-mail'.tr,
-                    prefixIcon: const Icon(Icons.email),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
+                  labelText: 'e-mail'.tr,
+                  icon: Icon(Icons.email, color: isDark ? Colors.white70 : Colors.grey[700]),
+                  isDark: isDark,
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                _buildCustomTextField(
                   controller: _facebookController,
-                  decoration: InputDecoration(
-                    labelText: 'Facebook link'.tr,
-                    prefixIcon: const Icon(Icons.facebook, color: Color(0xFF1877F2)),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
+                  labelText: 'Facebook link'.tr,
+                  icon: const Icon(Icons.facebook, color: Color(0xFF1877F2)),
+                  isDark: isDark,
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                _buildCustomTextField(
                   controller: _instagramController,
-                  decoration: InputDecoration(
-                    labelText: 'Instagram link'.tr,
-                    prefixIcon: const Icon(Icons.camera_alt, color: Color(0xFFE4405F)),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
+                  labelText: 'Instagram link'.tr,
+                  icon: const Icon(Icons.camera_alt, color: Color(0xFFE4405F)),
+                  isDark: isDark,
                 ),
               ],
             ),
@@ -259,7 +271,7 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
                 child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
               )
                   : const Icon(Icons.save),
-              label: Text('Save changes'.tr, style: TextStyle(fontSize: 16)),
+              label: Text('Save changes'.tr, style: const TextStyle(fontSize: 16)),
               style: ElevatedButton.styleFrom(
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
@@ -270,14 +282,32 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
     );
   }
 
+  Widget _buildCustomTextField({
+    required TextEditingController controller,
+    required String labelText,
+    required Widget icon,
+    required bool isDark,
+  }) {
+    return TextField(
+      controller: controller,
+      style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+      decoration: InputDecoration(
+        labelText: labelText,
+        labelStyle: TextStyle(color: isDark ? Colors.white60 : Colors.grey[700]),
+        prefixIcon: icon,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
   // --- 2. تبويب الأسئلة الشائعة (FAQS) ---
-  Widget _buildFaqTab() {
+  Widget _buildFaqTab(bool isDark) {
     return Scaffold(
       backgroundColor: Colors.transparent,
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showFaqDialog(),
+        onPressed: () => _showFaqDialog(isDark: isDark),
         icon: const Icon(Icons.add),
-        label:Text('Add a new question'.tr),
+        label: Text('Add a new question'.tr),
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: _db.collection('faqs').snapshots(),
@@ -289,8 +319,11 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
           final docs = snapshot.data?.docs ?? [];
 
           if (docs.isEmpty) {
-            return  Center(
-              child: Text('No frequently asked questions have been added yet.'.tr),
+            return Center(
+              child: Text(
+                'No frequently asked questions have been added yet.'.tr,
+                style: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
+              ),
             );
           }
 
@@ -306,11 +339,11 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
               return Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: isDark ? Theme.of(context).cardColor : Colors.white,
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.03),
+                      color: Colors.black.withOpacity(isDark ? 0.2 : 0.03),
                       blurRadius: 8,
                     )
                   ],
@@ -318,11 +351,19 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
                 child: ListTile(
                   title: Text(
                     question,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
                   ),
                   subtitle: Padding(
                     padding: const EdgeInsets.only(top: 6),
-                    child: Text(answer),
+                    child: Text(
+                      answer,
+                      style: TextStyle(
+                        color: isDark ? Colors.white70 : Colors.black87,
+                      ),
+                    ),
                   ),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -333,6 +374,7 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
                           docId: doc.id,
                           currentQuestion: question,
                           currentAnswer: answer,
+                          isDark: isDark,
                         ),
                       ),
                       IconButton(
@@ -355,6 +397,7 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
     String? docId,
     String? currentQuestion,
     String? currentAnswer,
+    required bool isDark,
   }) {
     final isEdit = docId != null;
     final qController = TextEditingController(text: currentQuestion ?? '');
@@ -364,25 +407,33 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
       context: context,
       builder: (context) {
         return AlertDialog(
+          backgroundColor: isDark ? Theme.of(context).cardColor : Colors.white,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text(isEdit ? 'Edit FAQ item'.tr : 'Add a new FAQ'.tr),
+          title: Text(
+            isEdit ? 'Edit FAQ item'.tr : 'Add a new FAQ'.tr,
+            style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: qController,
-                decoration:  InputDecoration(
+                style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+                decoration: InputDecoration(
                   labelText: 'The Question'.tr,
-                  border: OutlineInputBorder(),
+                  labelStyle: TextStyle(color: isDark ? Colors.white : Colors.black),
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: aController,
                 maxLines: 3,
-                decoration:  InputDecoration(
+                style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+                decoration: InputDecoration(
                   labelText: 'The Answer'.tr,
-                  border: OutlineInputBorder(),
+                  labelStyle: TextStyle(color: isDark ? Colors.white60 : Colors.grey[700]),
+                  border: const OutlineInputBorder(),
                 ),
               ),
             ],
@@ -390,7 +441,7 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child:  Text('cancellation'.tr),
+              child: Text('cancellation'.tr),
             ),
             ElevatedButton(
               onPressed: () async {
