@@ -69,6 +69,10 @@ dependencies:
   reorderables: ^0.6.0
   image_cropper: ^8.0.0
   google_generative_ai: ^0.4.7
+  appflowy_editor: ^6.2.0
+
+dependency_overrides:
+  keyboard_height_plugin: ^0.3.0
 
 dev_dependencies:
   flutter_test:

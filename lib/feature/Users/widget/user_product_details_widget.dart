@@ -1,6 +1,50 @@
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:appflowy_editor/appflowy_editor.dart';
 import '../../../Core/Utils/app.colors.dart';
+
+// دالة normalizeAppFlowyJson لمعالجة وتحديد بناء مستند AppFlowy
+Map<String, dynamic>? _normalizeAppFlowyJson(dynamic value) {
+  if (value is! Map) {
+    return null;
+  }
+
+  dynamic current = value;
+  int safetyCounter = 0;
+
+  while (current is Map && safetyCounter < 20) {
+    safetyCounter++;
+    final map = Map<String, dynamic>.from(current);
+
+    if (map['type'] == 'page') {
+      return {
+        'document': map,
+      };
+    }
+
+    if (map.containsKey('document')) {
+      final nested = map['document'];
+
+      if (nested is Map) {
+        current = nested;
+        continue;
+      }
+
+      if (nested is String) {
+        try {
+          current = jsonDecode(nested);
+          continue;
+        } catch (_) {
+          return null;
+        }
+      }
+    }
+    return null;
+  }
+
+  return null;
+}
 
 class UserProductDetailsWidget extends StatelessWidget {
   final String productId;
@@ -59,7 +103,6 @@ class UserProductDetailsWidget extends StatelessWidget {
             );
           }
 
-          // فحص آمن لمنع الـ TypeError
           final rawData = snapshot.data?.data();
 
           if (!snapshot.hasData || !snapshot.data!.exists || rawData == null) {
@@ -190,10 +233,13 @@ class UserProductDetailsWidget extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Text(
-                        description,
-                        style: TextStyle(color: subtitleColor, height: 1.5),
+
+                      // ==================== الشفرة البرمجية الجديدة للوصف ====================
+                      _ProductDescriptionWidget(
+                        description: description,
                       ),
+                      // ==========================================================
+
                       Divider(height: 24, color: borderColor),
                       _buildMetaRow("Product ID", cleanProductId, subtitleColor, textColor),
                       _buildMetaRow("Category ID", categoryId, subtitleColor, textColor),
@@ -219,6 +265,181 @@ class UserProductDetailsWidget extends StatelessWidget {
           Text(label, style: TextStyle(color: labelColor, fontSize: 13)),
           Text(value, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: valueColor)),
         ],
+      ),
+    );
+  }
+}
+
+// ==================== Product Description Viewer الجديد ====================
+
+class _ProductDescriptionWidget extends StatefulWidget {
+  final String description;
+
+  const _ProductDescriptionWidget({
+    required this.description,
+  });
+
+  @override
+  State<_ProductDescriptionWidget> createState() =>
+      __ProductDescriptionWidgetState();
+}
+
+class __ProductDescriptionWidgetState
+    extends State<_ProductDescriptionWidget> {
+  EditorState? _editorState;
+  EditorScrollController? _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _parseDescription();
+  }
+
+  @override
+  void didUpdateWidget(
+      covariant _ProductDescriptionWidget oldWidget,
+      ) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.description != widget.description) {
+      _disposeEditor();
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+
+        _parseDescription();
+
+        if (mounted) {
+          setState(() {});
+        }
+      });
+    }
+  }
+
+  void _disposeEditor() {
+    _scrollController?.dispose();
+    _scrollController = null;
+    _editorState = null;
+  }
+
+  void _parseDescription() {
+    final text = widget.description.trim();
+
+    if (text.isEmpty) {
+      _editorState = null;
+      _scrollController = null;
+      return;
+    }
+
+    try {
+      dynamic parsed = jsonDecode(text);
+
+      while (parsed is String) {
+        final inner = parsed.trim();
+        if (inner.isEmpty) break;
+        parsed = jsonDecode(inner);
+      }
+
+      final normalized = _normalizeAppFlowyJson(parsed);
+
+      if (normalized != null) {
+        final document = Document.fromJson(normalized);
+        final editorState = EditorState(document: document);
+        final scrollController =
+        EditorScrollController(editorState: editorState);
+
+        _editorState = editorState;
+        _scrollController = scrollController;
+        return;
+      }
+    } catch (e, stackTrace) {
+      debugPrint("Error parsing product description JSON: $e");
+      debugPrint(stackTrace.toString());
+    }
+
+    _editorState = null;
+    _scrollController = null;
+  }
+
+  @override
+  void dispose() {
+    _scrollController?.dispose();
+    _scrollController = null;
+    _editorState = null;
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textSecondary = isDark ? Colors.grey.shade300 : AppColors.textDark;
+
+    final description = widget.description.trim();
+
+    if (description.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF252525) : Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+          ),
+        ),
+        child: Text(
+          "No description available for this product.",
+          style: TextStyle(
+            color: isDark ? Colors.grey.shade500 : AppColors.textMuted,
+            height: 1.5,
+            fontSize: 14,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      );
+    }
+
+    if (_editorState != null && _scrollController != null) {
+      return Container(
+        width: double.infinity,
+        constraints: const BoxConstraints(
+          minHeight: 60,
+          maxHeight: 350,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF242424) : const Color(0xFFF9FAFB),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+          ),
+        ),
+        child: AppFlowyEditor(
+          editorState: _editorState!,
+          editorScrollController: _scrollController!,
+          editable: false,
+          autoFocus: false,
+        ),
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF242424) : const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+        ),
+      ),
+      child: SelectableText(
+        widget.description,
+        style: TextStyle(
+          color: textSecondary,
+          height: 1.6,
+          fontSize: 14,
+        ),
       ),
     );
   }

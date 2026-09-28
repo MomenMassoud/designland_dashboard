@@ -1,10 +1,57 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dashboard_desginland/model/product_model.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:appflowy_editor/appflowy_editor.dart';
 import '../../../Core/Utils/app.colors.dart';
 import '../../../Core/server/cloudinara_server.dart';
+
+Map<String, dynamic>? _normalizeAppFlowyJson(
+    dynamic value,
+    ) {
+  if (value is! Map) {
+    return null;
+  }
+
+  dynamic current = value;
+
+  int safetyCounter = 0;
+
+  while (current is Map && safetyCounter < 20) {
+    safetyCounter++;
+
+    final map = Map<String, dynamic>.from(current);
+
+    if (map['type'] == 'page') {
+      return {
+        'document': map,
+      };
+    }
+
+    if (map.containsKey('document')) {
+      final nested = map['document'];
+
+      if (nested is Map) {
+        current = nested;
+        continue;
+      }
+
+      if (nested is String) {
+        try {
+          current = jsonDecode(nested);
+          continue;
+        } catch (_) {
+          return null;
+        }
+      }
+    }
+    return null;
+  }
+
+  return null;
+}
 
 // نموذج يمثل الحقل المخصص للمنتج
 class DynamicFieldModel {
@@ -62,6 +109,7 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
 
   List<DynamicFieldModel> _productFields = [];
   bool _isLoadingFields = true;
+  bool _isTogglingStatus = false;
 
   @override
   void initState() {
@@ -91,6 +139,53 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
         setState(() {
           _isLoadingFields = false;
         });
+      }
+    }
+  }
+
+  // تغيير حالة المنتج (Active / Inactive) من واجهة التفاصيل
+  Future<void> _toggleProductStatus(bool newStatus) async {
+    setState(() => _isTogglingStatus = true);
+    try {
+      await _productsRef.doc(_currentProduct.doc).update({
+        'isActive': newStatus,
+      });
+
+      if (!mounted) return;
+
+      setState(() {
+        _currentProduct = ProductModel(
+          doc: _currentProduct.doc,
+          title: _currentProduct.title,
+          price: _currentProduct.price,
+          avgRate: _currentProduct.avgRate,
+          categoryDoc: _currentProduct.categoryDoc,
+          description: _currentProduct.description,
+          images: _currentProduct.images,
+          SubCategoryDoc: _currentProduct.SubCategoryDoc,
+          discountPercentage: _currentProduct.discountPercentage,
+          discountUntil: _currentProduct.discountUntil,
+          isActive: newStatus,
+        );
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            newStatus
+                ? "Product is now Active"
+                : "Product is now Inactive",
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to update status: $e")),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isTogglingStatus = false);
       }
     }
   }
@@ -134,6 +229,7 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
           SubCategoryDoc: _currentProduct.SubCategoryDoc,
           discountPercentage: 0,
           discountUntil: null,
+          isActive: _currentProduct.isActive,
         );
       });
 
@@ -299,8 +395,9 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                           description: _currentProduct.description,
                           images: _currentProduct.images,
                           SubCategoryDoc: _currentProduct.SubCategoryDoc,
-                          discountPercentage: percent,
+                          discountPercentage: double.parse(percent.toString()),
                           discountUntil: selectedDate,
+                          isActive: _currentProduct.isActive,
                         );
                       });
 
@@ -395,52 +492,53 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                       },
                       itemBuilder: (context, index) {
                         return GestureDetector(
-                            onTap: () => _openFullScreenImage(index),
-                            child: Container(
-                              margin: const EdgeInsets.symmetric(
-                                  horizontal: 16),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(20),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4),
+                          onTap: () => _openFullScreenImage(index),
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(
+                                horizontal: 16),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(20),
+                              child: Stack(
+                                children: [
+                                  Image.network(
+                                    _currentProduct.images[index],
+                                    width: double.infinity,
+                                    height: double.infinity,
+                                    fit: BoxFit.cover,
+                                  ),
+                                  Positioned(
+                                    right: 12,
+                                    bottom: 12,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color:
+                                        Colors.black.withOpacity(0.6),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.fullscreen,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(20),
-                                child: Stack(
-                                  children: [
-                                    Image.network(
-                                      _currentProduct.images[index],
-                                      width: double.infinity,
-                                      height: double.infinity,
-                                      fit: BoxFit.cover,
-                                    ),
-                                    Positioned(
-                                      right: 12,
-                                      bottom: 12,
-                                      child: Container(
-                                        padding: const EdgeInsets.all(8),
-                                        decoration: BoxDecoration(
-                                          color:
-                                          Colors.black.withOpacity(0.6),
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: const Icon(
-                                          Icons.fullscreen,
-                                          color: Colors.white,
-                                          size: 20,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),)
-                            );
-                        },
+                            ),
+                          ),
+                        );
+                      },
                     )
                         : Container(
                       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -505,7 +603,7 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
               ),
             ),
 
-            // تفاصيل المنتج والخصومات
+            // تفاصيل المنتج والخصومات وحالة المنتج
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -528,6 +626,65 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // شريط عرض وتعديل حالة المنتج (Active / Inactive)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: _currentProduct.isActive
+                                ? Colors.green.withOpacity(0.1)
+                                : Colors.red.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: _currentProduct.isActive
+                                  ? Colors.green.withOpacity(0.3)
+                                  : Colors.red.withOpacity(0.3),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    _currentProduct.isActive
+                                        ? Icons.check_circle_outline
+                                        : Icons.pause_circle_outline,
+                                    color: _currentProduct.isActive
+                                        ? Colors.green
+                                        : Colors.redAccent,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    "Status: ${_currentProduct.isActive ? 'Active' : 'Inactive'}",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: _currentProduct.isActive
+                                          ? Colors.green
+                                          : Colors.redAccent,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              _isTogglingStatus
+                                  ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2),
+                              )
+                                  : Switch(
+                                value: _currentProduct.isActive,
+                                activeColor: Colors.green,
+                                onChanged: (val) =>
+                                    _toggleProductStatus(val),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -708,16 +865,9 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                             color: textPrimary,
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          _currentProduct.description.isNotEmpty
-                              ? _currentProduct.description
-                              : "No description available for this product.",
-                          style: TextStyle(
-                            color: textSecondary,
-                            height: 1.5,
-                            fontSize: 14,
-                          ),
+                        const SizedBox(height: 12),
+                        _ProductDescriptionWidget(
+                          description: _currentProduct.description,
                         ),
                       ],
                     ),
@@ -842,7 +992,8 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                                                   fontSize: 11,
                                                   color: isDark
                                                       ? Colors.purple.shade200
-                                                      : Colors.purple.shade900)),
+                                                      : Colors
+                                                      .purple.shade900)),
                                           backgroundColor: isDark
                                               ? Colors.purple.withOpacity(0.2)
                                               : Colors.purple.shade50,
@@ -1006,15 +1157,71 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
     );
   }
 
+  Document createDocumentFromString(String text) {
+    return Document(
+      root: pageNode(
+        children: [
+          paragraphNode(text: text),
+        ],
+      ),
+    );
+  }
+
+  Document _getAppFlowyDocument(String text) {
+    final trimmed = text.trim();
+
+    if (trimmed.isEmpty) {
+      return createDocumentFromString('');
+    }
+
+    try {
+      dynamic parsed = jsonDecode(trimmed);
+
+      while (parsed is String) {
+        final inner = parsed.trim();
+
+        if (inner.isEmpty) {
+          break;
+        }
+
+        parsed = jsonDecode(inner);
+      }
+
+      final normalized = _normalizeAppFlowyJson(parsed);
+
+      if (normalized != null) {
+        return Document.fromJson(normalized);
+      }
+    } catch (e, stackTrace) {
+      debugPrint(
+        "Error parsing AppFlowy document: $e",
+      );
+
+      debugPrint(
+        stackTrace.toString(),
+      );
+    }
+
+    return createDocumentFromString(text);
+  }
+
   // ==================== نافذة تعديل المنتج بالكامل ====================
   void _showEditProductDialog(BuildContext parentContext) async {
     final isDark = Theme.of(parentContext).brightness == Brightness.dark;
     final formKey = GlobalKey<FormState>();
     final titleController = TextEditingController(text: _currentProduct.title);
-    final descController =
-    TextEditingController(text: _currentProduct.description);
     final priceController =
     TextEditingController(text: _currentProduct.price.toString());
+
+    bool isProductActive = _currentProduct.isActive;
+
+    final editorState = EditorState(
+      document: _getAppFlowyDocument(_currentProduct.description),
+    );
+
+    final EditorScrollController editorScrollController =
+    EditorScrollController(editorState: editorState);
+    final FocusNode editorFocusNode = FocusNode();
 
     String? selectedCategoryId = _currentProduct.categoryDoc;
     String? selectedSubcategoryId = _currentProduct.SubCategoryDoc;
@@ -1023,7 +1230,6 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
     List<XFile> newlyPickedImages = [];
     List<Uint8List> newImagesBytes = [];
 
-    // إعداد نسخة عميقة لـ customFields لمنع اختلال البيانات أثناء التعديل
     List<DynamicFieldModel> customFields = _productFields
         .map((f) => DynamicFieldModel(
       name: f.name,
@@ -1043,14 +1249,21 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
+            final cardBgColor = Theme.of(context).cardColor;
+            final textColor = Theme.of(context).textTheme.bodyLarge?.color ??
+                (isDark ? Colors.white : AppColors.textDark);
+            final borderColor =
+            isDark ? Colors.grey.shade700 : Colors.grey.shade300;
+            final inputFillColor =
+            isDark ? const Color(0xFF2A2A2A) : Colors.white;
+
             return AlertDialog(
-              backgroundColor: Theme.of(context).cardColor,
+              backgroundColor: cardBgColor,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16)),
               title: Text("Edit Product Details",
                   style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).textTheme.bodyLarge?.color)),
+                      fontWeight: FontWeight.bold, color: textColor)),
               content: SizedBox(
                 width: 600,
                 child: Form(
@@ -1060,6 +1273,33 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // تعديل حالة النشاط داخل الحوار
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(
+                            "Product Status",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: textColor,
+                            ),
+                          ),
+                          subtitle: Text(
+                            isProductActive ? "Active" : "Inactive",
+                            style: TextStyle(
+                              color: isProductActive ? Colors.green : Colors.red,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          value: isProductActive,
+                          activeColor: Colors.green,
+                          onChanged: (val) {
+                            setDialogState(() {
+                              isProductActive = val;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 12),
+
                         // التصنيف الرئيسي
                         StreamBuilder<QuerySnapshot>(
                           stream: _categoriesRef.snapshots(),
@@ -1068,7 +1308,7 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                               return const LinearProgressIndicator();
                             }
                             return DropdownButtonFormField<String>(
-                              dropdownColor: Theme.of(context).cardColor,
+                              dropdownColor: cardBgColor,
                               value: selectedCategoryId != null &&
                                   selectedCategoryId!.isNotEmpty
                                   ? selectedCategoryId
@@ -1106,7 +1346,7 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                                 return const LinearProgressIndicator();
                               }
                               return DropdownButtonFormField<String>(
-                                dropdownColor: Theme.of(context).cardColor,
+                                dropdownColor: cardBgColor,
                                 value: selectedSubcategoryId != null &&
                                     selectedSubcategoryId!.isNotEmpty
                                     ? selectedSubcategoryId
@@ -1151,14 +1391,150 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                               ? "Enter valid price"
                               : null,
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 16),
 
-                        // الوصف
-                        TextFormField(
-                          controller: descController,
-                          maxLines: 3,
-                          decoration:
-                          const InputDecoration(labelText: "Description"),
+                        // ==================== الوصف والتعديل الغني ====================
+                        Text(
+                          "Description",
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: textColor,
+                            fontSize: 15,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+
+                        Container(
+                          width: double.infinity,
+                          height: 280,
+                          decoration: BoxDecoration(
+                            color: inputFillColor,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: borderColor),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: Column(
+                              children: [
+                                Container(
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? const Color(0xFF252525)
+                                        : Colors.grey.shade50,
+                                    border: Border(
+                                      bottom: BorderSide(color: borderColor),
+                                    ),
+                                  ),
+                                  child: SingleChildScrollView(
+                                    scrollDirection: Axis.horizontal,
+                                    child: Row(
+                                      children: [
+                                        IconButton(
+                                          tooltip: 'Undo',
+                                          icon: Icon(Icons.undo,
+                                              color: textColor, size: 20),
+                                          onPressed: () {
+                                            editorState.undoManager.undo();
+                                            editorFocusNode.requestFocus();
+                                          },
+                                        ),
+                                        IconButton(
+                                          tooltip: 'Redo',
+                                          icon: Icon(Icons.redo,
+                                              color: textColor, size: 20),
+                                          onPressed: () {
+                                            editorState.undoManager.redo();
+                                            editorFocusNode.requestFocus();
+                                          },
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Container(
+                                            width: 1,
+                                            height: 24,
+                                            color: borderColor),
+                                        const SizedBox(width: 4),
+                                        IconButton(
+                                          tooltip: 'Bold',
+                                          icon: Icon(Icons.format_bold,
+                                              color: textColor, size: 20),
+                                          onPressed: () {
+                                            editorState.toggleAttribute(
+                                              AppFlowyRichTextKeys.bold,
+                                            );
+                                            editorFocusNode.requestFocus();
+                                          },
+                                        ),
+                                        IconButton(
+                                          tooltip: 'Italic',
+                                          icon: Icon(Icons.format_italic,
+                                              color: textColor, size: 20),
+                                          onPressed: () {
+                                            editorState.toggleAttribute(
+                                              AppFlowyRichTextKeys.italic,
+                                            );
+                                            editorFocusNode.requestFocus();
+                                          },
+                                        ),
+                                        IconButton(
+                                          tooltip: 'Underline',
+                                          icon: Icon(Icons.format_underline,
+                                              color: textColor, size: 20),
+                                          onPressed: () {
+                                            editorState.toggleAttribute(
+                                              AppFlowyRichTextKeys.underline,
+                                            );
+                                            editorFocusNode.requestFocus();
+                                          },
+                                        ),
+                                        IconButton(
+                                          tooltip: 'Strikethrough',
+                                          icon: Icon(Icons.strikethrough_s,
+                                              color: textColor, size: 20),
+                                          onPressed: () {
+                                            editorState.toggleAttribute(
+                                              AppFlowyRichTextKeys
+                                                  .strikethrough,
+                                            );
+                                            editorFocusNode.requestFocus();
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: FloatingToolbar(
+                                    editorState: editorState,
+                                    editorScrollController:
+                                    editorScrollController,
+                                    textDirection: Directionality.of(context),
+                                    items: [
+                                      paragraphItem,
+                                      ...headingItems,
+                                      ...markdownFormatItems,
+                                      quoteItem,
+                                      bulletedListItem,
+                                      numberedListItem,
+                                      linkItem,
+                                      buildTextColorItem(),
+                                      buildHighlightColorItem(),
+                                      ...alignmentItems,
+                                      ...textDirectionItems,
+                                    ],
+                                    child: AppFlowyEditor(
+                                      editorState: editorState,
+                                      editorScrollController:
+                                      editorScrollController,
+                                      focusNode: editorFocusNode,
+                                      editable: true,
+                                      autoFocus: false,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                         const SizedBox(height: 20),
 
@@ -1168,12 +1544,10 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                           style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 15,
-                              color:
-                              Theme.of(context).textTheme.bodyLarge?.color),
+                              color: textColor),
                         ),
                         const SizedBox(height: 8),
 
-                        // الصور الحالية المرفوعة
                         if (existingImages.isNotEmpty) ...[
                           Text("Current Images:",
                               style: TextStyle(
@@ -1230,7 +1604,6 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                         ],
                         const SizedBox(height: 8),
 
-                        // زر إضافة صور جديدة
                         OutlinedButton.icon(
                           onPressed: () async {
                             try {
@@ -1316,10 +1689,7 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                               style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 15,
-                                  color: Theme.of(context)
-                                      .textTheme
-                                      .bodyLarge
-                                      ?.color),
+                                  color: textColor),
                             ),
                             TextButton.icon(
                               onPressed: () {
@@ -1469,8 +1839,6 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                                         ),
                                       ],
                                     ),
-
-                                    // إعدادات الخيارات الخاصة بالـ Dropdown
                                     if (field.type == 'dropdown') ...[
                                       const SizedBox(height: 12),
                                       const Text(
@@ -1564,7 +1932,10 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.pop(ctx),
+                  onPressed: () {
+                    editorFocusNode.dispose();
+                    Navigator.pop(ctx);
+                  },
                   child: const Text("Cancel"),
                 ),
                 ElevatedButton(
@@ -1587,7 +1958,10 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                       setDialogState(() => isSaving = true);
 
                       try {
-                        // رفع الصور الجديدة إلى Cloudinary
+                        final String updatedDescJson = jsonEncode({
+                          "document": editorState.document.toJson(),
+                        });
+
                         List<String> uploadedUrls = [];
                         for (var img in newlyPickedImages) {
                           final url =
@@ -1600,21 +1974,19 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                           ...uploadedUrls,
                         ];
 
-                        // تجهيز قائمة الحقول
                         List<Map<String, dynamic>> fieldsList =
-                        customFields
-                            .map((f) => f.toMap())
-                            .toList();
+                        customFields.map((f) => f.toMap()).toList();
 
                         final updatedData = {
                           'title': titleController.text.trim(),
-                          'description': descController.text.trim(),
+                          'description': updatedDescJson,
                           'price':
                           double.parse(priceController.text.trim()),
                           'categoryId': selectedCategoryId,
                           'subcategoryId': selectedSubcategoryId,
                           'images': finalImages,
                           'fields': fieldsList,
+                          'isActive': isProductActive,
                         };
 
                         await _productsRef
@@ -1623,7 +1995,6 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
 
                         if (!mounted) return;
 
-                        // تحديث بيانات المنتج والحقول المخصصة فوراً في الـ UI
                         setState(() {
                           _currentProduct = ProductModel(
                             doc: _currentProduct.doc,
@@ -1632,16 +2003,18 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
                             double.parse(priceController.text.trim()),
                             avgRate: _currentProduct.avgRate,
                             categoryDoc: selectedCategoryId ?? '',
-                            description: descController.text.trim(),
+                            description: updatedDescJson,
                             images: finalImages,
                             SubCategoryDoc: selectedSubcategoryId ?? '',
                             discountPercentage:
                             _currentProduct.discountPercentage,
                             discountUntil: _currentProduct.discountUntil,
+                            isActive: isProductActive,
                           );
                           _productFields = customFields;
                         });
 
+                        editorFocusNode.dispose();
                         if (ctx.mounted) Navigator.pop(ctx);
                       } catch (e) {
                         setDialogState(() => isSaving = false);
@@ -1679,16 +2052,14 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
       builder: (ctx) => AlertDialog(
         backgroundColor: Theme.of(ctx).cardColor,
         title: Text("Delete Product",
-            style: TextStyle(
-                color: Theme.of(ctx).textTheme.bodyLarge?.color)),
+            style: TextStyle(color: Theme.of(ctx).textTheme.bodyLarge?.color)),
         content: Text(
             "Are you sure you want to delete '${_currentProduct.title}'?",
-            style: TextStyle(
-                color: Theme.of(ctx).textTheme.bodyMedium?.color)),
+            style:
+            TextStyle(color: Theme.of(ctx).textTheme.bodyMedium?.color)),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text("Cancel")),
+              onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
             onPressed: () async {
@@ -1712,6 +2083,217 @@ class _ProductDetailsWidgetState extends State<ProductDetailsWidget> {
             child: const Text("Delete", style: TextStyle(color: Colors.white)),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ==================== Product Description Viewer ====================
+
+class _ProductDescriptionWidget extends StatefulWidget {
+  final String description;
+
+  const _ProductDescriptionWidget({
+    required this.description,
+  });
+
+  @override
+  State<_ProductDescriptionWidget> createState() =>
+      __ProductDescriptionWidgetState();
+}
+
+class __ProductDescriptionWidgetState
+    extends State<_ProductDescriptionWidget> {
+  EditorState? _editorState;
+  EditorScrollController? _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _parseDescription();
+  }
+
+  @override
+  void didUpdateWidget(
+      covariant _ProductDescriptionWidget oldWidget,
+      ) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.description != widget.description) {
+      _disposeEditor();
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+
+        _parseDescription();
+
+        if (mounted) {
+          setState(() {});
+        }
+      });
+    }
+  }
+
+  void _disposeEditor() {
+    _scrollController?.dispose();
+    _scrollController = null;
+    _editorState = null;
+  }
+
+  void _parseDescription() {
+    final text = widget.description.trim();
+
+    if (text.isEmpty) {
+      _editorState = null;
+      _scrollController = null;
+      return;
+    }
+
+    try {
+      dynamic parsed = jsonDecode(text);
+
+      while (parsed is String) {
+        final inner = parsed.trim();
+        if (inner.isEmpty) break;
+        parsed = jsonDecode(inner);
+      }
+
+      final normalized = _normalizeAppFlowyJson(parsed);
+
+      if (normalized != null) {
+        final document = Document.fromJson(normalized);
+        final editorState = EditorState(document: document);
+        final scrollController =
+        EditorScrollController(editorState: editorState);
+
+        _editorState = editorState;
+        _scrollController = scrollController;
+        return;
+      }
+    } catch (e, stackTrace) {
+      debugPrint("Error parsing product description JSON: $e");
+      debugPrint(stackTrace.toString());
+    }
+
+    _editorState = null;
+    _scrollController = null;
+  }
+
+  Map<String, dynamic>? _normalizeAppFlowyJson(dynamic value) {
+    if (value is! Map) return null;
+
+    dynamic current = value;
+    int safetyCounter = 0;
+
+    while (current is Map && safetyCounter < 20) {
+      safetyCounter++;
+      final map = Map<String, dynamic>.from(current);
+
+      if (map['type'] == 'page') {
+        return {'document': map};
+      }
+
+      if (map.containsKey('document')) {
+        final nested = map['document'];
+
+        if (nested is Map) {
+          current = nested;
+          continue;
+        }
+
+        if (nested is String) {
+          try {
+            current = jsonDecode(nested);
+            continue;
+          } catch (_) {
+            return null;
+          }
+        }
+      }
+      return null;
+    }
+    return null;
+  }
+
+  @override
+  void dispose() {
+    _scrollController?.dispose();
+    _scrollController = null;
+    _editorState = null;
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textSecondary = isDark ? Colors.grey.shade300 : AppColors.textDark;
+
+    final description = widget.description.trim();
+
+    if (description.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF252525) : Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+          ),
+        ),
+        child: Text(
+          "No description available for this product.",
+          style: TextStyle(
+            color: isDark ? Colors.grey.shade500 : AppColors.textMuted,
+            height: 1.5,
+            fontSize: 14,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      );
+    }
+
+    if (_editorState != null && _scrollController != null) {
+      return Container(
+        width: double.infinity,
+        constraints: const BoxConstraints(
+          minHeight: 60,
+          maxHeight: 350,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF242424) : const Color(0xFFF9FAFB),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+          ),
+        ),
+        child: AppFlowyEditor(
+          editorState: _editorState!,
+          editorScrollController: _scrollController!,
+          editable: false,
+          autoFocus: false,
+        ),
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF242424) : const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+        ),
+      ),
+      child: SelectableText(
+        widget.description,
+        style: TextStyle(
+          color: textSecondary,
+          height: 1.6,
+          fontSize: 14,
+        ),
       ),
     );
   }

@@ -1,46 +1,72 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ProductModel {
-  String doc;
-  double price;
-  String title;
-  String description;
-  String categoryDoc;
-  String SubCategoryDoc;
-  double avgRate;
-  List<String> images;
-  final int discountPercentage; // نسبة الخصم مثلاً 15.0
-  final DateTime? discountUntil;   // تاريخ ووقت انتهاء الخصم
+  final String doc;
+  final String title;
+  final double price;
+  final double avgRate;
+  final String categoryDoc;
+  final String SubCategoryDoc;
+  final String description;
+  final List<String> images;
+  final double discountPercentage;
+  final DateTime? discountUntil;
+  final bool isActive; // <--- حقل الحالة الجديد
+
   ProductModel({
-    required this.doc,required this.title,required this.price,required this.avgRate,required this.categoryDoc,
-    required this.description,required this.images,required this.SubCategoryDoc,
+    required this.doc,
+    required this.title,
+    required this.price,
+    required this.avgRate,
+    required this.categoryDoc,
+    required this.SubCategoryDoc,
+    required this.description,
+    required this.images,
     this.discountPercentage = 0,
     this.discountUntil,
-});
+    this.isActive = true, // القيمة الافتراضية
+  });
+
+  factory ProductModel.fromMap(Map<String, dynamic> map, String docId) {
+    return ProductModel(
+      doc: docId,
+      title: map['title'] ?? '',
+      price: (map['price'] ?? 0).toDouble(),
+      avgRate: (map['avgRate'] ?? 0).toDouble(),
+      categoryDoc: map['categoryId'] ?? '',
+      SubCategoryDoc: map['subcategoryId'] ?? '',
+      description: map['description'] ?? '',
+      images: map['images'] != null ? List<String>.from(map['images']) : [],
+      discountPercentage: (map['discountPercentage'] ?? 0).toDouble(),
+      discountUntil: map['discountUntil'] != null
+          ? (map['discountUntil'] as Timestamp).toDate()
+          : null,
+      isActive: map['isActive'] ?? true, // قراءة حالة المنتجات
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'title': title,
+      'price': price,
+      'avgRate': avgRate,
+      'categoryId': categoryDoc,
+      'subcategoryId': SubCategoryDoc,
+      'description': description,
+      'images': images,
+      'discountPercentage': discountPercentage,
+      'discountUntil': discountUntil != null ? Timestamp.fromDate(discountUntil!) : null,
+      'isActive': isActive,
+    };
+  }
+
   bool get hasActiveDiscount {
     if (discountPercentage <= 0 || discountUntil == null) return false;
     return DateTime.now().isBefore(discountUntil!);
   }
 
-  // حساب السعر النهائي بعد الخصم
   double get discountedPrice {
     if (!hasActiveDiscount) return price;
-    return price - (price * (discountPercentage / 100));
-  }
-  factory ProductModel.fromFirestore(Map<String, dynamic> json, String id) {
-    return ProductModel(
-      doc: id,
-      title: json['title'] ?? '',
-      price: (json['price'] ?? 0).toDouble(),
-      avgRate: (json['avgRate'] ?? 0).toDouble(),
-      categoryDoc: json['categoryId'] ?? '',
-      description: json['description'] ?? '',
-      images: List<String>.from(json['images'] ?? []),
-      SubCategoryDoc: json['subcategoryId'] ?? '',
-      discountPercentage: (json['discountPercentage'] ?? 0.0).toDouble(),
-      discountUntil: json['discountUntil'] != null
-          ? (json['discountUntil'] as Timestamp).toDate()
-          : null,
-    );
+    return price * (1 - (discountPercentage / 100));
   }
 }
