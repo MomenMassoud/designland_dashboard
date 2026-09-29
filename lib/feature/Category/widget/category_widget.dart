@@ -1,936 +1,45 @@
-import 'dart:io';
-import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:dashboard_desginland/Core/server/get_permision.dart';
-import 'package:dashboard_desginland/feature/Access%20Defind/view/access_defind_view.dart';
-import 'package:dashboard_desginland/feature/SubCategory/view/subcategory_view.dart';
-import 'package:dashboard_desginland/model/category_model.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:image/image.dart' as img;
-import 'package:image_cropper/image_cropper.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
-import '../../../Core/Utils/app.colors.dart';
-import '../../../Core/server/cloudinara_server.dart';
+import '../../../../Core/Utils/app.colors.dart';
+import '../../../../model/category_model.dart';
+import '../../../controller/category_controller.dart';
+import '../../Access Defind/view/access_defind_view.dart';
+import 'category_card.dart';
+import 'category_form_panel.dart';
+import 'category_search_bar.dart';
 
-class CategoryWidget extends StatefulWidget {
+
+class CategoryWidget extends StatelessWidget {
   const CategoryWidget({super.key});
 
-  @override
-  State<CategoryWidget> createState() => _CategoryWidgetState();
-}
-
-class _CategoryWidgetState extends State<CategoryWidget> {
-  final CollectionReference _categoriesRef =
-  FirebaseFirestore.instance.collection('categories');
-
-  final TextEditingController _searchController = TextEditingController();
-  final ImagePicker _picker = ImagePicker();
-  String _searchQuery = "";
-  List<String> _permision = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _initPermissions();
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _initPermissions() async {
-    final permissions = await GetPermisionUser();
-    if (mounted) {
-      setState(() {
-        _permision = permissions;
-      });
-    }
-  }
-
-  Future<XFile> _bytesToXFile(Uint8List bytes, String filename) async {
-    if (kIsWeb) {
-      return XFile.fromData(bytes, name: filename, mimeType: 'image/jpeg');
-    } else {
-      final tempDir = await getTemporaryDirectory();
-      final file = File('${tempDir.path}/$filename');
-      await file.writeAsBytes(bytes);
-      return XFile(file.path);
-    }
-  }
-
-  // ============================================================
-  // CROP + ROTATE
-  // ============================================================
-  Future<Uint8List?> _cropImage({
-    required BuildContext context,
-    required XFile imageFile,
-  }) async {
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    try {
-      final String sourcePath = imageFile.path;
-      if (sourcePath.isEmpty) throw Exception("Image path is empty");
-
-      final CroppedFile? croppedFile = await ImageCropper().cropImage(
-        sourcePath: sourcePath,
-        compressFormat: ImageCompressFormat.jpg,
-        compressQuality: 90,
-        uiSettings: [
-          AndroidUiSettings(
-            toolbarTitle: 'Edit Category Image'.tr,
-            toolbarColor: isDark ? const Color(0xFF1E1E1E) : AppColors.primaryPurple,
-            toolbarWidgetColor: Colors.white,
-            activeControlsWidgetColor: AppColors.primaryPurple,
-            backgroundColor: isDark ? const Color(0xFF121212) : Colors.white,
-            initAspectRatio: CropAspectRatioPreset.square,
-            hideBottomControls: false,
-            showCropGrid: true,
-            lockAspectRatio: false,
-            aspectRatioPresets: [
-              CropAspectRatioPreset.original,
-              CropAspectRatioPreset.square,
-              CropAspectRatioPreset.ratio4x3,
-              CropAspectRatioPreset.ratio16x9,
-            ],
-          ),
-          IOSUiSettings(
-            title: 'Edit Category Image'.tr,
-            aspectRatioLockEnabled: false,
-            resetAspectRatioEnabled: true,
-            aspectRatioPresets: [
-              CropAspectRatioPreset.original,
-              CropAspectRatioPreset.square,
-              CropAspectRatioPreset.ratio4x3,
-              CropAspectRatioPreset.ratio16x9,
-            ],
-          ),
-          WebUiSettings(
-            context: context,
-            presentStyle: WebPresentStyle.page,
-            size: const CropperSize(width: 600, height: 500),
-            viewwMode: WebViewMode.mode_2,
-            dragMode: WebDragMode.crop,
-            movable: true,
-            rotatable: true,
-            scalable: true,
-            zoomable: true,
-            zoomOnWheel: true,
-            zoomOnTouch: true,
-            modal: true,
-            guides: true,
-            center: true,
-            highlight: true,
-            background: true,
-            checkCrossOrigin: true,
-            checkOrientation: true,
-          ),
-        ],
-      );
-
-      if (croppedFile == null) return null;
-      final Uint8List bytes = await croppedFile.readAsBytes();
-      if (bytes.isEmpty) throw Exception("Edited image is empty");
-      return bytes;
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("${"Failed to edit image".tr}: $e")),
-        );
-      }
-      return null;
-    }
-  }
-
-  // ============================================================
-  // RESIZE IMAGE
-  // ============================================================
-  Future<Uint8List?> _resizeImage(
-      Uint8List bytes, {
-        required int width,
-        required int height,
-      }) async {
-    try {
-      final img.Image? decoded = img.decodeImage(bytes);
-      if (decoded == null) throw Exception("Could not decode image");
-
-      final img.Image resized = img.copyResize(
-        decoded,
-        width: width,
-        height: height,
-        interpolation: img.Interpolation.average,
-      );
-
-      final List<int> jpgBytes = img.encodeJpg(resized, quality: 90);
-      return Uint8List.fromList(jpgBytes);
-    } catch (e) {
-      debugPrint("Resize error: $e");
-      return null;
-    }
-  }
-
-  // ============================================================
-  // RESIZE DIALOG
-  // ============================================================
-  Future<Uint8List?> _showResizeDialog(
-      BuildContext context,
-      Uint8List originalBytes,
-      ) async {
-    final img.Image? decoded = img.decodeImage(originalBytes);
-    if (decoded == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Could not read image dimensions".tr)),
-      );
-      return null;
-    }
-
-    final int originalWidth = decoded.width;
-    final int originalHeight = decoded.height;
-
-    final TextEditingController widthController =
-    TextEditingController(text: originalWidth.toString());
-    final TextEditingController heightController =
-    TextEditingController(text: originalHeight.toString());
-
-    bool keepRatio = true;
-    final double ratio = originalWidth / originalHeight;
-
-    return await showDialog<Uint8List?>(
+  void _openCategoryFormPanel(BuildContext context, CategoryController controller,
+      {String? docId, String? currentNameAr, String? currentNameEn, String? currentImageUrl}) {
+    showGeneralDialog(
       context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            final bool isDark = Theme.of(context).brightness == Brightness.dark;
-
-            return AlertDialog(
-              backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16)),
-              title: Row(
-                children: [
-                  const Icon(Icons.photo_size_select_large,
-                      color: AppColors.primaryPurple),
-                  const SizedBox(width: 10),
-                  Text(
-                    "Resize Image".tr,
-                    style: TextStyle(
-                      color: isDark ? Colors.white : Colors.black87,
-                    ),
-                  ),
-                ],
-              ),
-              content: SizedBox(
-                width: 400,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? AppColors.primaryPurple.withOpacity(0.15)
-                            : AppColors.primaryPurple.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.info_outline,
-                              color: AppColors.primaryPurple, size: 20),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              "${"Original size".tr}: $originalWidth × $originalHeight px",
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
-                                color: isDark ? Colors.white70 : Colors.black87,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: widthController,
-                      keyboardType: TextInputType.number,
-                      style: TextStyle(
-                        color: isDark ? Colors.white : Colors.black87,
-                      ),
-                      decoration: InputDecoration(
-                        labelText: "Width".tr,
-                        labelStyle: TextStyle(
-                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
-                        ),
-                        suffixText: "px",
-                        suffixStyle: TextStyle(
-                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
-                        ),
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10)),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(
-                            color: isDark ? Colors.grey.shade700 : Colors.grey.shade400,
-                          ),
-                        ),
-                      ),
-                      onChanged: (value) {
-                        if (!keepRatio) return;
-                        final int? width = int.tryParse(value);
-                        if (width == null || width <= 0) return;
-                        heightController.text =
-                            (width / ratio).round().toString();
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            "Keep aspect ratio".tr,
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: isDark ? Colors.white : Colors.black87,
-                            ),
-                          ),
-                        ),
-                        Switch(
-                          value: keepRatio,
-                          activeColor: AppColors.primaryPurple,
-                          onChanged: (val) => setState(() => keepRatio = val),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    TextField(
-                      controller: heightController,
-                      keyboardType: TextInputType.number,
-                      style: TextStyle(
-                        color: isDark ? Colors.white : Colors.black87,
-                      ),
-                      decoration: InputDecoration(
-                        labelText: "Height".tr,
-                        labelStyle: TextStyle(
-                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
-                        ),
-                        suffixText: "px",
-                        suffixStyle: TextStyle(
-                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
-                        ),
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10)),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(
-                            color: isDark ? Colors.grey.shade700 : Colors.grey.shade400,
-                          ),
-                        ),
-                      ),
-                      onChanged: (value) {
-                        if (!keepRatio) return;
-                        final int? height = int.tryParse(value);
-                        if (height == null || height <= 0) return;
-                        widthController.text =
-                            (height * ratio).round().toString();
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  child: Text(
-                    "Cancel".tr,
-                    style: TextStyle(
-                      color: isDark ? Colors.grey.shade400 : Colors.grey,
-                    ),
-                  ),
-                ),
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryPurple,
-                    foregroundColor: Colors.white,
-                  ),
-                  icon: const Icon(Icons.check, size: 18),
-                  label: Text("Resize".tr),
-                  onPressed: () async {
-                    final int? width = int.tryParse(widthController.text);
-                    final int? height = int.tryParse(heightController.text);
-
-                    if (width == null ||
-                        height == null ||
-                        width <= 0 ||
-                        height <= 0) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                            content: Text("Please enter valid dimensions".tr)),
-                      );
-                      return;
-                    }
-
-                    Navigator.pop(dialogContext);
-                    final resized = await _resizeImage(originalBytes,
-                        width: width, height: height);
-
-                    if (resized == null && context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text("Failed to resize image".tr)),
-                      );
-                    }
-                  },
-                ),
-              ],
-            );
-          },
+      barrierDismissible: true,
+      barrierLabel: 'CategoryForm',
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (ctx, anim1, anim2) => CategoryFormPanel(
+        controller: controller,
+        docId: docId,
+        currentNameAr: currentNameAr,
+        currentNameEn: currentNameEn,
+        currentImageUrl: currentImageUrl,
+      ),
+      transitionBuilder: (context, anim1, anim2, child) {
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(1, 0),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(parent: anim1, curve: Curves.easeOutCubic)),
+          child: child,
         );
       },
     );
   }
 
-  // ============================================================
-  // SELECT & EDIT IMAGE FLOW
-  // ============================================================
-  Future<void> _selectAndEditImage({
-    required BuildContext context,
-    required void Function(Uint8List bytes, XFile file) onSuccess,
-  }) async {
-    try {
-      final XFile? selectedImage =
-      await _picker.pickImage(source: ImageSource.gallery);
-      if (selectedImage == null) return;
-
-      final Uint8List originalBytes = await selectedImage.readAsBytes();
-      if (originalBytes.isEmpty) throw Exception("Selected image is empty");
-
-      final Uint8List? croppedBytes = await _cropImage(
-        context: context,
-        imageFile: selectedImage,
-      );
-
-      if (croppedBytes == null) return;
-
-      final XFile editedFile = await _bytesToXFile(
-        croppedBytes,
-        'category_${DateTime.now().millisecondsSinceEpoch}.jpg',
-      );
-
-      onSuccess(croppedBytes, editedFile);
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("${"Failed to edit image".tr}: $e")),
-        );
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-
-    if (!_permision.contains("categories")) {
-      return AccessDefindView();
-    }
-
-    return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF8FAFC),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final bool isMobile = constraints.maxWidth < 650;
-          final bool isTablet =
-              constraints.maxWidth >= 650 && constraints.maxWidth < 1100;
-
-          return Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: isMobile ? 16.0 : 28.0,
-              vertical: isMobile ? 16.0 : 24.0,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeader(context, isMobile, isDark),
-                const SizedBox(height: 20),
-                _buildSearchBar(isDark),
-                const SizedBox(height: 20),
-                Expanded(
-                  child: StreamBuilder<QuerySnapshot>(
-                    stream: _categoriesRef.snapshots(),
-                    builder: (context, snapshot) {
-                      if (snapshot.hasError) {
-                        return Center(
-                          child: Text(
-                            "Error loading categories!".tr,
-                            style: TextStyle(
-                              color: isDark ? Colors.white70 : Colors.black87,
-                            ),
-                          ),
-                        );
-                      }
-                      if (snapshot.connectionState ==
-                          ConnectionState.waiting) {
-                        return const Center(
-                          child: CircularProgressIndicator(
-                            color: AppColors.primaryPurple,
-                          ),
-                        );
-                      }
-
-                      final docs = snapshot.data?.docs ?? [];
-
-                      final filteredDocs = docs.where((doc) {
-                        final data = doc.data() as Map<String, dynamic>;
-                        final nameAr =
-                        (data['nameAr'] ?? '').toString().toLowerCase();
-                        final nameEn =
-                        (data['nameEn'] ?? '').toString().toLowerCase();
-                        return nameAr.contains(_searchQuery) ||
-                            nameEn.contains(_searchQuery);
-                      }).toList();
-
-                      if (filteredDocs.isEmpty) {
-                        return Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(20),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primaryPurple.withOpacity(0.1),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.category_outlined,
-                                  size: 48,
-                                  color: AppColors.primaryPurple,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                "No categories found matching your search.".tr,
-                                style: TextStyle(
-                                  color: isDark ? Colors.grey.shade400 : AppColors.textMuted,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }
-
-                      int crossAxisCount = 4;
-                      double childAspectRatio = 0.85;
-
-                      if (isMobile) {
-                        crossAxisCount = 2;
-                        childAspectRatio = 0.82;
-                      } else if (isTablet) {
-                        crossAxisCount = 3;
-                        childAspectRatio = 0.85;
-                      } else if (constraints.maxWidth < 1400) {
-                        crossAxisCount = 4;
-                        childAspectRatio = 0.88;
-                      } else {
-                        crossAxisCount = 5;
-                        childAspectRatio = 0.90;
-                      }
-
-                      return GridView.builder(
-                        itemCount: filteredDocs.length,
-                        physics: const BouncingScrollPhysics(),
-                        gridDelegate:
-                        SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: crossAxisCount,
-                          crossAxisSpacing: isMobile ? 12 : 20,
-                          mainAxisSpacing: isMobile ? 12 : 20,
-                          childAspectRatio: childAspectRatio,
-                        ),
-                        itemBuilder: (context, index) {
-                          final doc = filteredDocs[index];
-                          final data = doc.data() as Map<String, dynamic>;
-                          final docId = doc.id;
-                          final nameAr = data['nameAr'] ?? '';
-                          final nameEn = data['nameEn'] ?? '';
-                          final imageUrl = data['imageUrl'] ?? '';
-
-                          CategoryModel cat = CategoryModel(
-                            doc: docId,
-                            ImageUrl: imageUrl,
-                            NameAr: nameAr,
-                            NameEn: nameEn,
-                          );
-
-                          return _buildCategoryCard(
-                            context,
-                            cat: cat,
-                            docId: docId,
-                            nameAr: nameAr,
-                            nameEn: nameEn,
-                            imageUrl: imageUrl,
-                            isDark: isDark,
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  // Header Section
-  Widget _buildHeader(BuildContext context, bool isMobile, bool isDark) {
-    if (isMobile) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Categories Management".tr,
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white : AppColors.textDark,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    "Manage your store product categories".tr,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isDark ? Colors.grey.shade400 : AppColors.textMuted,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () => _openCategoryFormPanel(context),
-              icon: const Icon(Icons.add_rounded, color: Colors.white, size: 20),
-              label: Text(
-                "Add New Category".tr,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryPurple,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Categories Management".tr,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white : AppColors.textDark,
-                letterSpacing: -0.5,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              "Manage your store product categories".tr,
-              style: TextStyle(
-                fontSize: 14,
-                color: isDark ? Colors.grey.shade400 : AppColors.textMuted,
-              ),
-            ),
-          ],
-        ),
-        ElevatedButton.icon(
-          onPressed: () => _openCategoryFormPanel(context),
-          icon: const Icon(Icons.add_rounded, color: Colors.white, size: 20),
-          label: Text(
-            "Add New Category".tr,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-            ),
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primaryPurple,
-            elevation: 0,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // Modern Search Bar
-  Widget _buildSearchBar(bool isDark) {
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isDark ? Colors.grey.shade800 : Colors.white,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: isDark ? Colors.black.withOpacity(0.2) : Colors.black.withOpacity(0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: TextField(
-        controller: _searchController,
-        onChanged: (value) {
-          setState(() {
-            _searchQuery = value.trim().toLowerCase();
-          });
-        },
-        style: TextStyle(
-          fontSize: 14,
-          color: isDark ? Colors.white : AppColors.textDark,
-        ),
-        decoration: InputDecoration(
-          hintText: "Search categories by Arabic or English name...".tr,
-          hintStyle: TextStyle(
-            fontSize: 13,
-            color: isDark ? Colors.grey.shade500 : AppColors.textMuted,
-          ),
-          prefixIcon: const Icon(Icons.search_rounded,
-              color: AppColors.primaryPurple, size: 22),
-          suffixIcon: _searchQuery.isNotEmpty
-              ? IconButton(
-            icon: Icon(Icons.cancel_rounded,
-                color: isDark ? Colors.grey.shade400 : Colors.grey,
-                size: 20),
-            onPressed: () {
-              _searchController.clear();
-              setState(() {
-                _searchQuery = "";
-              });
-            },
-          )
-              : null,
-          border: InputBorder.none,
-          contentPadding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        ),
-      ),
-    );
-  }
-
-  // Modern Clean Category Card
-  Widget _buildCategoryCard(
-      BuildContext context, {
-        required CategoryModel cat,
-        required String docId,
-        required String nameAr,
-        required String nameEn,
-        required String imageUrl,
-        required bool isDark,
-      }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: isDark ? Colors.black.withOpacity(0.3) : Colors.black.withOpacity(0.03),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => SubcategoryView(categoryModel: cat),
-              ),
-            );
-          },
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Image Banner Section
-              Expanded(
-                flex: 6,
-                child: Stack(
-                  children: [
-                    Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        borderRadius:
-                        const BorderRadius.vertical(top: Radius.circular(16)),
-                        color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF1F5F9),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(16)),
-                        child: imageUrl.isNotEmpty
-                            ? Image.network(
-                          imageUrl,
-                          width: double.infinity,
-                          height: double.infinity,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Center(
-                            child: Icon(
-                              Icons.broken_image_outlined,
-                              color: isDark ? Colors.grey.shade500 : Colors.grey,
-                              size: 32,
-                            ),
-                          ),
-                        )
-                            : Center(
-                          child: Icon(
-                            Icons.category_outlined,
-                            color: isDark ? Colors.grey.shade500 : Colors.grey,
-                            size: 36,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    // Top Action Overlay Buttons
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 4, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? const Color(0xFF2D2D2D).withOpacity(0.9)
-                              : Colors.white.withOpacity(0.9),
-                          borderRadius: BorderRadius.circular(8),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.12),
-                              blurRadius: 6,
-                            )
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            InkWell(
-                              onTap: () => _openCategoryFormPanel(
-                                context,
-                                docId: docId,
-                                currentNameAr: nameAr,
-                                currentNameEn: nameEn,
-                                currentImageUrl: imageUrl,
-                              ),
-                              child: const Padding(
-                                padding: EdgeInsets.all(4.0),
-                                child: Icon(Icons.edit_outlined,
-                                    size: 18, color: AppColors.primaryPurple),
-                              ),
-                            ),
-                            const SizedBox(width: 2),
-                            InkWell(
-                              onTap: () => _confirmDelete(
-                                  context, docId, nameEn, imageUrl),
-                              child: const Padding(
-                                padding: EdgeInsets.all(4.0),
-                                child: Icon(Icons.delete_outline,
-                                    size: 18, color: Colors.redAccent),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Title and Meta Data Section
-              Expanded(
-                flex: 4,
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        nameAr,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                          color: isDark ? Colors.white : AppColors.textDark,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        nameEn,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isDark ? Colors.grey.shade400 : AppColors.textMuted,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _confirmDelete(
-      BuildContext context, String docId, String nameEn, String imageUrl) {
+  void _confirmDelete(BuildContext context, CategoryController controller, String docId, String nameEn, String imageUrl) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     showDialog(
@@ -938,42 +47,18 @@ class _CategoryWidgetState extends State<CategoryWidget> {
       builder: (ctx) => AlertDialog(
         backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          "Delete Category".tr,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: isDark ? Colors.white : Colors.black87,
-          ),
-        ),
-        content: Text(
-          "${"Are you sure you want to delete".tr} '$nameEn'?",
-          style: TextStyle(
-            color: isDark ? Colors.white70 : Colors.black87,
-          ),
-        ),
+        title: Text("Delete Category".tr, style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
+        content: Text("${"Are you sure you want to delete".tr} '$nameEn'?", style: TextStyle(color: isDark ? Colors.white70 : Colors.black87)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text(
-              "Cancel".tr,
-              style: TextStyle(
-                color: isDark ? Colors.grey.shade400 : Colors.grey,
-              ),
-            ),
+            child: Text("Cancel".tr, style: TextStyle(color: isDark ? Colors.grey.shade400 : Colors.grey)),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.redAccent,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8)),
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, elevation: 0),
             onPressed: () async {
-              if (imageUrl.isNotEmpty) {
-                await CloudinaryService.deleteImage(imageUrl);
-              }
-              await _categoriesRef.doc(docId).delete();
-              if (context.mounted) Navigator.pop(ctx);
+              await controller.deleteCategory(docId, imageUrl);
+              if (ctx.mounted) Navigator.pop(ctx);
             },
             child: Text("Delete".tr, style: const TextStyle(color: Colors.white)),
           ),
@@ -982,518 +67,175 @@ class _CategoryWidgetState extends State<CategoryWidget> {
     );
   }
 
-  void _openCategoryFormPanel(
-      BuildContext context, {
-        String? docId,
-        String? currentNameAr,
-        String? currentNameEn,
-        String? currentImageUrl,
-      }) {
-    final formKey = GlobalKey<FormState>();
-    final nameArController = TextEditingController(text: currentNameAr ?? '');
-    final nameEnController = TextEditingController(text: currentNameEn ?? '');
+  @override
+  Widget build(BuildContext context) {
+    final CategoryController controller = Get.put(CategoryController());
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
-    XFile? pickedImage;
-    Uint8List? pickedImageBytes;
-    String? imageUrl = currentImageUrl;
-    bool isSaving = false;
+    return Obx(() {
+      if (controller.isLoadingPermissions.value) {
+        return const Scaffold(
+          body: Center(child: CircularProgressIndicator(color: AppColors.primaryPurple)),
+        );
+      }
 
-    showGeneralDialog(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: 'CategoryForm',
-      transitionDuration: const Duration(milliseconds: 300),
-      pageBuilder: (ctx, anim1, anim2) {
-        return Align(
-          alignment: Alignment.centerRight,
-          child: Material(
-            color: Colors.transparent,
-            child: StatefulBuilder(
-              builder: (context, setPanelState) {
-                final bool isDark = Theme.of(context).brightness == Brightness.dark;
+      if (!controller.permissions.contains("categories")) {
+        return  AccessDefindView();
+      }
 
-                final double panelWidth =
-                MediaQuery.of(context).size.width > 600
-                    ? 480
-                    : MediaQuery.of(context).size.width;
+      return Scaffold(
+        backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF8FAFC),
+        body: LayoutBuilder(
+          builder: (context, constraints) {
+            final bool isMobile = constraints.maxWidth < 650;
+            final bool isTablet = constraints.maxWidth >= 650 && constraints.maxWidth < 1100;
 
-                return Container(
-                  width: panelWidth,
-                  height: double.infinity,
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(20),
-                      bottomLeft: Radius.circular(20),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: isDark ? Colors.black45 : Colors.black12,
-                        blurRadius: 20,
-                        spreadRadius: 5,
-                      )
-                    ],
-                  ),
-                  child: SafeArea(
-                    child: Form(
-                      key: formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                docId == null
-                                    ? "Add New Category".tr
-                                    : "Edit Category".tr,
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: isDark ? Colors.white : AppColors.textDark,
-                                ),
-                              ),
-                              IconButton(
-                                icon: Icon(
-                                  Icons.close_rounded,
-                                  color: isDark ? Colors.white70 : Colors.black87,
-                                ),
-                                onPressed: () => Navigator.pop(ctx),
-                              )
-                            ],
-                          ),
-                          Divider(
-                            height: 24,
-                            color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
-                          ),
-                          Expanded(
-                            child: SingleChildScrollView(
+            return Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: isMobile ? 16.0 : 28.0,
+                vertical: isMobile ? 16.0 : 24.0,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeader(context, controller, isMobile, isDark),
+                  const SizedBox(height: 20),
+                  CategorySearchBar(controller: controller),
+                  const SizedBox(height: 20),
+                  Expanded(
+                    child: StreamBuilder<QuerySnapshot>(
+                      stream: controller.categoriesRef.snapshots(),
+                      builder: (context, snapshot) {
+                        if (snapshot.hasError) {
+                          return Center(
+                            child: Text("Error loading categories!".tr,
+                                style: TextStyle(color: isDark ? Colors.white70 : Colors.black87)),
+                          );
+                        }
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(child: CircularProgressIndicator(color: AppColors.primaryPurple));
+                        }
+
+                        final docs = snapshot.data?.docs ?? [];
+
+                        return Obx(() {
+                          final query = controller.searchQuery.value;
+                          final filteredDocs = docs.where((doc) {
+                            final data = doc.data() as Map<String, dynamic>;
+                            final nameAr = (data['nameAr'] ?? '').toString().toLowerCase();
+                            final nameEn = (data['nameEn'] ?? '').toString().toLowerCase();
+                            return nameAr.contains(query) || nameEn.contains(query);
+                          }).toList();
+
+                          if (filteredDocs.isEmpty) {
+                            return Center(
                               child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Text(
-                                    "Category Image".tr,
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      color: isDark ? Colors.white : AppColors.textDark,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-
-                                  // Preview Box
                                   Container(
-                                    height: 180,
-                                    width: double.infinity,
+                                    padding: const EdgeInsets.all(20),
                                     decoration: BoxDecoration(
-                                      color: isDark
-                                          ? const Color(0xFF2A2A2A)
-                                          : Colors.grey.shade50,
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: isDark
-                                            ? Colors.grey.shade700
-                                            : Colors.grey.shade300,
-                                      ),
+                                      color: AppColors.primaryPurple.withOpacity(0.1),
+                                      shape: BoxShape.circle,
                                     ),
-                                    child: pickedImageBytes != null
-                                        ? ClipRRect(
-                                      borderRadius:
-                                      BorderRadius.circular(12),
-                                      child: Image.memory(
-                                        pickedImageBytes!,
-                                        fit: BoxFit.contain,
-                                      ),
-                                    )
-                                        : (imageUrl != null &&
-                                        imageUrl!.isNotEmpty)
-                                        ? ClipRRect(
-                                      borderRadius:
-                                      BorderRadius.circular(12),
-                                      child: Image.network(
-                                        imageUrl!,
-                                        fit: BoxFit.contain,
-                                      ),
-                                    )
-                                        : Column(
-                                      mainAxisAlignment:
-                                      MainAxisAlignment.center,
-                                      children: [
-                                        const Icon(
-                                          Icons.add_a_photo_outlined,
-                                          size: 38,
-                                          color: AppColors.primaryPurple,
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          "Click button below to select Category Image"
-                                              .tr,
-                                          style: TextStyle(
-                                            color: isDark
-                                                ? Colors.grey.shade400
-                                                : AppColors.textMuted,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-
-                                  // Image Control Buttons
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: OutlinedButton.icon(
-                                          style: OutlinedButton.styleFrom(
-                                            side: BorderSide(
-                                              color: isDark
-                                                  ? Colors.grey.shade700
-                                                  : Colors.grey.shade400,
-                                            ),
-                                            foregroundColor: isDark
-                                                ? Colors.white
-                                                : Colors.black87,
-                                          ),
-                                          icon: const Icon(
-                                              Icons.photo_library_outlined,
-                                              size: 18),
-                                          label: Text(
-                                            pickedImageBytes == null
-                                                ? "Select Image".tr
-                                                : "Change Image".tr,
-                                            style:
-                                            const TextStyle(fontSize: 12),
-                                          ),
-                                          onPressed: isSaving
-                                              ? null
-                                              : () async {
-                                            await _selectAndEditImage(
-                                              context: context,
-                                              onSuccess: (bytes, file) {
-                                                setPanelState(() {
-                                                  pickedImage = file;
-                                                  pickedImageBytes =
-                                                      bytes;
-                                                });
-                                              },
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-
-                                  if (pickedImageBytes != null) ...[
-                                    const SizedBox(height: 8),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: OutlinedButton.icon(
-                                            style: OutlinedButton.styleFrom(
-                                              side: BorderSide(
-                                                color: isDark
-                                                    ? Colors.grey.shade700
-                                                    : Colors.grey.shade400,
-                                              ),
-                                              foregroundColor: isDark
-                                                  ? Colors.white
-                                                  : Colors.black87,
-                                            ),
-                                            icon: const Icon(Icons.crop_rotate,
-                                                size: 18),
-                                            label: Text("Crop / Edit".tr,
-                                                style: const TextStyle(
-                                                    fontSize: 12)),
-                                            onPressed: isSaving
-                                                ? null
-                                                : () async {
-                                              if (pickedImage == null) {
-                                                return;
-                                              }
-                                              final edited =
-                                              await _cropImage(
-                                                context: context,
-                                                imageFile: pickedImage!,
-                                              );
-                                              if (edited != null) {
-                                                final editedXFile =
-                                                await _bytesToXFile(
-                                                  edited,
-                                                  'category_${DateTime.now().millisecondsSinceEpoch}.jpg',
-                                                );
-
-                                                setPanelState(() {
-                                                  pickedImageBytes =
-                                                      edited;
-                                                  pickedImage =
-                                                      editedXFile;
-                                                });
-                                              }
-                                            },
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: OutlinedButton.icon(
-                                            style: OutlinedButton.styleFrom(
-                                              side: BorderSide(
-                                                color: isDark
-                                                    ? Colors.grey.shade700
-                                                    : Colors.grey.shade400,
-                                              ),
-                                              foregroundColor: isDark
-                                                  ? Colors.white
-                                                  : Colors.black87,
-                                            ),
-                                            icon: const Icon(
-                                                Icons.photo_size_select_large,
-                                                size: 18),
-                                            label: Text("Resize".tr,
-                                                style: const TextStyle(
-                                                    fontSize: 12)),
-                                            onPressed: isSaving
-                                                ? null
-                                                : () async {
-                                              if (pickedImageBytes ==
-                                                  null) return;
-                                              final resized =
-                                              await _showResizeDialog(
-                                                  context,
-                                                  pickedImageBytes!);
-                                              if (resized != null) {
-                                                final resizedXFile =
-                                                await _bytesToXFile(
-                                                  resized,
-                                                  'category_${DateTime.now().millisecondsSinceEpoch}.jpg',
-                                                );
-
-                                                setPanelState(() {
-                                                  pickedImageBytes =
-                                                      resized;
-                                                  pickedImage =
-                                                      resizedXFile;
-                                                });
-                                              }
-                                            },
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-
-                                  const SizedBox(height: 20),
-                                  TextFormField(
-                                    controller: nameArController,
-                                    style: TextStyle(
-                                      color: isDark ? Colors.white : Colors.black87,
-                                    ),
-                                    decoration: InputDecoration(
-                                      labelText: "الاسم بالعربي",
-                                      labelStyle: TextStyle(
-                                        color: isDark
-                                            ? Colors.grey.shade400
-                                            : Colors.grey.shade700,
-                                      ),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      enabledBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                        borderSide: BorderSide(
-                                          color: isDark
-                                              ? Colors.grey.shade700
-                                              : Colors.grey.shade400,
-                                        ),
-                                      ),
-                                    ),
-                                    validator: (v) =>
-                                    v == null || v.trim().isEmpty
-                                        ? "يرجى إدخال الاسم بالعربي"
-                                        : null,
+                                    child: const Icon(Icons.category_outlined, size: 48, color: AppColors.primaryPurple),
                                   ),
                                   const SizedBox(height: 16),
-                                  TextFormField(
-                                    controller: nameEnController,
-                                    style: TextStyle(
-                                      color: isDark ? Colors.white : Colors.black87,
-                                    ),
-                                    decoration: InputDecoration(
-                                      labelText: "English Name",
-                                      labelStyle: TextStyle(
-                                        color: isDark
-                                            ? Colors.grey.shade400
-                                            : Colors.grey.shade700,
-                                      ),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      enabledBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                        borderSide: BorderSide(
-                                          color: isDark
-                                              ? Colors.grey.shade700
-                                              : Colors.grey.shade400,
-                                        ),
-                                      ),
-                                    ),
-                                    validator: (v) =>
-                                    v == null || v.trim().isEmpty
-                                        ? "Please enter English name"
-                                        : null,
+                                  Text(
+                                    "No categories found matching your search.".tr,
+                                    style: TextStyle(color: isDark ? Colors.grey.shade400 : AppColors.textMuted, fontSize: 15),
                                   ),
                                 ],
                               ),
+                            );
+                          }
+
+                          int crossAxisCount = isMobile ? 2 : (isTablet ? 3 : (constraints.maxWidth < 1400 ? 4 : 5));
+                          double childAspectRatio = isMobile ? 0.82 : 0.85;
+
+                          return GridView.builder(
+                            itemCount: filteredDocs.length,
+                            physics: const BouncingScrollPhysics(),
+                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: crossAxisCount,
+                              crossAxisSpacing: isMobile ? 12 : 20,
+                              mainAxisSpacing: isMobile ? 12 : 20,
+                              childAspectRatio: childAspectRatio,
                             ),
-                          ),
-                          const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: OutlinedButton(
-                                  onPressed: isSaving
-                                      ? null
-                                      : () => Navigator.pop(ctx),
-                                  style: OutlinedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 14),
-                                    side: BorderSide(
-                                      color: isDark
-                                          ? Colors.grey.shade700
-                                          : Colors.grey.shade400,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    "Cancel".tr,
-                                    style: TextStyle(
-                                      color: isDark
-                                          ? Colors.grey.shade300
-                                          : Colors.black87,
-                                    ),
-                                  ),
+                            itemBuilder: (context, index) {
+                              final doc = filteredDocs[index];
+                              final data = doc.data() as Map<String, dynamic>;
+                              final docId = doc.id;
+                              final nameAr = data['nameAr'] ?? '';
+                              final nameEn = data['nameEn'] ?? '';
+                              final imageUrl = data['imageUrl'] ?? '';
+
+                              CategoryModel cat = CategoryModel(
+                                doc: docId,
+                                ImageUrl: imageUrl,
+                                NameAr: nameAr,
+                                NameEn: nameEn,
+                              );
+
+                              return CategoryCard(
+                                cat: cat,
+                                docId: docId,
+                                nameAr: nameAr,
+                                nameEn: nameEn,
+                                imageUrl: imageUrl,
+                                onEdit: () => _openCategoryFormPanel(
+                                  context,
+                                  controller,
+                                  docId: docId,
+                                  currentNameAr: nameAr,
+                                  currentNameEn: nameEn,
+                                  currentImageUrl: imageUrl,
                                 ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.primaryPurple,
-                                    elevation: 0,
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 14),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                  onPressed: isSaving
-                                      ? null
-                                      : () async {
-                                    if (formKey.currentState!
-                                        .validate()) {
-                                      setPanelState(
-                                              () => isSaving = true);
-
-                                      try {
-                                        if (pickedImage != null) {
-                                          final uploadedUrl =
-                                          await CloudinaryService
-                                              .uploadImage(
-                                              pickedImage!);
-                                          if (uploadedUrl != null) {
-                                            if (currentImageUrl != null &&
-                                                currentImageUrl
-                                                    .isNotEmpty) {
-                                              await CloudinaryService
-                                                  .deleteImage(
-                                                  currentImageUrl);
-                                            }
-                                            imageUrl = uploadedUrl;
-                                          }
-                                        }
-
-                                        final dataMap = {
-                                          'nameAr': nameArController.text
-                                              .trim(),
-                                          'nameEn': nameEnController.text
-                                              .trim(),
-                                          'imageUrl': imageUrl ?? '',
-                                          'updatedAt':
-                                          FieldValue.serverTimestamp(),
-                                        };
-
-                                        if (docId == null) {
-                                          dataMap['createdAt'] =
-                                              FieldValue.serverTimestamp();
-                                          await _categoriesRef
-                                              .add(dataMap);
-                                        } else {
-                                          await _categoriesRef
-                                              .doc(docId)
-                                              .update(dataMap);
-                                        }
-
-                                        if (context.mounted) {
-                                          Navigator.pop(ctx);
-                                        }
-                                      } catch (e) {
-                                        setPanelState(
-                                                () => isSaving = false);
-                                        if (context.mounted) {
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            SnackBar(
-                                                content: Text(
-                                                    "${"Something went wrong".tr}: $e")),
-                                          );
-                                        }
-                                      }
-                                    }
-                                  },
-                                  child: isSaving
-                                      ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                      : Text(
-                                    docId == null
-                                        ? "Save".tr
-                                        : "Update".tr,
-                                    style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
+                                onDelete: () => _confirmDelete(context, controller, docId, nameEn, imageUrl),
+                              );
+                            },
+                          );
+                        });
+                      },
                     ),
                   ),
-                );
-              },
-            ),
-          ),
-        );
-      },
-      transitionBuilder: (context, anim1, anim2, child) {
-        return SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(1, 0),
-            end: Offset.zero,
-          ).animate(
-            CurvedAnimation(parent: anim1, curve: Curves.easeOutCubic),
-          ),
-          child: child,
-        );
-      },
+                ],
+              ),
+            );
+          },
+        ),
+      );
+    });
+  }
+
+  Widget _buildHeader(BuildContext context, CategoryController controller, bool isMobile, bool isDark) {
+    final title = Text("Categories Management".tr, style: TextStyle(fontSize: isMobile ? 20 : 24, fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppColors.textDark));
+    final subTitle = Text("Manage your store product categories".tr, style: TextStyle(fontSize: isMobile ? 12 : 14, color: isDark ? Colors.grey.shade400 : AppColors.textMuted));
+    final button = ElevatedButton.icon(
+      onPressed: () => _openCategoryFormPanel(context, controller),
+      icon: const Icon(Icons.add_rounded, color: Colors.white, size: 20),
+      label: Text("Add New Category".tr, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+      style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryPurple, elevation: 0, padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14)),
+    );
+
+    if (isMobile) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          title,
+          subTitle,
+          const SizedBox(height: 12),
+          SizedBox(width: double.infinity, child: button),
+        ],
+      );
+    }
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [title, subTitle]),
+        button,
+      ],
     );
   }
 }

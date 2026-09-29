@@ -2,37 +2,66 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class OrderModel {
   final String id;
-  final String orderNumber;
-  final double totalAmount;
-  final String paymentMethod;
-  final DateTime createdAt;
+  final String userId;
+  final int orderNumber;
+  final String status;
+  final double totalPrice;
+  final String customerName;
+  final String customerEmail;
   final bool isManual;
+  final DateTime? createdAt;
+  final List<dynamic> items;
+  final Map<String, dynamic> selectedAddress;
+  final DocumentReference reference;
 
   OrderModel({
     required this.id,
+    required this.userId,
     required this.orderNumber,
-    required this.totalAmount,
-    required this.paymentMethod,
-    required this.createdAt,
-    this.isManual = false,
+    required this.status,
+    required this.totalPrice,
+    required this.customerName,
+    required this.customerEmail,
+    required this.isManual,
+    this.createdAt,
+    required this.items,
+    required this.selectedAddress,
+    required this.reference,
   });
 
-  factory OrderModel.fromSnapshot(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>? ?? {};
+  factory OrderModel.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final data = doc.data() ?? {};
+
+    // استخراج اسم العميل بمرونة عالية
+    String name = data['customerName'] ?? '';
+    if (name.isEmpty && data['selectedAddress'] is Map) {
+      final addr = data['selectedAddress'] as Map;
+      name = (addr['fullName'] ?? addr['name'] ?? '').toString();
+    }
+
+    DateTime? date;
+    if (data['createdAt'] is Timestamp) {
+      date = (data['createdAt'] as Timestamp).toDate();
+    }
 
     return OrderModel(
       id: doc.id,
-      // البحث عن رقم الأوردر في أكثر من مسمى متوقع، واستخدام جزء من id كخيار أخير
-      orderNumber: data['orderNumber']?.toString() ??
-          data['orderNo']?.toString() ??
-          data['order_id']?.toString() ??
-          (doc.id.length > 8 ? doc.id.substring(0, 8) : doc.id),
-      totalAmount: (data['totalAmount'] ?? data['total'] ?? data['amount'] ?? 0).toDouble(),
-      paymentMethod: data['paymentMethod'] ?? data['payment_type'] ?? 'نقداً',
-      createdAt: data['createdAt'] is Timestamp
-          ? (data['createdAt'] as Timestamp).toDate()
-          : DateTime.now(),
-      isManual: doc.reference.parent.id == 'orders',
+      userId: data['userId'] ?? doc.reference.parent.parent?.id ?? '',
+      orderNumber: (data['orderNumber'] as num?)?.toInt() ?? 0,
+      status: (data['status'] ?? 'pending').toString().toLowerCase(),
+      totalPrice: (data['totalPrice'] as num?)?.toDouble() ?? 0.0,
+      customerName: name,
+      customerEmail: (data['userEmail'] ?? '').toString(),
+      isManual: data['isManual'] ?? false,
+      createdAt: date,
+      items: data['items'] as List? ?? [],
+      selectedAddress: data['selectedAddress'] as Map<String, dynamic>? ?? {},
+      reference: doc.reference,
     );
+  }
+
+  String get formattedDate {
+    if (createdAt == null) return 'N/A';
+    return "${createdAt!.day}/${createdAt!.month}/${createdAt!.year} - ${createdAt!.hour}:${createdAt!.minute.toString().padLeft(2, '0')}";
   }
 }

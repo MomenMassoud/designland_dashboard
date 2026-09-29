@@ -1,8 +1,17 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:get/get.dart';
+
+import '../../../Core/Utils/app.colors.dart';
+import '../../../Core/server/saveDeviceTokenToFirestore.dart';
+import '../../../Core/server/setup_notification.dart';
 import 'package:dashboard_desginland/Core/Utils/app.images.dart';
 import 'package:dashboard_desginland/Core/server/check_promo_code.dart';
 import 'package:dashboard_desginland/feature/About/view/about_view.dart';
 import 'package:dashboard_desginland/feature/Access%20Defind/view/access_defind_view.dart';
 import 'package:dashboard_desginland/feature/Banners/view/banners_view.dart';
+import 'package:dashboard_desginland/feature/Category/view/category_view.dart';
 import 'package:dashboard_desginland/feature/Country/view/country_view.dart';
 import 'package:dashboard_desginland/feature/Home/view/home_view.dart';
 import 'package:dashboard_desginland/feature/Login/function/auth_function.dart';
@@ -14,13 +23,6 @@ import 'package:dashboard_desginland/feature/Users/view/users_view.dart';
 import 'package:dashboard_desginland/feature/analytics/view/analytics_view.dart';
 import 'package:dashboard_desginland/feature/products/view/products_view.dart';
 import 'package:dashboard_desginland/model/user_model.dart';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-import 'package:dashboard_desginland/feature/Category/view/category_view.dart';
-import 'package:get/get.dart';
-import '../../../Core/Utils/app.colors.dart';
-import '../../../Core/server/saveDeviceTokenToFirestore.dart';
-import '../../../Core/server/setup_notification.dart';
 import '../../Reports/view/report_view.dart';
 
 class MainScreenWidget extends StatefulWidget {
@@ -32,23 +34,12 @@ class MainScreenWidget extends StatefulWidget {
 
 class _MainScreenWidgetState extends State<MainScreenWidget> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
   UserModel? _userModel;
+  bool _isLoading = true;
   int _selectedIndex = 0;
 
-  final List<Widget> _screens = [
-    HomeView(),
-    CategoryView(),
-    OrdersView(),
-    ReportView(),
-    ProductsView(),
-    StaffView(),
-    UsersView(),
-    AnalyticsView(),
-    AboutView(),
-    BannersView(),
-    PromoCodeView(),
-    CountryView(),
-  ];
+  final Map<int, Widget> _loadedScreens = {};
 
   @override
   void initState() {
@@ -56,39 +47,77 @@ class _MainScreenWidgetState extends State<MainScreenWidget> {
     _startProgram();
   }
 
-  void _startProgram() async {
-    _userModel = await GetCurrentUserData(context);
-    if (!kIsWeb) {
-      await setupAndroidNotifications();
-    } else {
-      await setupWeb();
-    }
-    await saveDeviceTokenToFirestore();
-    await cleanAndFetchValidPromoCodes();
+  Future<void> _startProgram() async {
+    try {
+      final user = await GetCurrentUserData(context);
 
-    setState(() {});
+      if (!mounted) return;
+
+      if (user == null) {
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      _userModel = user;
+
+      await Future.wait([
+        kIsWeb ? setupWeb() : setupAndroidNotifications(),
+        saveDeviceTokenToFirestore(),
+        cleanAndFetchValidPromoCodes(),
+      ]);
+    } catch (e) {
+      debugPrint('Error starting program: $e');
+      if (mounted) LogoutMethod(context);
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Widget _getScreen(int index) {
+    if (!_loadedScreens.containsKey(index)) {
+      _loadedScreens[index] = _buildScreenByIndex(index);
+    }
+    return _loadedScreens[index]!;
+  }
+
+  Widget _buildScreenByIndex(int index) {
+    switch (index) {
+      case 0: return  HomeView();
+      case 1: return  CategoryView();
+      case 2: return  OrdersView();
+      case 3: return  ReportView();
+      case 4: return  ProductsView();
+      case 5: return  StaffView();
+      case 6: return  UsersView();
+      case 7: return  AnalyticsView();
+      case 8: return  AboutView();
+      case 9: return  BannersView();
+      case 10: return  PromoCodeView();
+      case 11: return  CountryView();
+      default: return  HomeView();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final bool isDark = Get.isDarkMode;
-
-    try {
-      if (_userModel == null) {
-        return const Scaffold(
-          body: Center(
-            child: CircularProgressIndicator(color: AppColors.primaryPurple),
-          ),
-        );
-      }
-
-      if (_userModel!.role != "admin" && _userModel!.role != "staff") {
-        return AccessDefindView();
-      }
-    } catch (e) {
-      print(e);
-      LogoutMethod(context);
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(color: AppColors.primaryPurple),
+        ),
+      );
     }
+
+    if (_userModel == null || (_userModel!.role != "admin" && _userModel!.role != "staff")) {
+      return  AccessDefindView();
+    }
+
+    final bool isDark = Get.isDarkMode;
+    final scaffoldBg = isDark ? const Color(0xFF121218) : const Color(0xFFF4F5F9);
+    final cardBg = isDark ? const Color(0xFF1E1E2E) : Colors.white;
+    final borderColor = isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.04);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -96,33 +125,59 @@ class _MainScreenWidgetState extends State<MainScreenWidget> {
 
         return Scaffold(
           key: _scaffoldKey,
-          backgroundColor: isDark
-              ? Theme.of(context).scaffoldBackgroundColor
-              : AppColors.bgLight,
+          backgroundColor: scaffoldBg,
           drawer: isMobile
               ? Drawer(
-            backgroundColor: Theme.of(context).cardColor,
-            child: _buildSidebarContent(isDark),
+            backgroundColor: cardBg,
+            child: SidebarContent(
+              selectedIndex: _selectedIndex,
+              isDark: isDark,
+              onItemSelected: _onNavItemTapped,
+            ),
           )
               : null,
           body: Padding(
-            padding: const EdgeInsets.only(top: 15.0),
+            padding: const EdgeInsets.only(top: 12.0),
             child: Row(
               children: [
-                // إظهار الـ Sidebar الدائم فقط في الشاشات الكبيرة
-                if (!isMobile) _buildSidebar(context, isDark),
-
-                // منطقة المحتوى الرئيسي والهيدر العلوي
+                if (!isMobile)
+                  Container(
+                    width: 250,
+                    margin: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: cardBg,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: borderColor),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(isDark ? 0.2 : 0.03),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: SidebarContent(
+                      selectedIndex: _selectedIndex,
+                      isDark: isDark,
+                      onItemSelected: _onNavItemTapped,
+                    ),
+                  ),
                 Expanded(
                   child: Column(
                     children: [
-                      _buildTopHeader(isMobile, isDark),
-
-                      // Dynamic Body View
+                      TopHeader(
+                        isMobile: isMobile,
+                        isDark: isDark,
+                        userModel: _userModel!,
+                        scaffoldKey: _scaffoldKey,
+                      ),
                       Expanded(
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 300),
-                          child: _screens[_selectedIndex],
+                        child: IndexedStack(
+                          index: _selectedIndex,
+                          children: List.generate(
+                            12,
+                                (index) => _getScreen(index),
+                          ),
                         ),
                       ),
                     ],
@@ -136,268 +191,412 @@ class _MainScreenWidgetState extends State<MainScreenWidget> {
     );
   }
 
-  // ==================== SIDEBAR CONTAINER ====================
-  Widget _buildSidebar(BuildContext context, bool isDark) {
-    return Container(
-      width: 260,
-      margin: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? Theme.of(context).cardColor : Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.2 : 0.03),
-            blurRadius: 20,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: _buildSidebarContent(isDark),
-    );
+  void _onNavItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+    if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
+      Navigator.pop(context);
+    }
   }
+}
 
-  // ==================== SIDEBAR CONTENT ====================
-  Widget _buildSidebarContent(bool isDark) {
+// ==================== SIDEBAR COMPONENT WITH ANIMATION ====================
+class SidebarContent extends StatelessWidget {
+  final int selectedIndex;
+  final bool isDark;
+  final ValueChanged<int> onItemSelected;
+
+  const SidebarContent({
+    super.key,
+    required this.selectedIndex,
+    required this.isDark,
+    required this.onItemSelected,
+  });
+
+  // أيقونات عصرية حديثة مع خيارات نشطة وغير نشطة (Active / Inactive Icons)
+  static final List<NavItemData> _navItems = [
+    NavItemData(
+      icon: Icons.grid_view_rounded,
+      activeIcon: Icons.space_dashboard_rounded,
+      title: "Home",
+    ),
+    NavItemData(
+      icon: Icons.category_outlined,
+      activeIcon: Icons.category_rounded,
+      title: "Categories",
+    ),
+    NavItemData(
+      icon: Icons.shopping_bag_outlined,
+      activeIcon: Icons.shopping_bag_rounded,
+      title: "Orders",
+    ),
+    NavItemData(
+      icon: Icons.bar_chart_rounded,
+      activeIcon: Icons.insert_chart_rounded,
+      title: "Reports",
+    ),
+    NavItemData(
+      icon: Icons.inventory_2_outlined,
+      activeIcon: Icons.inventory_2_rounded,
+      title: "Products",
+    ),
+    NavItemData(
+      icon: Icons.badge_outlined,
+      activeIcon: Icons.badge_rounded,
+      title: "Staff",
+    ),
+    NavItemData(
+      icon: Icons.people_outline_rounded,
+      activeIcon: Icons.people_alt_rounded,
+      title: "Users",
+    ),
+    NavItemData(
+      icon: Icons.analytics_outlined,
+      activeIcon: Icons.analytics_rounded,
+      title: "Analytics",
+    ),
+    NavItemData(
+      icon: Icons.info_outline_rounded,
+      activeIcon: Icons.info_rounded,
+      title: "About",
+    ),
+    NavItemData(
+      icon: Icons.view_carousel_outlined,
+      activeIcon: Icons.view_carousel_rounded,
+      title: "Banners",
+    ),
+    NavItemData(
+      icon: Icons.confirmation_number_outlined,
+      activeIcon: Icons.confirmation_number_rounded,
+      title: "PromoCode",
+    ),
+    NavItemData(
+      icon: Icons.public_outlined,
+      activeIcon: Icons.public_rounded,
+      title: "Country",
+    ),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
       children: [
-        const SizedBox(height: 24),
-        CircleAvatar(
-          radius: 45,
-          backgroundImage: AssetImage(AppImages.appPLogo),
+        const SizedBox(height: 20),
+        Container(
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: AppColors.primaryPurple.withOpacity(0.3),
+              width: 2,
+            ),
+          ),
+          child: const CircleAvatar(
+            radius: 36,
+            backgroundImage: AssetImage(AppImages.appPLogo),
+          ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
         Divider(
           height: 1,
           thickness: 0.5,
-          color: isDark ? Colors.white24 : Colors.black12,
+          color: isDark ? Colors.white12 : Colors.black12,
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         Expanded(
-          child: ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            children: [
-              _buildNavItem(0, Icons.grid_view_rounded, "Home".tr, isDark),
-              _buildNavItem(1, Icons.category_outlined, "Categories".tr, isDark),
-              _buildNavItem(2, Icons.shopping_bag_outlined, "Orders".tr, isDark),
-              _buildNavItem(3, Icons.bar_chart_rounded, "Reports".tr, isDark),
-              _buildNavItem(4, Icons.inventory_2_outlined, "Products".tr, isDark),
-              _buildNavItem(5, Icons.badge_outlined, "Staff".tr, isDark),
-              _buildNavItem(6, Icons.people_alt_outlined, "Users".tr, isDark),
-              _buildNavItem(7, Icons.analytics, "Analytics".tr, isDark),
-              _buildNavItem(8, Icons.info_outline, "About".tr, isDark),
-              _buildNavItem(9, Icons.imagesearch_roller, "Banners".tr, isDark),
-              _buildNavItem(10, Icons.discount, "PromoCode".tr, isDark),
-              _buildNavItem(11, Icons.language, "Country".tr, isDark),
-            ],
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            itemCount: _navItems.length,
+            itemBuilder: (context, index) {
+              final item = _navItems[index];
+              return NavItemTile(
+                index: index,
+                item: item,
+                isSelected: selectedIndex == index,
+                isDark: isDark,
+                onTap: () => onItemSelected(index),
+              );
+            },
           ),
         ),
       ],
     );
   }
+}
 
-  Widget _buildNavItem(int index, IconData icon, String title, bool isDark) {
-    final isSelected = _selectedIndex == index;
-    final unselectedTextColor = isDark ? Colors.white70 : AppColors.textDark;
+class NavItemData {
+  final IconData icon;
+  final IconData activeIcon;
+  final String title;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-        gradient: isSelected
-            ? const LinearGradient(
-          colors: [AppColors.primaryPurple, Color(0xFF7C3AED)],
-        )
-            : null,
-        color: isSelected ? null : Colors.transparent,
-        boxShadow: isSelected
-            ? [
-          BoxShadow(
-            color: AppColors.primaryPurple.withOpacity(0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ]
-            : null,
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(14),
-        child: ListTile(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-          leading: Icon(
-            icon,
-            color: isSelected ? Colors.white : AppColors.textMuted,
-            size: 22,
-          ),
-          title: Text(
-            title,
-            style: TextStyle(
-              color: isSelected ? Colors.white : unselectedTextColor,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-              fontSize: 15,
+  const NavItemData({
+    required this.icon,
+    required this.activeIcon,
+    required this.title,
+  });
+}
+
+class NavItemTile extends StatelessWidget {
+  final int index;
+  final NavItemData item;
+  final bool isSelected;
+  final bool isDark;
+  final VoidCallback onTap;
+
+  const NavItemTile({
+    super.key,
+    required this.index,
+    required this.item,
+    required this.isSelected,
+    required this.isDark,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final unselectedTextColor = isDark ? Colors.white70 : const Color(0xFF4B5563);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6.0),
+      // انيميشن ناعم للخلفية المتدرجة (Animated Container Selector)
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeInOut,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          gradient: isSelected
+              ? const LinearGradient(
+            colors: [Color(0xFF6366F1), Color(0xFF4F46E5)],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          )
+              : null,
+          boxShadow: isSelected
+              ? [
+            BoxShadow(
+              color: const Color(0xFF6366F1).withOpacity(0.35),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ]
+              : [],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              child: Row(
+                children: [
+                  // أيقونة متحركة مع تحول سلس ومؤثرات حركية عند الضغط
+                  Animate(
+                    target: isSelected ? 1 : 0,
+                    effects: [
+                      ScaleEffect(
+                        duration: 200.ms,
+                        begin: const Offset(0.85, 0.85),
+                        end: const Offset(1.1, 1.1),
+                        curve: Curves.easeOutBack,
+                      ),
+                    ],
+                    child: Icon(
+                      isSelected ? item.activeIcon : item.icon,
+                      color: isSelected
+                          ? Colors.white
+                          : (isDark ? Colors.white : const Color(0xFF6B7280)),
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      item.title.tr,
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : unselectedTextColor,
+                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                        fontSize: 13.5,
+                      ),
+                    ),
+                  ),
+                  // مؤشر إضافي صغير عند التفعيل
+                  if (isSelected)
+                    Container(
+                      width: 5,
+                      height: 5,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                    )
+                        .animate()
+                        .scale(duration: 200.ms, curve: Curves.easeOutBack),
+                ],
+              ),
             ),
           ),
-          onTap: () {
-            setState(() {
-              _selectedIndex = index;
-            });
-            // إغلاق الـ Drawer تلقائياً في الموبايل عند إختيار عنصر
-            if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
-              Navigator.pop(context);
-            }
-          },
         ),
       ),
     );
   }
+}
 
-  // ==================== TOP HEADER WIDGET ====================
-  Widget _buildTopHeader(bool isMobile, bool isDark) {
+// ==================== TOP HEADER COMPONENT ====================
+class TopHeader extends StatelessWidget {
+  final bool isMobile;
+  final bool isDark;
+  final UserModel userModel;
+  final GlobalKey<ScaffoldState> scaffoldKey;
+
+  const TopHeader({
+    super.key,
+    required this.isMobile,
+    required this.isDark,
+    required this.userModel,
+    required this.scaffoldKey,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cardBg = isDark ? const Color(0xFF1E1E2E) : Colors.white;
+    final borderColor = isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.04);
+    final textPrimary = isDark ? Colors.white : const Color(0xFF111827);
+
     return Container(
       margin: EdgeInsets.only(
-        top: 16,
+        top: 12,
         right: 16,
         left: isMobile ? 16 : 0,
         bottom: 8,
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: isDark ? Theme.of(context).cardColor : Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        color: cardBg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.2 : 0.02),
-            blurRadius: 15,
+            color: Colors.black.withOpacity(isDark ? 0.2 : 0.03),
+            blurRadius: 14,
             offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Row(
         children: [
-          // زر فتح القائمة الجانبية في شاشات الموبايل
           if (isMobile)
             IconButton(
               icon: Icon(
-                Icons.menu,
-                color: isDark ? Colors.white : AppColors.textDark,
+                Icons.menu_rounded,
+                color: textPrimary,
               ),
-              onPressed: () {
-                _scaffoldKey.currentState?.openDrawer();
-              },
+              onPressed: () => scaffoldKey.currentState?.openDrawer(),
             ),
-
-          // حقل البحث
           Expanded(
             child: Container(
-              height: 42,
+              height: 38,
               decoration: BoxDecoration(
                 color: isDark
                     ? Colors.white.withOpacity(0.05)
-                    : AppColors.bgLight,
-                borderRadius: BorderRadius.circular(12),
+                    : const Color(0xFFF3F4F6),
+                borderRadius: BorderRadius.circular(10),
               ),
               child: TextField(
                 style: TextStyle(
-                  color: isDark ? Colors.white : AppColors.textDark,
+                  color: textPrimary,
+                  fontSize: 13,
                 ),
                 decoration: InputDecoration(
                   hintText: "Search...".tr,
                   hintStyle: TextStyle(
-                    color: isDark ? Colors.white : AppColors.textMuted,
+                    color: isDark ? Colors.white38 : const Color(0xFF9CA3AF),
+                    fontSize: 13,
                   ),
-                  prefixIcon: Icon(
-                    Icons.search,
-                    color: AppColors.textMuted,
-                    size: 20,
+                  prefixIcon: const Icon(
+                    Icons.search_rounded,
+                    color: Color(0xFF9CA3AF),
+                    size: 18,
                   ),
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 8),
                 ),
               ),
             ),
           ),
           const SizedBox(width: 12),
-
-          // بروفايل المستخدم وزر الخروج
           InkWell(
+            borderRadius: BorderRadius.circular(12),
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => ProfileView()),
+                MaterialPageRoute(builder: (context) =>  ProfileView()),
               );
             },
             child: Row(
               children: [
                 CircleAvatar(
-                  radius: 18,
-                  backgroundColor: AppColors.primaryPurple,
+                  radius: 16,
+                  backgroundColor: const Color(0xFF6366F1),
                   child: Text(
-                    _userModel!.Name.isNotEmpty
-                        ? _userModel!.Name.characters.first
+                    userModel.Name.isNotEmpty
+                        ? userModel.Name.characters.first.toUpperCase()
                         : "",
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
+                      fontSize: 13,
                     ),
                   ),
                 ),
-                if (!isMobile) const SizedBox(width: 10),
-
-                // إخفاء تفاصيل اسم المستخدم في الموبايل لتوفير المساحة
-                if (!isMobile)
+                if (!isMobile) ...[
+                  const SizedBox(width: 8),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        _userModel!.Name,
+                        userModel.Name,
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          color: isDark ? Colors.white : AppColors.textDark,
+                          fontSize: 13,
+                          color: textPrimary,
                         ),
                       ),
                       Text(
-                        _userModel!.role,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textMuted,
+                        userModel.role,
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: isDark ? Colors.white : const Color(0xFF6B7280),
                         ),
                       ),
                     ],
                   ),
-
+                ],
                 const SizedBox(width: 8),
-
-                // ==================== زر تغيير الثيم (Dark/Light Mode) ====================
                 IconButton(
                   tooltip: isDark ? 'Light Mode' : 'Dark Mode',
                   icon: Icon(
-                    isDark ? Icons.light_mode : Icons.dark_mode,
-                    color: isDark ? Colors.amber : AppColors.primaryPurple,
+                    isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+                    color: isDark ? Colors.amber : const Color(0xFF6366F1),
+                    size: 20,
                   ),
                   onPressed: () {
                     Get.changeThemeMode(
                       isDark ? ThemeMode.light : ThemeMode.dark,
                     );
-                    setState(() {});
                   },
                 ),
-
-                const SizedBox(width: 4),
-
-                // زر التسجيل خروج
                 IconButton(
-                  onPressed: () async {
-                    LogoutMethod(context);
-                  },
+                  onPressed: () async => LogoutMethod(context),
                   icon: const Icon(
-                    Icons.logout,
-                    color: AppColors.lightPurpleGlow,
+                    Icons.logout_rounded,
+                    color: Color(0xFFEF4444),
+                    size: 20,
                   ),
-                )
+                ),
               ],
             ),
           ),

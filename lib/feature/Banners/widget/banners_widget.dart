@@ -1,1043 +1,54 @@
-import 'dart:typed_data';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:dashboard_desginland/feature/Access%20Defind/view/access_defind_view.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:image/image.dart' as img;
-import 'package:image_cropper/image_cropper.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:reorderables/reorderables.dart';
 import '../../../Core/server/cloudinara_server.dart';
 import '../../../Core/server/get_permision.dart';
+import '../../../model/banner_model.dart';
+import '../../Access Defind/view/access_defind_view.dart';
+import 'banners_dialogs.dart';
 
 class BannersWidget extends StatefulWidget {
   const BannersWidget({super.key});
 
   @override
-  State<BannersWidget> createState() => _BannersWidgetState();
+  State<BannersWidget> createState() => _BannersViewState();
 }
 
-class _BannersWidgetState extends State<BannersWidget> {
-  final CollectionReference _bannersRef = FirebaseFirestore.instance.collection(
-    'banners',
-  );
+class _BannersViewState extends State<BannersWidget> {
+  final CollectionReference _bannersRef = FirebaseFirestore.instance.collection('banners');
+  final CollectionReference _categoriesRef = FirebaseFirestore.instance.collection('categories');
 
-  final CollectionReference _categoriesRef = FirebaseFirestore.instance
-      .collection('categories');
-
-  final ImagePicker _picker = ImagePicker();
-
-  List<String> _permision = [];
-
-  void Start() async {
-    _permision = await GetPermisionUser();
-
-    if (mounted) {
-      setState(() {});
-    }
-  }
+  List<String> _permissions = [];
+  final Map<String, String> _categoryNamesCache = {};
 
   @override
   void initState() {
     super.initState();
-    Start();
+    _loadPermissions();
   }
 
-  // ============================================================
-  // CROP + ROTATE
-  // ============================================================
-
-  Future<Uint8List?> _cropImage({
-    required BuildContext context,
-    required XFile imageFile,
-  }) async {
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    try {
-      final String sourcePath = imageFile.path;
-
-      if (sourcePath.isEmpty) {
-        throw Exception("Image path is empty");
-      }
-
-      final CroppedFile? croppedFile = await ImageCropper().cropImage(
-        sourcePath: sourcePath,
-        compressFormat: ImageCompressFormat.jpg,
-        compressQuality: 90,
-        uiSettings: [
-          AndroidUiSettings(
-            toolbarTitle: 'Edit Banner'.tr,
-            toolbarColor: isDark ? const Color(0xFF1E1E1E) : const Color(0xFF6C5CE7),
-            toolbarWidgetColor: Colors.white,
-            activeControlsWidgetColor: const Color(0xFF6C5CE7),
-            backgroundColor: isDark ? const Color(0xFF121212) : Colors.white,
-            initAspectRatio: CropAspectRatioPreset.original,
-            lockAspectRatio: false,
-            aspectRatioPresets: [
-              CropAspectRatioPreset.original,
-              CropAspectRatioPreset.square,
-              CropAspectRatioPreset.ratio4x3,
-              CropAspectRatioPreset.ratio16x9,
-            ],
-          ),
-
-          IOSUiSettings(
-            title: 'Edit Banner'.tr,
-            aspectRatioLockEnabled: false,
-            resetAspectRatioEnabled: true,
-            aspectRatioPresets: [
-              CropAspectRatioPreset.original,
-              CropAspectRatioPreset.square,
-              CropAspectRatioPreset.ratio4x3,
-              CropAspectRatioPreset.ratio16x9,
-            ],
-          ),
-
-          WebUiSettings(
-            context: context,
-            presentStyle: WebPresentStyle.page,
-
-            // Cropper size
-            size: const CropperSize(width: 700, height: 500),
-
-            // Image behavior
-            viewwMode: WebViewMode.mode_2,
-            dragMode: WebDragMode.crop,
-
-            // Enable editing
-            movable: true,
-            rotatable: true,
-            scalable: true,
-            zoomable: true,
-
-            // Zoom with mouse wheel
-            zoomOnWheel: true,
-            zoomOnTouch: true,
-
-            // Crop UI
-            modal: true,
-            guides: true,
-            center: true,
-            highlight: true,
-            background: true,
-
-            // Orientation
-            checkCrossOrigin: true,
-            checkOrientation: true,
-          ),
-        ],
-      );
-
-      if (croppedFile == null) {
-        return null;
-      }
-
-      final Uint8List bytes = await croppedFile.readAsBytes();
-
-      if (bytes.isEmpty) {
-        throw Exception("Edited image is empty");
-      }
-
-      return bytes;
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("${"Failed to edit image".tr}: $e")),
-        );
-      }
-
-      return null;
-    }
+  Future<void> _loadPermissions() async {
+    _permissions = await GetPermisionUser();
+    if (mounted) setState(() {});
   }
 
-  // ============================================================
-  // RESIZE
-  // ============================================================
-
-  Future<Uint8List?> _resizeImage(
-      Uint8List bytes, {
-        required int width,
-        required int height,
-      }) async {
-    try {
-      final img.Image? decoded = img.decodeImage(bytes);
-
-      if (decoded == null) {
-        throw Exception("Could not decode image");
-      }
-
-      final img.Image resized = img.copyResize(
-        decoded,
-        width: width,
-        height: height,
-        interpolation: img.Interpolation.average,
-      );
-
-      final List<int> jpgBytes = img.encodeJpg(resized, quality: 90);
-
-      return Uint8List.fromList(jpgBytes);
-    } catch (e) {
-      debugPrint("Resize error: $e");
-      return null;
-    }
-  }
-
-  // ============================================================
-  // RESIZE DIALOG
-  // ============================================================
-
-  Future<Uint8List?> _showResizeDialog(
-      BuildContext context,
-      Uint8List originalBytes,
-      ) async {
-    final img.Image? decoded = img.decodeImage(originalBytes);
-
-    if (decoded == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Could not read image dimensions".tr)),
-      );
-
-      return null;
-    }
-
-    final int originalWidth = decoded.width;
-    final int originalHeight = decoded.height;
-
-    final TextEditingController widthController = TextEditingController(
-      text: originalWidth.toString(),
-    );
-
-    final TextEditingController heightController = TextEditingController(
-      text: originalHeight.toString(),
-    );
-
-    bool keepRatio = true;
-
-    final double ratio = originalWidth / originalHeight;
-
-    final result = await showDialog<Uint8List?>(
-      context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            final bool isDark = Theme.of(context).brightness == Brightness.dark;
-
-            return AlertDialog(
-              backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-              title: Row(
-                children: [
-                  const Icon(
-                    Icons.photo_size_select_large,
-                    color: Color(0xFF6C5CE7),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    "Resize Image".tr,
-                    style: TextStyle(
-                      color: isDark ? Colors.white : Colors.black87,
-                    ),
-                  ),
-                ],
-              ),
-              content: SizedBox(
-                width: 420,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? const Color(0xFF6C5CE7).withOpacity(0.15)
-                            : const Color(0xFFF4F3FF),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.info_outline,
-                            color: Color(0xFF6C5CE7),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              "${"Original size".tr}: "
-                                  "$originalWidth × $originalHeight px",
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                color: isDark ? Colors.white70 : Colors.black87,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    TextField(
-                      controller: widthController,
-                      keyboardType: TextInputType.number,
-                      style: TextStyle(
-                        color: isDark ? Colors.white : Colors.black87,
-                      ),
-                      decoration: InputDecoration(
-                        labelText: "Width".tr,
-                        labelStyle: TextStyle(
-                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
-                        ),
-                        suffixText: "px",
-                        suffixStyle: TextStyle(
-                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(
-                            color: isDark ? Colors.grey.shade700 : Colors.grey.shade400,
-                          ),
-                        ),
-                      ),
-                      onChanged: (value) {
-                        if (!keepRatio) return;
-
-                        final int? width = int.tryParse(value);
-
-                        if (width == null || width <= 0) return;
-
-                        final int newHeight = (width / ratio).round();
-
-                        heightController.text = newHeight.toString();
-                      },
-                    ),
-
-                    const SizedBox(height: 14),
-
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            "Keep aspect ratio".tr,
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: isDark ? Colors.white : Colors.black87,
-                            ),
-                          ),
-                        ),
-                        Switch(
-                          value: keepRatio,
-                          activeColor: const Color(0xFF6C5CE7),
-                          onChanged: (value) {
-                            setState(() {
-                              keepRatio = value;
-                            });
-                          },
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 4),
-
-                    TextField(
-                      controller: heightController,
-                      keyboardType: TextInputType.number,
-                      style: TextStyle(
-                        color: isDark ? Colors.white : Colors.black87,
-                      ),
-                      decoration: InputDecoration(
-                        labelText: "Height".tr,
-                        labelStyle: TextStyle(
-                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
-                        ),
-                        suffixText: "px",
-                        suffixStyle: TextStyle(
-                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(
-                            color: isDark ? Colors.grey.shade700 : Colors.grey.shade400,
-                          ),
-                        ),
-                      ),
-                      onChanged: (value) {
-                        if (!keepRatio) return;
-
-                        final int? height = int.tryParse(value);
-
-                        if (height == null || height <= 0) return;
-
-                        final int newWidth = (height * ratio).round();
-
-                        widthController.text = newWidth.toString();
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(dialogContext);
-                  },
-                  child: Text(
-                    "Cancel".tr,
-                    style: TextStyle(
-                      color: isDark ? Colors.grey.shade400 : Colors.grey,
-                    ),
-                  ),
-                ),
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF6C5CE7),
-                    foregroundColor: Colors.white,
-                  ),
-                  icon: const Icon(Icons.check),
-                  label: Text("Resize".tr),
-                  onPressed: () async {
-                    final int? width = int.tryParse(widthController.text);
-
-                    final int? height = int.tryParse(heightController.text);
-
-                    if (width == null ||
-                        height == null ||
-                        width <= 0 ||
-                        height <= 0) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text("Please enter valid dimensions".tr),
-                        ),
-                      );
-                      return;
-                    }
-
-                    Navigator.pop(dialogContext);
-
-                    final resized = await _resizeImage(
-                      originalBytes,
-                      width: width,
-                      height: height,
-                    );
-
-                    if (resized == null && context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text("Failed to resize image".tr)),
-                      );
-                    }
-                  },
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-
-    return result;
-  }
-
-  // ============================================================
-  // EDIT IMAGE FLOW
-  // ============================================================
-
-  Future<void> _selectAndEditImage({
-    required BuildContext context,
-    required void Function(Uint8List bytes, XFile file) onSuccess,
-  }) async {
-    try {
-      final XFile? selectedImage = await _picker.pickImage(
-        source: ImageSource.gallery,
-      );
-
-      if (selectedImage == null) {
-        return;
-      }
-
-      final Uint8List originalBytes = await selectedImage.readAsBytes();
-
-      if (originalBytes.isEmpty) {
-        throw Exception("Selected image is empty");
-      }
-
-      // Open cropper
-      final Uint8List? croppedBytes = await _cropImage(
-        context: context,
-        imageFile: selectedImage,
-      );
-
-      if (croppedBytes == null) {
-        return;
-      }
-
-      // Create a new XFile from edited bytes
-      final XFile editedFile = XFile.fromData(
-        croppedBytes,
-        name: 'banner_${DateTime.now().millisecondsSinceEpoch}.jpg',
-        mimeType: 'image/jpeg',
-      );
-
-      onSuccess(croppedBytes, editedFile);
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("${"Failed to edit image".tr}: $e")),
-        );
-      }
-    }
-  }
-
-  // ============================================================
-  // BANNER DIALOG
-  // ============================================================
-
-  void _showBannerDialog({String? docId, Map<String, dynamic>? currentData}) {
-    String? selectedCategoryId = currentData?['category'];
-
-    bool isOnClick = currentData?['onclick'] ?? false;
-
-    String? currentImageUrl = currentData?['image'];
-
-    XFile? pickedImage;
-
-    Uint8List? pickedImageBytes;
-
-    bool isLoading = false;
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            final double screenWidth = MediaQuery.of(context).size.width;
-            final bool isDark = Theme.of(context).brightness == Brightness.dark;
-
-            return AlertDialog(
-              backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              title: Text(
-                docId == null
-                    ? "Adding a new Banar".tr
-                    : "Modify the banner".tr,
-                style: TextStyle(
-                  color: isDark ? Colors.white : Colors.black87,
-                ),
-              ),
-              content: SizedBox(
-                width: screenWidth > 600 ? 560 : screenWidth * 0.85,
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // ==================================================
-                      // IMAGE PREVIEW
-                      // ==================================================
-                      Container(
-                        height: 230,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? const Color(0xFF2A2A2A)
-                              : Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: isDark
-                                ? Colors.grey.shade700
-                                : Colors.grey.shade300,
-                          ),
-                        ),
-                        child: pickedImageBytes != null
-                            ? ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.memory(
-                            pickedImageBytes!,
-                            fit: BoxFit.contain,
-                          ),
-                        )
-                            : (currentImageUrl != null &&
-                            currentImageUrl!.isNotEmpty)
-                            ? ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.network(
-                            currentImageUrl!,
-                            fit: BoxFit.contain,
-                          ),
-                        )
-                            : Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.add_a_photo_rounded,
-                              size: 45,
-                              color: Color(0xFF6C5CE7),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              "Click to select a banner image".tr,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: isDark
-                                    ? Colors.grey.shade400
-                                    : Colors.grey,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      // ==================================================
-                      // IMAGE BUTTONS
-                      // ==================================================
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              style: OutlinedButton.styleFrom(
-                                side: BorderSide(
-                                  color: isDark
-                                      ? Colors.grey.shade700
-                                      : Colors.grey.shade400,
-                                ),
-                                foregroundColor:
-                                isDark ? Colors.white : Colors.black87,
-                              ),
-                              icon: const Icon(Icons.photo_library_outlined),
-                              label: Text(
-                                pickedImageBytes == null
-                                    ? "Select Image".tr
-                                    : "Change Image".tr,
-                              ),
-                              onPressed: isLoading
-                                  ? null
-                                  : () async {
-                                await _selectAndEditImage(
-                                  context: context,
-                                  onSuccess: (bytes, file) {
-                                    setDialogState(() {
-                                      pickedImage = file;
-
-                                      pickedImageBytes = bytes;
-                                    });
-                                  },
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      if (pickedImageBytes != null) ...[
-                        const SizedBox(height: 10),
-
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                style: OutlinedButton.styleFrom(
-                                  side: BorderSide(
-                                    color: isDark
-                                        ? Colors.grey.shade700
-                                        : Colors.grey.shade400,
-                                  ),
-                                  foregroundColor:
-                                  isDark ? Colors.white : Colors.black87,
-                                ),
-                                icon: const Icon(Icons.crop_rotate),
-                                label: Text("Edit / Crop".tr),
-                                onPressed: isLoading
-                                    ? null
-                                    : () async {
-                                  if (pickedImage == null) {
-                                    return;
-                                  }
-
-                                  final edited = await _cropImage(
-                                    context: context,
-                                    imageFile: pickedImage!,
-                                  );
-
-                                  if (edited != null) {
-                                    setDialogState(() {
-                                      pickedImageBytes = edited;
-
-                                      pickedImage = XFile.fromData(
-                                        edited,
-                                        name:
-                                        'banner_${DateTime.now().millisecondsSinceEpoch}.jpg',
-                                        mimeType: 'image/jpeg',
-                                      );
-                                    });
-                                  }
-                                },
-                              ),
-                            ),
-
-                            const SizedBox(width: 8),
-
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                style: OutlinedButton.styleFrom(
-                                  side: BorderSide(
-                                    color: isDark
-                                        ? Colors.grey.shade700
-                                        : Colors.grey.shade400,
-                                  ),
-                                  foregroundColor:
-                                  isDark ? Colors.white : Colors.black87,
-                                ),
-                                icon: const Icon(Icons.photo_size_select_large),
-                                label: Text("Resize".tr),
-                                onPressed: isLoading
-                                    ? null
-                                    : () async {
-                                  if (pickedImageBytes == null) {
-                                    return;
-                                  }
-
-                                  final resized = await _showResizeDialog(
-                                    context,
-                                    pickedImageBytes!,
-                                  );
-
-                                  if (resized != null) {
-                                    setDialogState(() {
-                                      pickedImageBytes = resized;
-
-                                      pickedImage = XFile.fromData(
-                                        resized,
-                                        name:
-                                        'banner_${DateTime.now().millisecondsSinceEpoch}.jpg',
-                                        mimeType: 'image/jpeg',
-                                      );
-                                    });
-                                  }
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-
-                      const SizedBox(height: 16),
-
-                      // ==================================================
-                      // CLICKABLE
-                      // ==================================================
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(
-                          "Clickable (OnClick)".tr,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: isDark ? Colors.white : Colors.black87,
-                          ),
-                        ),
-                        subtitle: Text(
-                          "Upon activation, the user will be directed to the sections."
-                              .tr,
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: isDark
-                                ? Colors.grey.shade400
-                                : Colors.grey.shade600,
-                          ),
-                        ),
-                        value: isOnClick,
-                        activeColor: const Color(0xFF6C5CE7),
-                        onChanged: isLoading
-                            ? null
-                            : (val) {
-                          setDialogState(() {
-                            isOnClick = val;
-
-                            if (!isOnClick) {
-                              selectedCategoryId = null;
-                            }
-                          });
-                        },
-                      ),
-
-                      const SizedBox(height: 8),
-
-                      // ==================================================
-                      // CATEGORY
-                      // ==================================================
-                      if (isOnClick)
-                        StreamBuilder<QuerySnapshot>(
-                          stream: _categoriesRef.snapshots(),
-                          builder: (context, snapshot) {
-                            if (!snapshot.hasData) {
-                              return const Center(
-                                child: CircularProgressIndicator(),
-                              );
-                            }
-
-                            final docs = snapshot.data!.docs;
-
-                            return DropdownButtonFormField<String>(
-                              dropdownColor: isDark
-                                  ? const Color(0xFF2A2A2A)
-                                  : Colors.white,
-                              style: TextStyle(
-                                color: isDark ? Colors.white : Colors.black87,
-                              ),
-                              value: selectedCategoryId,
-                              hint: Text(
-                                "Select the relevant section.".tr,
-                                style: TextStyle(
-                                  color: isDark
-                                      ? Colors.grey.shade400
-                                      : Colors.grey.shade600,
-                                ),
-                              ),
-                              decoration: InputDecoration(
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 10,
-                                ),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  borderSide: BorderSide(
-                                    color: isDark
-                                        ? Colors.grey.shade700
-                                        : Colors.grey.shade400,
-                                  ),
-                                ),
-                              ),
-                              items: docs.map((doc) {
-                                final data = doc.data() as Map<String, dynamic>;
-
-                                return DropdownMenuItem<String>(
-                                  value: doc.id,
-                                  child: Text(
-                                    data['nameAr'] ??
-                                        data['nameEn'] ??
-                                        'Uncategorized Section'.tr,
-                                  ),
-                                );
-                              }).toList(),
-                              onChanged: isLoading
-                                  ? null
-                                  : (val) {
-                                setDialogState(() {
-                                  selectedCategoryId = val;
-                                });
-                              },
-                            );
-                          },
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // ============================================================
-              // ACTIONS
-              // ============================================================
-              actions: [
-                TextButton(
-                  onPressed: isLoading
-                      ? null
-                      : () => Navigator.pop(dialogContext),
-                  child: Text(
-                    "cancellation".tr,
-                    style: TextStyle(
-                      color: isDark ? Colors.grey.shade400 : Colors.grey,
-                    ),
-                  ),
-                ),
-
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF6C5CE7),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
-                    ),
-                  ),
-                  onPressed: isLoading
-                      ? null
-                      : () async {
-                    // -----------------------------
-                    // Validate image
-                    // -----------------------------
-
-                    if (pickedImage == null &&
-                        (currentImageUrl == null ||
-                            currentImageUrl!.isEmpty)) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            "Please choose an image first".tr,
-                          ),
-                        ),
-                      );
-
-                      return;
-                    }
-
-                    // -----------------------------
-                    // Validate category
-                    // -----------------------------
-
-                    if (isOnClick &&
-                        (selectedCategoryId == null ||
-                            selectedCategoryId!.isEmpty)) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            "Please select a section when enabling click functionality."
-                                .tr,
-                          ),
-                        ),
-                      );
-
-                      return;
-                    }
-
-                    setDialogState(() {
-                      isLoading = true;
-                    });
-
-                    try {
-                      String finalImageUrl = currentImageUrl ?? '';
-
-                      // -----------------------------
-                      // Upload new image
-                      // -----------------------------
-
-                      if (pickedImage != null) {
-                        final uploadedUrl =
-                        await CloudinaryService.uploadImage(
-                          pickedImage!,
-                        );
-
-                        if (uploadedUrl != null) {
-                          // Delete old image
-                          if (currentImageUrl != null &&
-                              currentImageUrl!.isNotEmpty) {
-                            await CloudinaryService.deleteImage(
-                              currentImageUrl!,
-                            );
-                          }
-
-                          finalImageUrl = uploadedUrl;
-                        } else {
-                          throw Exception(
-                            "Failed to upload the image to Cloudinary.",
-                          );
-                        }
-                      }
-
-                      // -----------------------------
-                      // Firestore data
-                      // -----------------------------
-
-                      final Map<String, dynamic> dataToSave = {
-                        'image': finalImageUrl,
-                        'onclick': isOnClick,
-                        'category': isOnClick ? selectedCategoryId : '',
-                      };
-
-                      if (docId == null) {
-                        dataToSave['order'] =
-                            DateTime.now().millisecondsSinceEpoch;
-
-                        await _bannersRef.add(dataToSave);
-                      } else {
-                        await _bannersRef.doc(docId).update(dataToSave);
-                      }
-
-                      if (context.mounted) {
-                        Navigator.pop(dialogContext);
-                      }
-                    } catch (e) {
-                      setDialogState(() {
-                        isLoading = false;
-                      });
-
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              "${"Something went wrong".tr}: $e",
-                            ),
-                          ),
-                        );
-                      }
-                    }
-                  },
-                  child: isLoading
-                      ? const SizedBox(
-                    height: 18,
-                    width: 18,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
-                    ),
-                  )
-                      : Text(
-                    docId == null ? "Add".tr : "Save changes".tr,
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  // ============================================================
-  // DELETE
-  // ============================================================
-
-  Future<void> _deleteBanner(String docId, String imageUrl) async {
+  // حل مشكلة BUG الحذف والتنسيق التلقائي للترتيب لعميل التطبيق
+  Future<void> _deleteBanner(BannerModel banner) async {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-        title: Text(
-          "Confirm Deletion".tr,
-          style: TextStyle(
-            color: isDark ? Colors.white : Colors.black87,
-          ),
-        ),
-        content: Text(
-          "Are you sure you want to permanently delete this banner?".tr,
-          style: TextStyle(
-            color: isDark ? Colors.white70 : Colors.black87,
-          ),
-        ),
+        backgroundColor: isDark ? const Color(0xFF1E1E2E) : Colors.white,
+        title: Text("Confirm Deletion".tr, style: TextStyle(color: isDark ? Colors.white : Colors.black87)),
+        content: Text("Are you sure you want to permanently delete this banner?".tr),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(
-              "cancellation".tr,
-              style: TextStyle(
-                color: isDark ? Colors.grey.shade400 : Colors.grey,
-              ),
-            ),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text("cancellation".tr)),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text("delete".tr, style: const TextStyle(color: Colors.red)),
+            child: Text("delete".tr, style: const TextStyle(color: Colors.redAccent)),
           ),
         ],
       ),
@@ -1045,162 +56,143 @@ class _BannersWidgetState extends State<BannersWidget> {
 
     if (confirm == true) {
       try {
-        if (imageUrl.isNotEmpty) {
-          await CloudinaryService.deleteImage(imageUrl);
+        if (banner.image.isNotEmpty) {
+          await CloudinaryService.deleteImage(banner.image);
         }
 
-        await _bannersRef.doc(docId).delete();
+        // حذف البانر وتعديل ترتيب باقي البانرات بشكل تسلسلي متناسق
+        final batch = FirebaseFirestore.instance.batch();
+        batch.delete(_bannersRef.doc(banner.id));
+
+        final snapshot = await _bannersRef.orderBy('order').get();
+        final remainingBanners = snapshot.docs
+            .where((doc) => doc.id != banner.id)
+            .map((doc) => BannerModel.fromFirestore(doc))
+            .toList();
+
+        for (int i = 0; i < remainingBanners.length; i++) {
+          batch.update(_bannersRef.doc(remainingBanners[i].id), {'order': i});
+        }
+
+        await batch.commit();
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("${"Failed to delete banner".tr}: $e")),
-          );
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("${"Failed to delete banner".tr}: $e")));
         }
       }
     }
   }
 
-  // ============================================================
-  // REORDER
-  // ============================================================
-
-  void _updateBannersOrder(
-      List<QueryDocumentSnapshot> docs,
-      int oldIndex,
-      int newIndex,
-      ) {
-    final item = docs.removeAt(oldIndex);
-
-    docs.insert(newIndex, item);
+  void _updateBannersOrder(List<BannerModel> banners, int oldIndex, int newIndex) {
+    final item = banners.removeAt(oldIndex);
+    banners.insert(newIndex, item);
 
     final batch = FirebaseFirestore.instance.batch();
-
-    for (int i = 0; i < docs.length; i++) {
-      batch.update(docs[i].reference, {'order': i});
+    for (int i = 0; i < banners.length; i++) {
+      batch.update(_bannersRef.doc(banners[i].id), {'order': i});
     }
-
     batch.commit();
   }
 
-  // ============================================================
-  // BUILD
-  // ============================================================
+  Widget _buildCategoryName(String categoryId, bool isDark) {
+    if (_categoryNamesCache.containsKey(categoryId)) {
+      return Text(
+        _categoryNamesCache[categoryId]!,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: isDark ? Colors.white : const Color(0xFF2D3436)),
+      );
+    }
+
+    return FutureBuilder<DocumentSnapshot>(
+      future: _categoriesRef.doc(categoryId).get(),
+      builder: (context, snapshot) {
+        if (snapshot.hasData && snapshot.data!.exists) {
+          final data = snapshot.data!.data() as Map<String, dynamic>;
+          final name = data['nameAr'] ?? data['nameEn'] ?? 'Uncategorized'.tr;
+          _categoryNamesCache[categoryId] = name;
+          return Text(
+            name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: isDark ? Colors.white : const Color(0xFF2D3436)),
+          );
+        }
+        return const Text("...", style: TextStyle(fontSize: 12));
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (!_permissions.contains("banner")) return AccessDefindView();
+
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = isDark ? const Color(0xFF1E1E2E) : Colors.white;
+    final borderColor = isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.04);
 
-    return _permision.contains("banner")
-        ? Scaffold(
-      backgroundColor:
-      isDark ? const Color(0xFF121212) : const Color(0xFFF4F6F9),
-
+    return Scaffold(
+      backgroundColor: Colors.transparent,
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: const Color(0xFF6C5CE7),
-        onPressed: () => _showBannerDialog(),
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: Text(
-          "Add Banner".tr,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+        backgroundColor: const Color(0xFF6366F1),
+        elevation: 4,
+        onPressed: () => BannerDialogs.showBannerDialog(
+          context: context,
+          bannersRef: _bannersRef,
+          categoriesRef: _categoriesRef,
         ),
+        icon: const Icon(Icons.add_rounded, color: Colors.white),
+        label: Text("Add Banner".tr, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ),
-
       body: StreamBuilder<QuerySnapshot>(
-        stream: _bannersRef.snapshots(),
-
+        stream: _bannersRef.orderBy('order').snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(color: Color(0xFF6C5CE7)),
-            );
+            return const Center(child: CircularProgressIndicator(color: Color(0xFF6366F1)));
           }
 
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
             return Center(
               child: Text(
                 "There are currently no banners.".tr,
-                style: TextStyle(
-                  color: isDark ? Colors.grey.shade400 : Colors.grey,
-                  fontSize: 16,
-                ),
+                style: TextStyle(color: isDark ? Colors.white54 : Colors.grey, fontSize: 15),
               ),
             );
           }
 
-          final docs = List<QueryDocumentSnapshot>.from(
-            snapshot.data!.docs,
-          );
-
-          docs.sort((a, b) {
-            final dataA = a.data() as Map<String, dynamic>;
-
-            final dataB = b.data() as Map<String, dynamic>;
-
-            final int orderA = dataA['order'] ?? 999999;
-
-            final int orderB = dataB['order'] ?? 999999;
-
-            return orderA.compareTo(orderB);
-          });
+          final banners = snapshot.data!.docs.map((doc) => BannerModel.fromFirestore(doc)).toList();
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    const Icon(
-                      Icons.drag_indicator,
-                      color: Color(0xFF6C5CE7),
-                    ),
+                    const Icon(Icons.drag_indicator_rounded, color: Color(0xFF6366F1)),
                     const SizedBox(width: 8),
                     Text(
-                      "Drag and drop banners to rearrange display order"
-                          .tr,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: isDark
-                            ? Colors.grey.shade400
-                            : Colors.grey.shade600,
-                        fontWeight: FontWeight.w500,
-                      ),
+                      "Drag and drop banners to rearrange display order".tr,
+                      style: TextStyle(fontSize: 13, color: isDark ? Colors.white60 : const Color(0xFF6B7280), fontWeight: FontWeight.w500),
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 16),
-
                 ReorderableWrap(
                   spacing: 16.0,
                   runSpacing: 16.0,
-                  onReorder: (oldIndex, newIndex) =>
-                      _updateBannersOrder(docs, oldIndex, newIndex),
-                  children: docs.map((doc) {
-                    final data = doc.data() as Map<String, dynamic>;
-
-                    final String imageUrl = data['image'] ?? '';
-
-                    final bool isOnClick = data['onclick'] ?? false;
-
-                    final String categoryId = data['category'] ?? '';
-
+                  onReorder: (oldIndex, newIndex) => _updateBannersOrder(banners, oldIndex, newIndex),
+                  children: banners.map((banner) {
                     return Container(
-                      key: ValueKey(doc.id),
-                      width: 360,
+                      key: ValueKey(banner.id),
+                      width: 320,
                       decoration: BoxDecoration(
-                        color: isDark
-                            ? const Color(0xFF1E1E1E)
-                            : Colors.white,
+                        color: cardBg,
                         borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: borderColor),
                         boxShadow: [
                           BoxShadow(
-                            color: isDark
-                                ? Colors.black.withOpacity(0.3)
-                                : Colors.black.withOpacity(0.04),
+                            color: Colors.black.withOpacity(isDark ? 0.2 : 0.03),
                             blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),
@@ -1212,67 +204,36 @@ class _BannersWidgetState extends State<BannersWidget> {
                           Stack(
                             children: [
                               ClipRRect(
-                                borderRadius: const BorderRadius.vertical(
-                                  top: Radius.circular(16),
-                                ),
+                                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                                 child: AspectRatio(
                                   aspectRatio: 16 / 8,
-                                  child: imageUrl.isNotEmpty
-                                      ? Image.network(
-                                    imageUrl,
+                                  child: banner.image.isNotEmpty
+                                      ? CachedNetworkImage(
+                                    imageUrl: banner.image,
                                     fit: BoxFit.cover,
+                                    placeholder: (context, url) => Container(color: isDark ? Colors.white10 : Colors.black12),
+                                    errorWidget: (context, url, error) => const Icon(Icons.broken_image),
                                   )
-                                      : Container(
-                                    color: isDark
-                                        ? const Color(0xFF2A2A2A)
-                                        : Colors.grey.shade100,
-                                    child: Icon(
-                                      Icons.image,
-                                      size: 40,
-                                      color: isDark
-                                          ? Colors.grey.shade600
-                                          : Colors.grey,
-                                    ),
-                                  ),
+                                      : Container(color: isDark ? Colors.white10 : Colors.black12, child: const Icon(Icons.image)),
                                 ),
                               ),
-
                               Positioned(
                                 top: 10,
                                 right: 10,
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 4,
-                                  ),
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: isOnClick
-                                        ? const Color(0xFF10B981)
-                                        : Colors.black54,
-                                    borderRadius: BorderRadius.circular(
-                                      20,
-                                    ),
+                                    color: banner.isOnClick ? const Color(0xFF10B981) : Colors.black54,
+                                    borderRadius: BorderRadius.circular(20),
                                   ),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(
-                                        isOnClick
-                                            ? Icons.touch_app
-                                            : Icons.visibility,
-                                        size: 12,
-                                        color: Colors.white,
-                                      ),
+                                      Icon(banner.isOnClick ? Icons.touch_app_rounded : Icons.visibility_rounded, size: 12, color: Colors.white),
                                       const SizedBox(width: 4),
                                       Text(
-                                        isOnClick
-                                            ? "Interactive".tr
-                                            : "Display only".tr,
-                                        style: const TextStyle(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                        ),
+                                        banner.isOnClick ? "Interactive".tr : "Display only".tr,
+                                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
                                       ),
                                     ],
                                   ),
@@ -1280,119 +241,43 @@ class _BannersWidgetState extends State<BannersWidget> {
                               ),
                             ],
                           ),
-
                           Padding(
                             padding: const EdgeInsets.all(12),
                             child: Row(
                               children: [
                                 Expanded(
-                                  child:
-                                  isOnClick && categoryId.isNotEmpty
-                                      ? FutureBuilder<DocumentSnapshot>(
-                                    future: _categoriesRef
-                                        .doc(categoryId)
-                                        .get(),
-                                    builder: (context, catSnapshot) {
-                                      String categoryName = "...";
-
-                                      if (catSnapshot.hasData &&
-                                          catSnapshot
-                                              .data!
-                                              .exists) {
-                                        final catData =
-                                        catSnapshot.data!.data()
-                                        as Map<
-                                            String,
-                                            dynamic
-                                        >;
-
-                                        categoryName =
-                                            catData['nameAr'] ??
-                                                catData['nameEn'] ??
-                                                'Uncategorized Section'
-                                                    .tr;
-                                      }
-
-                                      return Row(
-                                        children: [
-                                          const Icon(
-                                            Icons.grid_view_rounded,
-                                            size: 16,
-                                            color: Color(
-                                              0xFF6C5CE7,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Expanded(
-                                            child: Text(
-                                              categoryName,
-                                              maxLines: 1,
-                                              overflow: TextOverflow
-                                                  .ellipsis,
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                fontWeight:
-                                                FontWeight
-                                                    .w600,
-                                                color: isDark
-                                                    ? Colors.white
-                                                    : const Color(
-                                                  0xFF2D3436,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      );
-                                    },
+                                  child: banner.isOnClick && banner.categoryId.isNotEmpty
+                                      ? Row(
+                                    children: [
+                                      const Icon(Icons.grid_view_rounded, size: 16, color: Color(0xFF6366F1)),
+                                      const SizedBox(width: 6),
+                                      Expanded(child: _buildCategoryName(banner.categoryId, isDark)),
+                                    ],
                                   )
                                       : Row(
                                     children: [
-                                      Icon(
-                                        Icons.image_outlined,
-                                        size: 16,
-                                        color: isDark
-                                            ? Colors.grey.shade500
-                                            : Colors.grey.shade400,
-                                      ),
+                                      Icon(Icons.image_outlined, size: 16, color: isDark ? Colors.white38 : Colors.grey),
                                       const SizedBox(width: 6),
-                                      Text(
-                                        "Static display image".tr,
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: isDark
-                                              ? Colors.grey.shade400
-                                              : Colors.grey.shade500,
-                                        ),
-                                      ),
+                                      Text("Static display image".tr, style: TextStyle(fontSize: 12, color: isDark ? Colors.white54 : Colors.grey)),
                                     ],
                                   ),
                                 ),
-
                                 IconButton(
                                   constraints: const BoxConstraints(),
                                   padding: const EdgeInsets.all(6),
-                                  icon: const Icon(
-                                    Icons.edit_outlined,
-                                    color: Color(0xFF6C5CE7),
-                                    size: 18,
-                                  ),
-                                  onPressed: () => _showBannerDialog(
-                                    docId: doc.id,
-                                    currentData: data,
+                                  icon: const Icon(Icons.edit_outlined, color: Color(0xFF6366F1), size: 18),
+                                  onPressed: () => BannerDialogs.showBannerDialog(
+                                    context: context,
+                                    bannersRef: _bannersRef,
+                                    categoriesRef: _categoriesRef,
+                                    currentBanner: banner,
                                   ),
                                 ),
-
                                 IconButton(
                                   constraints: const BoxConstraints(),
                                   padding: const EdgeInsets.all(6),
-                                  icon: const Icon(
-                                    Icons.delete_outline,
-                                    color: Colors.redAccent,
-                                    size: 18,
-                                  ),
-                                  onPressed: () =>
-                                      _deleteBanner(doc.id, imageUrl),
+                                  icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 18),
+                                  onPressed: () => _deleteBanner(banner),
                                 ),
                               ],
                             ),
@@ -1407,7 +292,6 @@ class _BannersWidgetState extends State<BannersWidget> {
           );
         },
       ),
-    )
-        : AccessDefindView();
+    );
   }
 }
