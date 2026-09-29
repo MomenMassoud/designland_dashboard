@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:dashboard_desginland/Core/server/get_current_user.dart';
 import 'package:dashboard_desginland/model/user_model.dart';
+import '../model/CalendarEventModel.dart';
 import '../model/dashboard_stats_model.dart';
 
 class HomeController extends GetxController {
@@ -16,6 +17,7 @@ class HomeController extends GetxController {
   final Rx<FinancialStats> financialStats = const FinancialStats().obs;
   final Rx<GrowthStats> growthStats = const GrowthStats().obs;
   final RxList<ActiveOrderModel> activeOrders = <ActiveOrderModel>[].obs;
+  final RxList<CalendarEventModel> todaysEvents = <CalendarEventModel>[].obs;
 
   // Streams لجميع الـ Collections المطلوب مراقبتها
   Stream<QuerySnapshot> get clientsStream =>
@@ -38,6 +40,7 @@ class HomeController extends GetxController {
 
   StreamSubscription? _visitorsSub;
   StreamSubscription? _financialsSub;
+  StreamSubscription? _calendarSub;
 
   @override
   void onInit() {
@@ -51,6 +54,12 @@ class HomeController extends GetxController {
       if (context != null) {
         currentUser.value = await GetCurrentUserData(context);
       }
+
+      // البدء بالاستماع لأحداث التقويم فور توفر معرّف المستخدم
+      if (currentUser.value?.uid != null && currentUser.value!.uid!.isNotEmpty) {
+        listenToTodaysCalendar(currentUser.value!.uid!);
+      }
+
       _listenToVisitors();
       _listenToFinancialsAndOrders();
     } catch (e) {
@@ -112,7 +121,6 @@ class HomeController extends GetxController {
   void _listenToFinancialsAndOrders() {
     _financialsSub?.cancel();
 
-    // نستخدم Collection Group لاستجابة أسرع وأداء عالٍ
     _financialsSub = _firestore.collectionGroup('orders').snapshots().listen((ordersSnap) async {
       int active = 0, completed = 0, cancelled = 0;
       List<ActiveOrderModel> activeList = [];
@@ -211,7 +219,6 @@ class HomeController extends GetxController {
       cancelledOrders: cancelled,
     );
 
-    // حساب النمو
     double growthPercent = 0.0;
     if (totalCollectedPrevMonth > 0) {
       growthPercent = ((totalCollectedCurrentMonth - totalCollectedPrevMonth) / totalCollectedPrevMonth) * 100;
@@ -232,10 +239,60 @@ class HomeController extends GetxController {
     );
   }
 
+  // الاستماع لتقويم المستخدم الحالي: user -> {userId} -> calendar_events
+  void listenToTodaysCalendar(String userId) {
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day);
+    final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
+
+    _calendarSub?.cancel();
+    _calendarSub = _firestore
+        .collection('user')
+        .doc(userId)
+        .collection('calendar_events')
+        .where('eventTime', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+        .where('eventTime', isLessThanOrEqualTo: Timestamp.fromDate(endOfDay))
+        .orderBy('eventTime', descending: false)
+        .snapshots()
+        .listen((snapshot) {
+      todaysEvents.value = snapshot.docs
+          .map((doc) => CalendarEventModel.fromFirestore(doc))
+          .toList();
+    });
+  }
+
+  // تحديث حالة المهمة (Check / Uncheck)
+  Future<void> toggleTaskStatus(String userId, String eventId, bool isCompleted) async {
+    try {
+      await _firestore
+          .collection('user')
+          .doc(userId)
+          .collection('calendar_events')
+          .doc(eventId)
+          .update({'isCompleted': isCompleted});
+    } catch (e) {
+      Get.snackbar("Error", "Failed to update event status");
+    }
+  }
+
+  // إضافة حدث جديد
+  Future<void> addNewEvent(String userId, CalendarEventModel event) async {
+    try {
+      await _firestore
+          .collection('user')
+          .doc(userId)
+          .collection('calendar_events')
+          .add(event.toMap());
+    } catch (e) {
+      Get.snackbar("Error", "Failed to add new event");
+    }
+  }
+
   @override
   void onClose() {
     _visitorsSub?.cancel();
     _financialsSub?.cancel();
+    _calendarSub?.cancel();
     super.onClose();
   }
 }

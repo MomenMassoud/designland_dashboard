@@ -1,3 +1,6 @@
+import 'package:dashboard_desginland/feature/Home/widget/quick_actions_grid.dart';
+import 'package:dashboard_desginland/feature/Home/widget/store_health_card.dart';
+import 'package:dashboard_desginland/feature/Home/widget/todays_schedule_card.dart';
 import 'package:dashboard_desginland/feature/Home/widget/visitors_card.dart';
 import 'package:dashboard_desginland/feature/Home/widget/welcome_banner.dart';
 import 'package:flutter/material.dart';
@@ -29,6 +32,7 @@ class _HomeWidgetState extends State<HomeWidget> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final scaffoldBg = isDark ? const Color(0xFF121218) : const Color(0xFFF4F5F9);
+    final cardBg = isDark ? const Color(0xFF1E1E2E) : Colors.white;
     final textPrimary = isDark ? Colors.white : const Color(0xFF111827);
     final textSecondary = isDark ? Colors.white60 : const Color(0xFF6B7280);
     final appBarBg = isDark ? const Color(0xFF1E1E2E) : Colors.white;
@@ -110,8 +114,76 @@ class _HomeWidgetState extends State<HomeWidget> {
               ),
               const SizedBox(height: 10),
 
-              // Primary Grid: Compact layout for core stats
+              // Primary Grid
               _buildPrimaryGrid(),
+              const SizedBox(height: 16),
+
+              // Quick Actions Grid
+              Text(
+                "Quick Actions & Shortcuts".tr,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: textPrimary,
+                ),
+              ),
+              const SizedBox(height: 10),
+              QuickActionsGrid(
+                isDark: isDark,
+                cardBg: cardBg,
+                textPrimary: textPrimary,
+              ),
+              const SizedBox(height: 16),
+
+              // Responsive Two-Column Section for Health and Schedule
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  if (constraints.maxWidth > 900) {
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: TodaysScheduleCard(
+                            isDark: isDark,
+                            cardBg: cardBg,
+                            textPrimary: textPrimary,
+                            textSecondary: textSecondary,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          flex: 2,
+                          child: StoreHealthCard(
+                            isDark: isDark,
+                            cardBg: cardBg,
+                            textPrimary: textPrimary,
+                            textSecondary: textSecondary,
+                          ),
+                        ),
+                      ],
+                    );
+                  } else {
+                    return Column(
+                      children: [
+                        TodaysScheduleCard(
+                          isDark: isDark,
+                          cardBg: cardBg,
+                          textPrimary: textPrimary,
+                          textSecondary: textSecondary,
+                        ),
+                        const SizedBox(height: 16),
+                        StoreHealthCard(
+                          isDark: isDark,
+                          cardBg: cardBg,
+                          textPrimary: textPrimary,
+                          textSecondary: textSecondary,
+                        ),
+                      ],
+                    );
+                  }
+                },
+              ),
               const SizedBox(height: 16),
 
               Text(
@@ -124,7 +196,7 @@ class _HomeWidgetState extends State<HomeWidget> {
               ),
               const SizedBox(height: 10),
 
-              // Secondary Grid: Compact resource cards
+              // Secondary Grid
               _buildSecondaryGrid(),
               const SizedBox(height: 16),
 
@@ -140,11 +212,9 @@ class _HomeWidgetState extends State<HomeWidget> {
     });
   }
 
-  /// Compact Primary Metrics Grid
   Widget _buildPrimaryGrid() {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // زيادة عدد الأعمدة وتقليل الأبعاد لجعل الكروت مدمجة
         int crossAxisCount = constraints.maxWidth > 1200
             ? 3
             : (constraints.maxWidth > 750 ? 3 : (constraints.maxWidth > 500 ? 2 : 1));
@@ -156,7 +226,6 @@ class _HomeWidgetState extends State<HomeWidget> {
             crossAxisCount: crossAxisCount,
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
-            // نسبة الارتفاع إلى العرض لتصغير الارتفاع
             childAspectRatio: constraints.maxWidth < 500 ? 2.2 : 1.9,
           ),
           children: [
@@ -187,7 +256,6 @@ class _HomeWidgetState extends State<HomeWidget> {
     );
   }
 
-  /// Compact Secondary Resources Grid
   Widget _buildSecondaryGrid() {
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -204,7 +272,6 @@ class _HomeWidgetState extends State<HomeWidget> {
             crossAxisCount: crossAxisCount,
             crossAxisSpacing: 10,
             mainAxisSpacing: 10,
-            // جعل الكروت الفرعية مدمجة ومحدودة الارتفاع
             childAspectRatio: constraints.maxWidth < 400 ? 1.8 : 2.0,
           ),
           children: [
