@@ -22,7 +22,7 @@ class AnalyticsWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool isDark = Get.isDarkMode;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final Color cardBgColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
     final Color textPrimaryColor = isDark ? Colors.white : Colors.black87;
     final Color textSecondaryColor = isDark ? Colors.grey.shade400 : Colors.grey;

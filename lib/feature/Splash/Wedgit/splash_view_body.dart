@@ -1,9 +1,11 @@
-import 'package:dashboard_desginland/feature/Login/view/login_view.dart';
-import 'package:dashboard_desginland/feature/Main%20Screen/view/main_screen_view.dart';
+import 'package:dashboard_desginland/feature/Splash/Wedgit/splash_footer.dart';
+import 'package:dashboard_desginland/feature/Splash/Wedgit/splash_logo_section.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../Core/Utils/app.images.dart';
+import '../../Login/view/login_view.dart';
+import '../../Main Screen/view/main_screen_view.dart';
 
 class SplashViewBody extends StatefulWidget {
   const SplashViewBody({super.key});
@@ -14,83 +16,76 @@ class SplashViewBody extends StatefulWidget {
 
 class _SplashViewBodyState extends State<SplashViewBody>
     with SingleTickerProviderStateMixin {
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
-  late Animation<double> _scaleAnimation;
-  late Animation<Offset> _slideAnimation;
+  late final AnimationController _controller;
+  late final Animation<double> _fadeAnimation;
+  late final Animation<double> _scaleAnimation;
+  late final Animation<Offset> _slideAnimation;
 
   @override
   void initState() {
     super.initState();
-    _setupSystemUI();
     _setupAnimations();
-    _navigateToNextScreen();
+    _startSplashSequence();
   }
 
-  void _setupSystemUI() {
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    SystemChrome.setSystemUIOverlayStyle(
-      const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark, // أيقونات سوداء لتقرأ على الخلفية البيضاء
-        statusBarBrightness: Brightness.light,    // أيقونات سوداء للـ iOS
-      ),
-    );
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // تحميل الشعار مسبقاً في ذاكرة التخزين المؤقت لتجنب أي تأخير في العرض
+    precacheImage(const AssetImage(AppImages.logo), context);
   }
 
   void _setupAnimations() {
-    _animationController = AnimationController(
+    _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1600),
+      duration: const Duration(milliseconds: 1000),
     );
 
-    // انيميشن الظهور التدريجي (Opacity)
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
-        parent: _animationController,
-        curve: const Interval(0.0, 0.60, curve: Curves.easeIn),
+        parent: _controller,
+        curve: const Interval(0.0, 0.70, curve: Curves.easeIn),
       ),
     );
 
-    // انيميشن التكبير الهادئ والمرن (Scale)
-    _scaleAnimation = Tween<double>(begin: 0.75, end: 1.0).animate(
+    _scaleAnimation = Tween<double>(begin: 0.82, end: 1.0).animate(
       CurvedAnimation(
-        parent: _animationController,
-        curve: const Interval(0.0, 0.80, curve: Curves.easeOutBack),
+        parent: _controller,
+        curve: const Interval(0.0, 0.85, curve: Curves.easeOutBack),
       ),
     );
 
-    // انيميشن صعود خفيف للأعلى لإعطاء حيوية للوجو (Slide UP)
     _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.15),
+      begin: const Offset(0, 0.12),
       end: Offset.zero,
     ).animate(
       CurvedAnimation(
-        parent: _animationController,
-        curve: const Interval(0.10, 0.85, curve: Curves.easeOutCubic),
+        parent: _controller,
+        curve: const Interval(0.10, 0.90, curve: Curves.easeOutCubic),
       ),
     );
 
-    _animationController.forward();
+    _controller.forward();
   }
-  final FirebaseAuth _auth=FirebaseAuth.instance;
-  void _navigateToNextScreen() {
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
-        if(_auth.currentUser!=null){
-          Navigator.pushReplacementNamed(context, MainScreenView.id);
-        }
-        else{
-          Navigator.pushReplacementNamed(context, LoginView.id);
-        }
 
-      }
-    });
+  Future<void> _startSplashSequence() async {
+    // التنفيذ الفوري بالتوازي مع مدة الأنيميشن السريعة (1.2 ثانية)
+    await Future.wait([
+      Future.delayed(const Duration(milliseconds: 1200)),
+      // أي إعدادات سريعة أخرى يمكن تنفيذها هنا
+    ]);
+
+    if (!mounted) return;
+
+    final user = FirebaseAuth.instance.currentUser;
+    final targetRoute = user != null ? MainScreenView.id : LoginView.id;
+
+    Navigator.pushReplacementNamed(context, targetRoute);
   }
 
   @override
   void dispose() {
-    _animationController.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
@@ -107,10 +102,11 @@ class _SplashViewBodyState extends State<SplashViewBody>
         body: Stack(
           alignment: Alignment.center,
           children: [
-            // المحتوى الرئيسي: اللوجو والنص بانيميشن مدمج
+            // استخدام child ثابت لمنع Rebuilding المكونات أثناء الأنيميشن
             Center(
               child: AnimatedBuilder(
-                animation: _animationController,
+                animation: _controller,
+                child: const SplashLogoSection(),
                 builder: (context, child) {
                   return FadeTransition(
                     opacity: _fadeAnimation,
@@ -118,48 +114,7 @@ class _SplashViewBodyState extends State<SplashViewBody>
                       position: _slideAnimation,
                       child: ScaleTransition(
                         scale: _scaleAnimation,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            // إطار دائري للوجو مع ظل ناعم باللون الأسود
-                            Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.white,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.06),
-                                    blurRadius: 25,
-                                    spreadRadius: 2,
-                                    offset: const Offset(0, 8),
-                                  ),
-                                ],
-                              ),
-                              child: CircleAvatar(
-                                radius: 85,
-                                backgroundColor: Colors.transparent,
-                                backgroundImage: AssetImage(AppImages.logo),
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-                            // النص الرئيسي
-                            const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 24.0),
-                              child: Text(
-                                "A Happy Place for Customization Personalized Gifts & More",
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w400,
-                                  letterSpacing: 1.2,
-                                  color: Colors.black,
-                                  height: 1.4,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                        child: child,
                       ),
                     ),
                   );
@@ -167,31 +122,12 @@ class _SplashViewBodyState extends State<SplashViewBody>
               ),
             ),
 
-            // حسان يوزر الإنستغرام بأسفل الشاشة
+            // النص السفلي بانيميشن الظهور الخفيف
             Positioned(
               bottom: 36,
               child: FadeTransition(
                 opacity: _fadeAnimation,
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.camera_alt_outlined,
-                      color: Colors.black,
-                      size: 16,
-                    ),
-                    SizedBox(width: 6),
-                    Text(
-                      "@Designland.eg",
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black,
-                        letterSpacing: 1.1,
-                      ),
-                    ),
-                  ],
-                ),
+                child: const SplashFooter(),
               ),
             ),
           ],

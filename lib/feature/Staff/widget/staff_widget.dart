@@ -1,9 +1,10 @@
-import 'dart:convert';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dashboard_desginland/feature/Access%20Defind/view/access_defind_view.dart';
+import 'package:dashboard_desginland/feature/Staff/widget/staff_form.dart';
+import 'package:dashboard_desginland/feature/Staff/widget/staff_list.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import '../../../Core/server/get_permision.dart';
+import '../../../Core/server/staff_service.dart';
+import '../../../model/staff_model.dart';
 
 class StaffWidget extends StatefulWidget {
   const StaffWidget({Key? key}) : super(key: key);
@@ -13,61 +14,52 @@ class StaffWidget extends StatefulWidget {
 }
 
 class _StaffWidgetState extends State<StaffWidget> {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
-  // شاشة الانتهاء أو نموذج الإضافة/التعديل
-  bool _isFormOpen = false;
-
-  @override
-  void initState() {
-    super.initState();
-    Start();
-  }
-
-  List<String> _permision = [];
-
-  void Start() async {
-    _permision = await GetPermisionUser();
-    setState(() {
-      _permision;
-    });
-  }
-
-  // بيانات النموذج الحالية
-  String? _editingDocId;
+  final StaffService _staffService = StaffService();
   final _formKey = GlobalKey<FormState>();
+
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
+  List<String> _permissions = const [];
+  List<String> _selectedPermissions = [];
+  String? _editingDocId;
+  bool _isFormOpen = false;
   bool _isObscure = true;
   bool _isLoading = false;
-  List<String> _selectedPermissions = [];
 
-  final List<String> _availablePermissions = [
-    'categories',
-    'orders',
-    'reports',
-    'products',
-    'users',
-    'about',
-    'banner',
-    'promo',
-    'country'
+  final List<String> _availablePermissions = const [
+    'categories', 'orders', 'reports', 'products', 'users', 'about', 'banner', 'promo', 'country'
   ];
 
-  void _openForm({
-    String? docId,
-    String? currentName,
-    String? currentEmail,
-    List<String>? currentPermissions,
-  }) {
+  @override
+  void initState() {
+    super.initState();
+    _checkUserPermissions();
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _checkUserPermissions() async {
+    final perms = await GetPermisionUser();
+    if (mounted) {
+      setState(() => _permissions = perms);
+    }
+  }
+
+  void _openForm([StaffModel? staff]) {
     setState(() {
-      _editingDocId = docId;
-      _nameController.text = currentName ?? '';
-      _emailController.text = currentEmail ?? '';
+      _editingDocId = staff?.id;
+      _nameController.text = staff?.name ?? '';
+      _emailController.text = staff?.email ?? '';
       _passwordController.clear();
-      _selectedPermissions = List.from(currentPermissions ?? []);
+      _selectedPermissions = List.from(staff?.permissions ?? const []);
       _isFormOpen = true;
     });
   }
@@ -83,591 +75,117 @@ class _StaffWidgetState extends State<StaffWidget> {
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final theme = Theme.of(context);
-
-    final scaffoldBg = isDarkMode ? theme.scaffoldBackgroundColor : Colors.grey.shade100;
-    final appBarBg = isDarkMode ? theme.cardColor : Colors.white;
-    final appBarTextColor = isDarkMode ? Colors.white : Colors.black87;
-
-    return _permision.contains("staff")
-        ? Scaffold(
-      backgroundColor: scaffoldBg,
-      appBar: AppBar(
-        title: Text(
-          _isFormOpen
-              ? (_editingDocId != null ? "Modifying an employee's powers" : 'Add a new employee')
-              : 'Staff Management',
-          style: TextStyle(fontWeight: FontWeight.bold, color: appBarTextColor),
-        ),
-        centerTitle: true,
-        elevation: 0,
-        backgroundColor: appBarBg,
-        foregroundColor: appBarTextColor,
-        leading: _isFormOpen
-            ? IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new),
-          onPressed: _closeForm,
-        )
-            : null,
-      ),
-      floatingActionButton: !_isFormOpen
-          ? FloatingActionButton.extended(
-        onPressed: () => _openForm(),
-        backgroundColor: Theme.of(context).primaryColor,
-        icon: const Icon(Icons.person_add_alt_1, color: Colors.white),
-        label: const Text(
-          'Add a new employee',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-      )
-          : null,
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 350),
-        switchInCurve: Curves.easeOutBack,
-        switchOutCurve: Curves.easeIn,
-        child: _isFormOpen ? _buildStaffForm() : _buildStaffList(),
-      ),
-    )
-        : AccessDefindView();
-  }
-
-  // --- 1. قائمة الموظفين ---
-  Widget _buildStaffList() {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final theme = Theme.of(context);
-
-    final cardBg = isDarkMode ? theme.cardColor : Colors.white;
-    final titleTextColor = isDarkMode ? Colors.white : Colors.black87;
-    final subtitleTextColor = isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600;
-
-    return StreamBuilder<QuerySnapshot>(
-      key: const ValueKey('StaffList'),
-      stream: _firestore
-          .collection('user')
-          .where('role', isEqualTo: 'staff')
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        if (snapshot.hasError) {
-          return Center(child: Text('An error occurred:${snapshot.error}'));
-        }
-
-        final staffDocs = snapshot.data?.docs ?? [];
-
-        if (staffDocs.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.badge_outlined, size: 70, color: Colors.grey.shade500),
-                const SizedBox(height: 12),
-                Text(
-                  "There are currently no employees.",
-                  style: TextStyle(fontSize: 18, color: Colors.grey.shade500),
-                ),
-              ],
-            ),
-          );
-        }
-
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: staffDocs.length,
-          itemBuilder: (context, index) {
-            final doc = staffDocs[index];
-            final data = doc.data() as Map<String, dynamic>;
-
-            final String name = data['name'] ?? 'Anonymous';
-            final String email = data['email'] ?? '';
-            final List<dynamic> permissions = data['permissions'] ?? [];
-
-            return Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              decoration: BoxDecoration(
-                color: cardBg,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: isDarkMode
-                        ? Colors.black.withOpacity(0.3)
-                        : Colors.black.withOpacity(0.04),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: ListTile(
-                contentPadding: const EdgeInsets.all(16),
-                leading: CircleAvatar(
-                  radius: 26,
-                  backgroundColor: Theme.of(context).primaryColor.withOpacity(0.15),
-                  child: Text(
-                    name.isNotEmpty ? name[0].toUpperCase() : 'S',
-                    style: TextStyle(
-                      color: Theme.of(context).primaryColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
-                  ),
-                ),
-                title: Text(
-                  name,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: titleTextColor,
-                  ),
-                ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 4),
-                    Text(
-                      email,
-                      style: TextStyle(color: subtitleTextColor, fontSize: 13),
-                    ),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: permissions.map((p) {
-                        return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: isDarkMode
-                                ? Colors.blue.shade900.withOpacity(0.3)
-                                : Colors.blue.shade50,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: isDarkMode
-                                  ? Colors.blue.shade700.withOpacity(0.5)
-                                  : Colors.blue.shade100,
-                            ),
-                          ),
-                          child: Text(
-                            p.toString(),
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: isDarkMode ? Colors.blue.shade200 : Colors.blue.shade800,
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ],
-                ),
-                trailing: PopupMenuButton<String>(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  color: cardBg,
-                  onSelected: (value) {
-                    if (value == 'edit') {
-                      _openForm(
-                        docId: doc.id,
-                        currentName: name,
-                        currentEmail: email,
-                        currentPermissions: List<String>.from(permissions),
-                      );
-                    } else if (value == 'delete') {
-                      _deleteStaff(doc.id, name);
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    PopupMenuItem(
-                      value: 'edit',
-                      child: Row(
-                        children: [
-                          const Icon(Icons.edit, color: Colors.blue, size: 20),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Modify permissions',
-                            style: TextStyle(color: titleTextColor),
-                          ),
-                        ],
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'delete',
-                      child: Row(
-                        children: [
-                          const Icon(Icons.delete, color: Colors.red, size: 20),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Delete employee',
-                            style: TextStyle(color: titleTextColor),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  // --- 2. واجهة صفحة الإضافة والتعديل ---
-  Widget _buildStaffForm() {
-    final isEdit = _editingDocId != null;
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final theme = Theme.of(context);
-
-    final cardBg = isDarkMode ? theme.cardColor : Colors.white;
-    final titleTextColor = isDarkMode ? Colors.white : Colors.black87;
-    final inputBorderColor = isDarkMode ? Colors.grey.shade700 : Colors.grey.shade400;
-
-    return SingleChildScrollView(
-      key: const ValueKey('StaffForm'),
-      padding: const EdgeInsets.all(20),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: cardBg,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: isDarkMode
-                        ? Colors.black.withOpacity(0.3)
-                        : Colors.black.withOpacity(0.04),
-                    blurRadius: 10,
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Basic Data',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: titleTextColor,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _nameController,
-                    style: TextStyle(color: titleTextColor),
-                    decoration: InputDecoration(
-                      labelText: 'Employee Name',
-                      labelStyle: TextStyle(color: isDarkMode ? Colors.grey.shade400 : null),
-                      prefixIcon: const Icon(Icons.person_outline),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: inputBorderColor),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: inputBorderColor),
-                      ),
-                    ),
-                    validator: (v) => v == null || v.isEmpty ? 'Please enter the name.' : null,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _emailController,
-                    enabled: !isEdit,
-                    keyboardType: TextInputType.emailAddress,
-                    style: TextStyle(color: titleTextColor),
-                    decoration: InputDecoration(
-                      labelText: 'e-mail',
-                      labelStyle: TextStyle(color: isDarkMode ? Colors.grey.shade400 : null),
-                      prefixIcon: const Icon(Icons.email_outlined),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: inputBorderColor),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: inputBorderColor),
-                      ),
-                    ),
-                    validator: (v) => v == null || v.isEmpty ? 'Please enter your email address.' : null,
-                  ),
-                  if (!isEdit) ...[
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _passwordController,
-                      obscureText: _isObscure,
-                      style: TextStyle(color: titleTextColor),
-                      decoration: InputDecoration(
-                        labelText: 'password',
-                        labelStyle: TextStyle(color: isDarkMode ? Colors.grey.shade400 : null),
-                        prefixIcon: const Icon(Icons.lock_outline),
-                        suffixIcon: IconButton(
-                          icon: Icon(_isObscure ? Icons.visibility_off : Icons.visibility),
-                          onPressed: () => setState(() => _isObscure = !_isObscure),
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: inputBorderColor),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: inputBorderColor),
-                        ),
-                      ),
-                      validator: (v) {
-                        if (v == null || v.isEmpty) return 'Please enter the password.';
-                        if (v.length < 6) return 'It must be at least 6 characters long.';
-                        return null;
-                      },
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // قسم الصلاحيات
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: cardBg,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: isDarkMode
-                        ? Colors.black.withOpacity(0.3)
-                        : Colors.black.withOpacity(0.04),
-                    blurRadius: 10,
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Page access permissions',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: titleTextColor,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: _availablePermissions.map((perm) {
-                      final isSelected = _selectedPermissions.contains(perm);
-                      return ChoiceChip(
-                        label: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          child: Text(
-                            perm,
-                            style: TextStyle(
-                              color: isSelected
-                                  ? Colors.white
-                                  : (isDarkMode ? Colors.grey.shade300 : Colors.black87),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        selected: isSelected,
-                        selectedColor: Theme.of(context).primaryColor,
-                        backgroundColor: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade100,
-                        onSelected: (selected) {
-                          setState(() {
-                            if (selected) {
-                              _selectedPermissions.add(perm);
-                            } else {
-                              _selectedPermissions.remove(perm);
-                            }
-                          });
-                        },
-                      );
-                    }).toList(),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 30),
-
-            // أزرار الحفظ والإلغاء
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  elevation: 2,
-                ),
-                onPressed: _isLoading ? null : _saveStaffData,
-                child: _isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : Text(
-                  isEdit ? 'Updating Permissions' : 'Save and create account',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Future<void> _saveStaffData() async {
     if (!_formKey.currentState!.validate()) return;
-
     setState(() => _isLoading = true);
 
     try {
       if (_editingDocId != null) {
-        // تعديل بيانات وصلاحيات موظف حالي
-        await _firestore.collection('user').doc(_editingDocId).update({
-          'name': _nameController.text.trim(),
-          'permissions': _selectedPermissions,
-        });
-      } else {
-        // إنشاء موظف جديد عن طريق الـ Backend API
-        final url = Uri.parse('https://designland-backend.vercel.app/api/create_staff');
-
-        final response = await http.post(
-          url,
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'email': _emailController.text.trim(),
-            'password': _passwordController.text.trim(),
-            'name': _nameController.text.trim(),
-            'permissions': _selectedPermissions,
-          }),
+        await _staffService.updatePermissions(
+          docId: _editingDocId!,
+          name: _nameController.text.trim(),
+          permissions: _selectedPermissions,
         );
-
-        final data = jsonDecode(response.body);
-
-        if (response.statusCode != 200 || data['success'] != true) {
-          throw Exception(data['error'] ?? 'Failed to create the employee account.');
-        }
+      } else {
+        await _staffService.createStaff(
+          name: _nameController.text.trim(),
+          email: _emailController.text.trim(),
+          password: _passwordController.text.trim(),
+          permissions: _selectedPermissions,
+        );
       }
 
       _closeForm();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(_editingDocId != null ? 'The data has been successfully updated.' : 'The employee account has been successfully created.'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        _showSnackBar(_editingDocId != null ? 'Data updated.' : 'Employee created.', Colors.green);
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('An error occurred:$e'),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-      }
+      if (mounted) _showSnackBar('Error: $e', Colors.redAccent);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  // --- 4. حذف الموظف عبر Backend API ---
-  Future<void> _deleteStaff(String docId, String name) async {
-    bool isDeleting = false;
+  Future<void> _deleteStaff(StaffModel staff) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirm Deletion'),
+        content: Text('Delete "${staff.name}" permanently?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await _staffService.deleteStaff(staff.id);
+        if (mounted) _showSnackBar('Employee deleted.', Colors.green);
+      } catch (e) {
+        if (mounted) _showSnackBar('Error: $e', Colors.redAccent);
+      }
+    }
+  }
+
+  void _showSnackBar(String text, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text), backgroundColor: color));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_permissions.contains("staff")) return AccessDefindView();
+
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final theme = Theme.of(context);
 
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              backgroundColor: isDarkMode ? theme.cardColor : Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: const Row(
-                children: [
-                  Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
-                  SizedBox(width: 8),
-                  Text('Confirm Deletion'),
-                ],
-              ),
-              content: Text(
-                'Are you sure you want to delete the employee?"$name" Permanently? It will be deleted from Firebase Auth و Firestore.',
-                style: TextStyle(color: isDarkMode ? Colors.grey.shade300 : Colors.black87),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: isDeleting ? null : () => Navigator.pop(ctx),
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                  onPressed: isDeleting
-                      ? null
-                      : () async {
-                    setDialogState(() => isDeleting = true);
-
-                    try {
-                      final url = Uri.parse('https://designland-backend.vercel.app/api/delete-account');
-
-                      final response = await http.post(
-                        url,
-                        headers: {'Content-Type': 'application/json'},
-                        body: jsonEncode({'uid': docId}),
-                      );
-
-                      final data = jsonDecode(response.body);
-
-                      if (response.statusCode == 200 && data['success'] == true) {
-                        if (ctx.mounted) Navigator.pop(ctx);
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('The employee was successfully removed from the system and Auth was notified.'),
-                              backgroundColor: Colors.green,
-                            ),
-                          );
-                        }
-                      } else {
-                        throw Exception(data['error'] ?? 'Failed to delete the employee.');
-                      }
-                    } catch (e) {
-                      setDialogState(() => isDeleting = false);
-                      if (ctx.mounted) Navigator.pop(ctx);
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('An error occurred during deletion:$e'),
-                            backgroundColor: Colors.redAccent,
-                          ),
-                        );
-                      }
-                    }
-                  },
-                  child: isDeleting
-                      ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                  )
-                      : const Text('Permanent deletion', style: TextStyle(color: Colors.white)),
-                ),
-              ],
-            );
+    return Scaffold(
+      backgroundColor: isDarkMode ? theme.scaffoldBackgroundColor : Colors.grey.shade100,
+      appBar: AppBar(
+        title: Text(_isFormOpen ? (_editingDocId != null ? "Modifying permissions" : 'Add employee') : 'Staff Management'),
+        centerTitle: true,
+        leading: _isFormOpen ? IconButton(icon: const Icon(Icons.arrow_back_ios_new), onPressed: _closeForm) : null,
+      ),
+      floatingActionButton: !_isFormOpen
+          ? FloatingActionButton.extended(
+        onPressed: () => _openForm(),
+        backgroundColor: theme.primaryColor,
+        icon: const Icon(Icons.person_add_alt_1, color: Colors.white),
+        label: const Text('Add employee', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+      )
+          : null,
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        child: _isFormOpen
+            ? StaffForm(
+          formKey: _formKey,
+          nameController: _nameController,
+          emailController: _emailController,
+          passwordController: _passwordController,
+          isEdit: _editingDocId != null,
+          isObscure: _isObscure,
+          isLoading: _isLoading,
+          availablePermissions: _availablePermissions,
+          selectedPermissions: _selectedPermissions,
+          onToggleObscure: () => setState(() => _isObscure = !_isObscure),
+          onPermissionChanged: (perm, selected) {
+            setState(() {
+              selected ? _selectedPermissions.add(perm) : _selectedPermissions.remove(perm);
+            });
           },
-        );
-      },
+          onSubmit: _saveStaffData,
+        )
+            : StaffList(
+          staffStream: _staffService.getStaffStream(),
+          onEdit: _openForm,
+          onDelete: _deleteStaff,
+        ),
+      ),
     );
   }
 }

@@ -121,7 +121,7 @@ class _AboutWidgetState extends State<AboutWidget> with SingleTickerProviderStat
         bottom: TabBar(
           controller: _tabController,
           labelColor: isDark? Colors.white:Colors.black,
-          unselectedLabelColor: isDark ? Colors.white : Colors.white,
+          unselectedLabelColor: isDark ? Colors.white : Colors.black,
           indicatorColor: Theme.of(context).primaryColor,
           tabs: [
             Tab(icon: const Icon(Icons.info_outline), text: 'Basic Information'.tr,),

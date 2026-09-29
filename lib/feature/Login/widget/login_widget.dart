@@ -1,11 +1,12 @@
-import 'package:dashboard_desginland/feature/ForgetPassword/view/forget_password_view.dart';
-import 'package:dashboard_desginland/feature/Login/function/auth_function.dart';
-import 'package:dashboard_desginland/feature/Main%20Screen/view/main_screen_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import '../../../Core/Utils/app.colors.dart';
-import '../../../Core/Utils/app.images.dart';
+
+import '../../Main Screen/view/main_screen_view.dart';
+import '../function/auth_function.dart';
+import 'login_desktop_branding.dart';
+import 'login_form.dart';
+import 'login_mobile_header.dart';
 
 class LoginWidget extends StatefulWidget {
   const LoginWidget({super.key});
@@ -18,7 +19,6 @@ class _LoginWidgetState extends State<LoginWidget> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _isPasswordObscure = true;
   bool _isLoading = false;
 
   @override
@@ -28,16 +28,18 @@ class _LoginWidgetState extends State<LoginWidget> {
     super.dispose();
   }
 
-  void _handleLogin() async {
+  Future<void> _handleLogin() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
       try {
         final success = await LoginFunction(
           context,
-          _emailController.text,
+          _emailController.text.trim(),
           _passwordController.text,
         );
+
         if (success && mounted) {
+          TextInput.finishAutofillContext();
           Navigator.pushReplacementNamed(context, MainScreenView.id);
         }
       } finally {
@@ -50,12 +52,11 @@ class _LoginWidgetState extends State<LoginWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    final isDesktop = size.width > 850;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    final backgroundColor = isDark ? const Color(0xFF121212) : AppColors.bgLight;
-    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final bool isDark = Get.isDarkMode;
+    // نفس ألوان وتنسيقات MainScreenWidget تماماً
+    final scaffoldBg = isDark ? const Color(0xFF121218) : const Color(0xFFF4F5F9);
+    final cardBg = isDark ? const Color(0xFF1E1E2E) : Colors.white;
+    final borderColor = isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.04);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
@@ -64,321 +65,67 @@ class _LoginWidgetState extends State<LoginWidget> {
         statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
       ),
       child: Scaffold(
-        backgroundColor: backgroundColor,
+        backgroundColor: scaffoldBg,
         body: SafeArea(
           child: Center(
             child: SingleChildScrollView(
-              padding: EdgeInsets.symmetric(
-                horizontal: isDesktop ? 24.0 : 16.0,
-                vertical: 24.0,
-              ),
-              child: Container(
-                constraints: const BoxConstraints(maxWidth: 1000),
-                height: isDesktop ? 600 : null,
-                decoration: BoxDecoration(
-                  color: cardColor,
-                  borderRadius: BorderRadius.circular(isDesktop ? 24 : 16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: isDark
-                          ? Colors.black.withOpacity(0.3)
-                          : Colors.black.withOpacity(0.06),
-                      blurRadius: 30,
-                      offset: const Offset(0, 10),
+              padding: const EdgeInsets.all(16.0),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final bool isDesktop = constraints.maxWidth > 850;
+
+                  return Container(
+                    constraints: const BoxConstraints(maxWidth: 980),
+                    height: isDesktop ? 580 : null,
+                    decoration: BoxDecoration(
+                      color: cardBg,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: borderColor),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(isDark ? 0.2 : 0.03),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                child: isDesktop
-                    ? Row(
-                  children: [
-                    Expanded(child: _buildBrandingSide(size)),
-                    Expanded(
-                        child: _buildLoginForm(context,
-                            isDesktop: true, isDark: isDark)),
-                  ],
-                )
-                    : Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildMobileHeader(),
-                    _buildLoginForm(context,
-                        isDesktop: false, isDark: isDark),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBrandingSide(Size size) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.primaryPurple,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(24),
-          bottomLeft: Radius.circular(24),
-        ),
-      ),
-      padding: const EdgeInsets.all(40),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Image.asset(
-            AppImages.appPLogo,
-            width: 220,
-            fit: BoxFit.contain,
-          ),
-          const SizedBox(height: 24),
-          Text(
-            "Welcome Back!".tr,
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            "DesignLand Admin Dashboard\nManage orders, products & customized gifts".tr,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 14,
-              color: Colors.white70,
-              height: 1.5,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMobileHeader() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
-      decoration: const BoxDecoration(
-        color: AppColors.primaryPurple,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(16),
-          topRight: Radius.circular(16),
-        ),
-      ),
-      child: Column(
-        children: [
-          Image.asset(
-            AppImages.appPLogo,
-            height: 70,
-            fit: BoxFit.contain,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            "DesignLand Dashboard".tr,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLoginForm(BuildContext context,
-      {required bool isDesktop, required bool isDark}) {
-    final textColor = isDark ? Colors.white : AppColors.textDark;
-    final mutedTextColor = isDark ? Colors.grey[400] : AppColors.textMuted;
-    final inputBorderColor = isDark ? Colors.grey[700]! : Colors.grey[300]!;
-
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: isDesktop ? 40 : 20,
-        vertical: isDesktop ? 32 : 24,
-      ),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Sign In".tr,
-              style: TextStyle(
-                fontSize: isDesktop ? 26 : 22,
-                fontWeight: FontWeight.bold,
-                color: textColor,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              "Enter your credentials to access the admin panel".tr,
-              style: TextStyle(
-                fontSize: 13,
-                color: mutedTextColor,
-              ),
-            ),
-            SizedBox(height: isDesktop ? 32 : 20),
-
-            // Email Input
-            TextFormField(
-              controller: _emailController,
-              keyboardType: TextInputType.emailAddress,
-              style: TextStyle(color: textColor),
-              decoration: InputDecoration(
-                labelText: "Email Address".tr,
-                labelStyle: TextStyle(color: mutedTextColor),
-                hintText: "admin@designland.eg",
-                hintStyle: TextStyle(color: isDark ? Colors.grey[600] : Colors.grey[400]),
-                prefixIcon: Icon(
-                  Icons.email_outlined,
-                  size: 20,
-                  color: isDark ? Colors.grey[400] : Colors.grey[600],
-                ),
-                contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: inputBorderColor),
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(
-                    color: AppColors.primaryPurple,
-                    width: 2,
-                  ),
-                ),
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return "Please enter your email".tr;
-                }
-                if (!value.contains('@')) {
-                  return "Please enter a valid email".tr;
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-
-            // Password Input
-            TextFormField(
-              controller: _passwordController,
-              obscureText: _isPasswordObscure,
-              style: TextStyle(color: textColor),
-              decoration: InputDecoration(
-                labelText: "Password".tr,
-                labelStyle: TextStyle(color: mutedTextColor),
-                prefixIcon: Icon(
-                  Icons.lock_outline,
-                  size: 20,
-                  color: isDark ? Colors.grey[400] : Colors.grey[600],
-                ),
-                contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _isPasswordObscure
-                        ? Icons.visibility_off_outlined
-                        : Icons.visibility_outlined,
-                    size: 20,
-                    color: isDark ? Colors.grey[400] : Colors.grey[600],
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _isPasswordObscure = !_isPasswordObscure;
-                    });
-                  },
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: inputBorderColor),
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(
-                    color: AppColors.primaryPurple,
-                    width: 2,
-                  ),
-                ),
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return "Please enter your password".tr;
-                }
-                if (value.length < 6) {
-                  return "Password must be at least 6 characters".tr;
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 8),
-
-            // Forgot Password
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>  ForgetPasswordView(),
+                    child: isDesktop
+                        ? Row(
+                      children: [
+                        Expanded(child: LoginDesktopBranding(isDark: isDark)),
+                        Expanded(
+                          child: LoginForm(
+                            isDesktop: true,
+                            isDark: isDark,
+                            formKey: _formKey,
+                            emailController: _emailController,
+                            passwordController: _passwordController,
+                            isLoading: _isLoading,
+                            onLoginPressed: _handleLogin,
+                          ),
+                        ),
+                      ],
+                    )
+                        : Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        LoginMobileHeader(isDark: isDark),
+                        LoginForm(
+                          isDesktop: false,
+                          isDark: isDark,
+                          formKey: _formKey,
+                          emailController: _emailController,
+                          passwordController: _passwordController,
+                          isLoading: _isLoading,
+                          onLoginPressed: _handleLogin,
+                        ),
+                      ],
                     ),
                   );
                 },
-                child: Text(
-                  "Forgot Password?".tr,
-                  style: const TextStyle(
-                    color: AppColors.primaryPurple,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                  ),
-                ),
               ),
             ),
-            const SizedBox(height: 16),
-
-            // Login Button
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _handleLogin,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryPurple,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 1,
-                ),
-                child: _isLoading
-                    ? const SizedBox(
-                  height: 22,
-                  width: 22,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2,
-                  ),
-                )
-                    : Text(
-                  "Login to Dashboard".tr,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

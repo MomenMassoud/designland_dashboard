@@ -71,6 +71,7 @@ dependencies:
   google_generative_ai: ^0.4.7
   appflowy_editor: ^6.2.0
   flutter_animate: ^4.5.0
+  cached_network_image: ^3.4.1
 
 dependency_overrides:
   keyboard_height_plugin: ^0.3.0
