@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get/get.dart';
-
 import '../../../Core/Utils/app.colors.dart';
 import '../../../Core/server/saveDeviceTokenToFirestore.dart';
 import '../../../Core/server/setup_notification.dart';
@@ -22,6 +21,7 @@ import 'package:dashboard_desginland/feature/Staff/view/staff_view.dart';
 import 'package:dashboard_desginland/feature/Users/view/users_view.dart';
 import 'package:dashboard_desginland/feature/analytics/view/analytics_view.dart';
 import 'package:dashboard_desginland/feature/products/view/products_view.dart';
+import 'package:dashboard_desginland/feature/Top Fans/view/top_fans_view.dart';
 import 'package:dashboard_desginland/model/user_model.dart';
 import '../../Reports/view/report_view.dart';
 
@@ -84,19 +84,20 @@ class _MainScreenWidgetState extends State<MainScreenWidget> {
 
   Widget _buildScreenByIndex(int index) {
     switch (index) {
-      case 0: return  HomeView();
-      case 1: return  CategoryView();
-      case 2: return  OrdersView();
-      case 3: return  ReportView();
-      case 4: return  ProductsView();
-      case 5: return  StaffView();
-      case 6: return  UsersView();
-      case 7: return  AnalyticsView();
-      case 8: return  AboutView();
-      case 9: return  BannersView();
-      case 10: return  PromoCodeView();
-      case 11: return  CountryView();
-      default: return  HomeView();
+      case 0: return HomeView();
+      case 1: return CategoryView();
+      case 2: return OrdersView();
+      case 3: return ReportView();
+      case 4: return ProductsView();
+      case 5: return StaffView();
+      case 6: return UsersView();
+      case 7: return TopFansView(); // إضافة شاشة كبار العملاء المربوطة بالسيكشن الجديد
+      case 8: return AnalyticsView();
+      case 9: return AboutView();
+      case 10: return BannersView();
+      case 11: return PromoCodeView();
+      case 12: return CountryView();
+      default: return HomeView();
     }
   }
 
@@ -111,7 +112,7 @@ class _MainScreenWidgetState extends State<MainScreenWidget> {
     }
 
     if (_userModel == null || (_userModel!.role != "admin" && _userModel!.role != "staff")) {
-      return  AccessDefindView();
+      return AccessDefindView();
     }
 
     final bool isDark = Get.isDarkMode;
@@ -175,7 +176,7 @@ class _MainScreenWidgetState extends State<MainScreenWidget> {
                         child: IndexedStack(
                           index: _selectedIndex,
                           children: List.generate(
-                            12,
+                            13, // تحديث العدد الإجمالي للشاشات ليصبح 13
                                 (index) => _getScreen(index),
                           ),
                         ),
@@ -214,7 +215,6 @@ class SidebarContent extends StatelessWidget {
     required this.onItemSelected,
   });
 
-  // أيقونات عصرية حديثة مع خيارات نشطة وغير نشطة (Active / Inactive Icons)
   static final List<NavItemData> _navItems = [
     NavItemData(
       icon: Icons.grid_view_rounded,
@@ -250,6 +250,11 @@ class SidebarContent extends StatelessWidget {
       icon: Icons.people_outline_rounded,
       activeIcon: Icons.people_alt_rounded,
       title: "Users",
+    ),
+    NavItemData(
+      icon: Icons.stars_outlined,
+      activeIcon: Icons.stars_rounded,
+      title: "Top Fans", // إضافة سيكشن Top Fans للقائمة الجانبية
     ),
     NavItemData(
       icon: Icons.analytics_outlined,
@@ -359,7 +364,6 @@ class NavItemTile extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 6.0),
-      // انيميشن ناعم للخلفية المتدرجة (Animated Container Selector)
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeInOut,
@@ -392,7 +396,6 @@ class NavItemTile extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               child: Row(
                 children: [
-                  // أيقونة متحركة مع تحول سلس ومؤثرات حركية عند الضغط
                   Animate(
                     target: isSelected ? 1 : 0,
                     effects: [
@@ -422,7 +425,6 @@ class NavItemTile extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // مؤشر إضافي صغير عند التفعيل
                   if (isSelected)
                     Container(
                       width: 5,
@@ -532,7 +534,7 @@ class TopHeader extends StatelessWidget {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) =>  ProfileView()),
+                MaterialPageRoute(builder: (context) => ProfileView()),
               );
             },
             child: Row(
